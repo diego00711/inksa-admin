@@ -1,38 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button.jsx';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
-import { Input } from '@/components/ui/input.jsx';
-import { Label } from '@/components/ui/label.jsx';
+import React, { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button.jsx'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
+import { Input } from '@/components/ui/input.jsx'
+import { Label } from '@/components/ui/label.jsx'
 import { 
   Users, Store, Truck, ShoppingCart, DollarSign, TrendingUp, 
   Activity, Settings, LogOut, Brain, Plus, Bell, Download, Filter
-} from 'lucide-react';
+} from 'lucide-react'
 
 // =================================================================================
 // COMPONENTE DE PÁGINA DE LOGIN
 // =================================================================================
 function LoginPage({ onLogin }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    
     // Simulação de autenticação
     setTimeout(() => {
       if (email === 'admin@inksa.com' && password === 'admin123') {
-        localStorage.setItem('isLoggedIn', 'true');
-        onLogin(true);
+        localStorage.setItem('isLoggedIn', 'true')
+        onLogin(true)
       } else {
-        setError('Credenciais inválidas. Por favor, tente novamente.');
+        setError('Credenciais inválidas')
       }
-      setLoading(false);
-    }, 1000);
-  };
+      setLoading(false)
+    }, 1000)
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -82,12 +82,13 @@ function LoginPage({ onLogin }) {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 // =================================================================================
-// COMPONENTES DO DASHBOARD (A sua estrutura original)
+// COMPONENTES DO DASHBOARD
 // =================================================================================
+
 function Sidebar({ activeTab, setActiveTab, onLogout }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
@@ -97,7 +98,7 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
     { id: 'pedidos', label: 'Pedidos', icon: ShoppingCart },
     { id: 'ia', label: 'IA & Analytics', icon: Brain },
     { id: 'configuracoes', label: 'Configurações', icon: Settings }
-  ];
+  ]
 
   return (
     <div className="w-64 bg-card text-card-foreground h-screen fixed left-0 top-0 flex flex-col border-r">
@@ -110,7 +111,7 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
       <nav className="flex-1 p-4">
         <ul className="space-y-1">
           {menuItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = item.icon
             return (
               <li key={item.id}>
                 <button
@@ -125,7 +126,7 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
                   <span>{item.label}</span>
                 </button>
               </li>
-            );
+            )
           })}
         </ul>
       </nav>
@@ -136,56 +137,170 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 function Header() {
   return (
-    <header className="bg-card px-6 py-4 border-b">
+    <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard Administrativo</h1>
+          <p className="text-gray-600">Gerencie toda a plataforma Inksa</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" size="sm">
+            <Bell className="w-4 h-4 mr-2" />
+            Notificações
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Relatórios
+          </Button>
+        </div>
       </div>
     </header>
-  );
+  )
 }
 
 function DashboardContent() {
-  return <div className="p-6"><p>Bem-vindo ao seu Dashboard!</p></div>;
+  return (
+    <div className="space-y-6">
+      {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Usuários</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <Users className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Restaurantes</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <Store className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Entregadores</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <Truck className="w-8 h-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pedidos Hoje</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Faturamento Mês</p>
+                <p className="text-2xl font-bold">R$ 0,00</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Crescimento</p>
+                <p className="text-2xl font-bold text-green-600">+0%</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {/* Aqui pode adicionar os outros componentes como gráficos e tabelas */}
+    </div>
+  )
 }
 
+function renderContent(activeTab) {
+  switch (activeTab) {
+    case 'dashboard':
+      return <DashboardContent />
+    // Adicione os outros casos para as diferentes abas aqui
+    default:
+      return (
+        <div className="p-6">
+          <h2 className="text-2xl font-bold">Página de {activeTab}</h2>
+          <p className="text-muted-foreground">Conteúdo em desenvolvimento...</p>
+        </div>
+      )
+  }
+}
+
+// =================================================================================
+// COMPONENTE PRINCIPAL DA APLICAÇÃO
+// =================================================================================
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    setIsLoggedIn(loggedIn);
-  }, []);
+    const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    setIsLoggedIn(loggedIn)
+  }, [])
 
   const handleLogin = (status) => {
-    setIsLoggedIn(status);
-  };
+    setIsLoggedIn(status)
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    setIsLoggedIn(false);
-  };
+    localStorage.removeItem('isLoggedIn')
+    setIsLoggedIn(false)
+    setActiveTab('dashboard')
+  }
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} />
   }
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onLogout={handleLogout} 
+      />
       <div className="flex-1 ml-64 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto">
-          <DashboardContent />
+        <main className="flex-1 overflow-y-auto p-6">
+          {renderContent(activeTab)}
         </main>
       </div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
