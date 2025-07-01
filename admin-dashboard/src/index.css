@@ -27,7 +27,7 @@
   }
 
   .dark {
-    /* ... (pode adicionar as variáveis do modo escuro aqui se precisar) ... */
+    /* As variáveis para o modo escuro podem ser adicionadas aqui */
   }
 }
 
@@ -37,5 +37,8 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  html, body, #root {
+    @apply h-full;
   }
 }
