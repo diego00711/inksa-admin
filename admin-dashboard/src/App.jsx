@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Label } from '@/components/ui/label.jsx';
-import {
-  Users, Store, Truck, ShoppingCart, DollarSign, TrendingUp,
+import { 
+  Users, Store, Truck, ShoppingCart, DollarSign, TrendingUp, 
   Activity, Settings, LogOut, Brain, Plus, Bell, Download, Filter
 } from 'lucide-react';
 
@@ -38,9 +38,9 @@ function LoginPage({ onLogin }) {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <img
-            src="https://placehold.co/80x80/E63946/FFFFFF?text=I"
-            alt="Inksa Admin Logo"
+          <img 
+            src="/logo.png" 
+            alt="Inksa Admin Logo" 
             className="w-20 h-20 mx-auto mb-4 rounded-full object-cover border-4 border-white shadow-sm"
           />
           <CardTitle className="text-3xl font-bold text-gray-800">Inksa Admin</CardTitle>
@@ -105,9 +105,9 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
     <div className="w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 flex flex-col shadow-lg">
       <div className="p-5 border-b border-slate-700">
         <div className="flex items-center space-x-3">
-          <img
-            src="https://placehold.co/40x40/E63946/FFFFFF?text=I"
-            alt="Inksa Admin Logo"
+          <img 
+            src="/logo.png" 
+            alt="Inksa Admin Logo" 
             className="w-10 h-10 rounded-full object-cover"
           />
           <div>
@@ -116,7 +116,7 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
           </div>
         </div>
       </div>
-
+      
       <nav className="flex-1 p-4">
         <ul className="space-y-1">
           {menuItems.map((item) => {
@@ -126,8 +126,8 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
                 <button
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-left transition-colors ${
-                    activeTab === item.id
-                      ? 'bg-red-600 text-white'
+                    activeTab === item.id 
+                      ? 'bg-red-600 text-white' 
                       : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                   }`}
                 >
@@ -139,11 +139,11 @@ function Sidebar({ activeTab, setActiveTab, onLogout }) {
           })}
         </ul>
       </nav>
-
+      
       <div className="p-4 border-t border-slate-700">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-slate-300 hover:bg-slate-700 hover:text-white"
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start text-slate-300 hover:bg-slate-700 hover:text-white" 
           onClick={onLogout}
         >
           <LogOut className="w-5 h-5 mr-3" />
@@ -203,10 +203,10 @@ function Dashboard({ onLogout }) {
 
     return (
         <div className="flex h-screen bg-gray-100">
-            <Sidebar
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                onLogout={onLogout}
+            <Sidebar 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                onLogout={onLogout} 
             />
             <div className="flex-1 ml-64 flex flex-col">
                 <Header activeTab={activeTab} />
@@ -263,4 +263,3 @@ function App() {
 }
 
 export default App;
-
