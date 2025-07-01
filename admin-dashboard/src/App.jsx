@@ -7,6 +7,22 @@ import {
   Users, Store, Truck, ShoppingCart, DollarSign, TrendingUp, 
   Activity, Settings, LogOut, Brain, Plus, Bell, Download, Filter
 } from 'lucide-react'
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  LineChart, Line 
+} from 'recharts'
+
+// =================================================================================
+// DADOS DE EXEMPLO PARA OS GRÁFICOS
+// =================================================================================
+const monthlyData = [
+  { month: 'Jan', pedidos: 65, faturamento: 2400 },
+  { month: 'Fev', pedidos: 59, faturamento: 2210 },
+  { month: 'Mar', pedidos: 80, faturamento: 2290 },
+  { month: 'Abr', pedidos: 81, faturamento: 2000 },
+  { month: 'Mai', pedidos: 56, faturamento: 2181 },
+  { month: 'Jun', pedidos: 55, faturamento: 2500 },
+];
 
 // =================================================================================
 // COMPONENTE DE PÁGINA DE LOGIN
@@ -240,7 +256,44 @@ function DashboardContent() {
           </CardContent>
         </Card>
       </div>
-      {/* Aqui pode adicionar os outros componentes como gráficos e tabelas */}
+
+      {/* Seção de Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Pedidos por Mês</CardTitle>
+            <CardDescription>Total de pedidos realizados nos últimos 6 meses.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="pedidos" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Faturamento Mensal</CardTitle>
+            <CardDescription>Evolução do faturamento nos últimos 6 meses.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => `R$ ${value}`} />
+                <Line type="monotone" dataKey="faturamento" stroke="#82ca9d" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
