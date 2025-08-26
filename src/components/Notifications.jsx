@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import { NotificationContext } from '../context/NotificationContext';
 
-// Componente de notificações (toasts no canto da tela)
 export function Notifications() {
   const { notifications, removeNotification } = useContext(NotificationContext);
 
