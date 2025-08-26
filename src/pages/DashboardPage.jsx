@@ -1,8 +1,6 @@
-// Local: src/pages/DashboardPage.jsx
-
 import React, { useState, useEffect } from 'react';
 import AuthService from '../services/authService';
-import { Loader2, DollarSign, BarChart3, Users, Clock } from 'lucide-react';
+import { Loader2, DollarSign, BarChart3, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // OTIMIZADO: Componente de cartão de KPI mais flexível e estilizado como no novo design
@@ -66,15 +64,11 @@ export function DashboardPage() {
     const fetchAllDashboardData = async () => {
       try {
         setIsLoading(true);
-        // OTIMIZADO: Busca todos os dados em paralelo para maior performance
-        const [kpiResult, chartResult, ordersResult] = await Promise.all([
-          AuthService.getKpiSummary(),
-          AuthService.getRevenueChartData(),
-          AuthService.getRecentOrders(),
-        ]);
-        setKpis(kpiResult);
-        setChartData(chartResult);
-        setRecentOrders(ordersResult);
+        // Agora faz apenas uma requisição
+        const dashboardResult = await AuthService.getDashboardStats();
+        setKpis(dashboardResult.kpis);
+        setChartData(dashboardResult.chartData);
+        setRecentOrders(dashboardResult.recentOrders);
       } catch (err) {
         setError(err.message || 'Ocorreu um erro ao buscar os dados do dashboard.');
       } finally {
@@ -92,6 +86,11 @@ export function DashboardPage() {
     return <div className="text-red-500 text-center p-4 bg-red-100 rounded-lg">Erro ao carregar o dashboard: {error}</div>;
   }
 
+  // Evita erro caso kpis seja null no primeiro render
+  if (!kpis) {
+    return <div className="text-gray-500 text-center p-4">Carregando dados...</div>;
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -101,10 +100,10 @@ export function DashboardPage() {
       
       {/* OTIMIZADO: Grid para os novos KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Receita Total" value={`R$ ${kpis.totalRevenue.toFixed(2)}`} icon={DollarSign} color="bg-blue-600" />
-        <KpiCard title="Pedidos Hoje" value={kpis.ordersToday} icon={BarChart3} color="bg-green-500" />
-        <KpiCard title="Ticket Médio" value={`R$ ${kpis.averageTicket.toFixed(2)}`} icon={DollarSign} color="bg-sky-500" />
-        <KpiCard title="Novos Clientes Hoje" value={kpis.newClientsToday} icon={Users} color="bg-orange-500" />
+        <KpiCard title="Receita Total" value={`R$ ${kpis.totalRevenue?.toFixed(2) ?? '-'}`} icon={DollarSign} color="bg-blue-600" />
+        <KpiCard title="Pedidos Hoje" value={kpis.ordersToday ?? '-'} icon={BarChart3} color="bg-green-500" />
+        <KpiCard title="Ticket Médio" value={`R$ ${kpis.averageTicket?.toFixed(2) ?? '-'}`} icon={DollarSign} color="bg-sky-500" />
+        <KpiCard title="Novos Clientes Hoje" value={kpis.newClientsToday ?? '-'} icon={Users} color="bg-orange-500" />
       </div>
 
       {/* NOVO: Layout para o gráfico e a lista de pedidos */}
