@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Página de relatórios/exportação
 export default function ReportsPage() {
   return (
     <div>
