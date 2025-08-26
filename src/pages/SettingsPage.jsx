@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Página de configurações/tema/logo
 export default function SettingsPage() {
   return (
     <div>
