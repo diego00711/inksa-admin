@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Dashboard financeiro detalhado
 export default function FinanceDashboard() {
   return (
     <div>
