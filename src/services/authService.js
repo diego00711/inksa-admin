@@ -1,4 +1,3 @@
-// services/authService.js - INKSA ADMIN
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
 const AUTH_TOKEN_KEY = 'adminAuthToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';
@@ -70,7 +69,64 @@ const authService = {
         }
     },
 
-    // Dashboard e Analytics
+    // Dashboard KPIs
+    async getKpiSummary() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/kpi-summary`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar KPIs:', error);
+            throw error;
+        }
+    },
+
+    // Gráfico de Faturamento
+    async getRevenueChartData() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/stats/revenue-chart`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar dados do gráfico de faturamento:', error);
+            throw error;
+        }
+    },
+
+    // Pedidos Recentes
+    async getRecentOrders() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/orders/recent`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar pedidos recentes:', error);
+            throw error;
+        }
+    },
+
+    // Dashboard e Analytics (ainda disponível se precisar buscar todos de uma vez)
     async getDashboardStats() {
         try {
             const token = localStorage.getItem(AUTH_TOKEN_KEY);
