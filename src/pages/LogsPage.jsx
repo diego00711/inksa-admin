@@ -6,7 +6,7 @@ export default function LogsPage() {
   const [erro, setErro] = useState(null);
 
   useEffect(() => {
-    fetch('/api/logs')
+    fetch('https://inksa-auth-flask-dev.onrender.com/api/logs')
       .then((res) => {
         if (!res.ok) throw new Error('Erro ao buscar logs');
         return res.json();
