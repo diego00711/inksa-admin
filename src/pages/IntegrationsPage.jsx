@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Página de integrações externas (webhook, email, WhatsApp)
 export default function IntegrationsPage() {
   return (
     <div>
