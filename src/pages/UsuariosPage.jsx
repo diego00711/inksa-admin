@@ -1,9 +1,7 @@
-// Local: src/pages/UsuariosPage.jsx
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import AuthService from '../services/authService'; // Certifique-se de que o caminho para AuthService está correto
+import authService from '../services/authService'; // Corrija o import para minúsculo
 import { Loader2 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'; // Componentes do Recharts
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 // Cores para o gráfico (personalizáveis para combinar com seu design)
 const COLORS = {
@@ -23,25 +21,28 @@ export function UsuariosPage() {
 
   // Função para buscar usuários da API, memoizada com useCallback
   const fetchUsers = useCallback(async () => {
-    setIsLoading(true); // Define o estado de carregamento como verdadeiro
-    setError(null); // Limpa qualquer erro anterior
+    setIsLoading(true);
+    setError(null);
     try {
-      // Chama o serviço de autenticação, passando o tipo de usuário e o filtro de cidade
-      const usersData = await AuthService.getAllUsers(activeTypeFilter, cityFilter);
-      setUsers(usersData); // Atualiza o estado dos usuários
+      // Chama o serviço de autenticação, passando os filtros como objeto
+      const usersResp = await authService.getUsers({
+        user_type: activeTypeFilter,
+        city: cityFilter
+      });
+      // O backend retorna { status, data }, então pegamos a lista:
+      setUsers(usersResp.data || []);
     } catch (err) {
-      setError(err.message); // Captura e define a mensagem de erro
+      setError(err.message);
     } finally {
-      setIsLoading(false); // Finaliza o estado de carregamento
+      setIsLoading(false);
     }
-  }, [activeTypeFilter, cityFilter]); // Dependências: refaz a função se os filtros mudarem
+  }, [activeTypeFilter, cityFilter]);
 
-  // Efeito para buscar usuários quando a função fetchUsers muda (devido a mudanças nos filtros)
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Prepara os dados para o gráfico de pizza, memoizado com useMemo para performance
+  // Prepara os dados para o gráfico de pizza
   const chartData = useMemo(() => {
     const typeCounts = users.reduce((acc, user) => {
       acc[user.user_type] = (acc[user.user_type] || 0) + 1;
@@ -49,19 +50,19 @@ export function UsuariosPage() {
     }, {});
 
     return Object.keys(typeCounts).map(key => ({
-      name: key.charAt(0).toUpperCase() + key.slice(1), // Capitaliza a primeira letra do tipo
+      name: key.charAt(0).toUpperCase() + key.slice(1),
       value: typeCounts[key],
-      color: COLORS[key] || COLORS.default // Atribui cor baseada no tipo, ou uma cor padrão
+      color: COLORS[key] || COLORS.default
     }));
-  }, [users]); // Recalcula apenas se a lista de usuários mudar
+  }, [users]);
 
-  // Extrai e ordena cidades únicas para o filtro dropdown, memoizado com useMemo
+  // Extrai e ordena cidades únicas para o filtro dropdown
   const uniqueCities = useMemo(() => {
-    const cities = users.map(user => user.city).filter(Boolean); // Pega a propriedade 'city' e filtra valores falsy
-    return [...new Set(cities)].sort(); // Garante cidades únicas e as ordena alfabeticamente
-  }, [users]); // Recalcula apenas se a lista de usuários mudar
+    const cities = users.map(user => user.city).filter(Boolean);
+    return [...new Set(cities)].sort();
+  }, [users]);
 
-  const filterOptions = ['todos', 'client', 'restaurant', 'delivery', 'admin']; // Opções de filtro por tipo
+  const filterOptions = ['todos', 'client', 'restaurant', 'delivery', 'admin'];
 
   return (
     <div>
@@ -72,14 +73,14 @@ export function UsuariosPage() {
           {filterOptions.map(filter => (
             <button
               key={filter}
-              onClick={() => setActiveTypeFilter(filter)} // Atualiza o filtro de tipo
+              onClick={() => setActiveTypeFilter(filter)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                 activeTypeFilter === filter
                   ? 'bg-gray-800 text-white shadow-md'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)} {/* Ex: "Todos", "Client" */}
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </button>
           ))}
         </div>
@@ -91,7 +92,7 @@ export function UsuariosPage() {
         <select
           id="city-filter"
           value={cityFilter}
-          onChange={(e) => setCityFilter(e.target.value)} // Atualiza o filtro de cidade
+          onChange={(e) => setCityFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
         >
           <option value="">Todas as Cidades</option>
@@ -99,9 +100,9 @@ export function UsuariosPage() {
             <option key={city} value={city}>{city}</option>
           ))}
         </select>
-        {cityFilter && ( // Mostra o botão "Limpar" apenas se houver um filtro de cidade ativo
+        {cityFilter && (
             <button
-                onClick={() => setCityFilter('')} // Limpa o filtro de cidade
+                onClick={() => setCityFilter('')}
                 className="ml-2 px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600 transition-colors"
             >
                 Limpar
@@ -139,7 +140,7 @@ export function UsuariosPage() {
 
       {/* Total de Usuários Filtrados */}
       <div className="mb-4 text-gray-700 font-semibold">
-        Total de usuários: <span className="text-gray-900 text-xl">{users.length}</span> {/* Exibe o total de usuários atuais */}
+        Total de usuários: <span className="text-gray-900 text-xl">{users.length}</span>
       </div>
       
       {/* Tabela de Usuários */}
@@ -156,7 +157,7 @@ export function UsuariosPage() {
                   <th scope="col" className="px-6 py-3">Nome Completo</th>
                   <th scope="col" className="px-6 py-3">Email</th>
                   <th scope="col" className="px-6 py-3">Tipo</th>
-                  <th scope="col" className="px-6 py-3">Cidade</th> {/* Nova coluna para a cidade */}
+                  <th scope="col" className="px-6 py-3">Cidade</th>
                   <th scope="col" className="px-6 py-3">Data de Criação</th>
                 </tr>
               </thead>
@@ -178,7 +179,7 @@ export function UsuariosPage() {
                         {user.user_type}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{user.city || 'N/A'}</td> {/* Exibe o valor da cidade */}
+                    <td className="px-6 py-4">{user.city || 'N/A'}</td>
                     <td className="px-6 py-4">
                       {new Date(user.created_at).toLocaleDateString('pt-BR')}
                     </td>
