@@ -1,9 +1,7 @@
-// Local: src/pages/AdminLayout.jsx
-
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, Users, Utensils, LogOut } from 'lucide-react';
+import { Home, Users, LogOut } from 'lucide-react';
 
 export function AdminLayout() {
   const { logout } = useAuth();
@@ -15,7 +13,6 @@ export function AdminLayout() {
         <nav className="flex-1 px-4 py-6 space-y-2">
           <Link to="/" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-700"><Home className="mr-3 h-5 w-5" />Dashboard</Link>
           <Link to="/usuarios" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-700"><Users className="mr-3 h-5 w-5" />Usuários</Link>
-          <Link to="/restaurantes" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-700"><Utensils className="mr-3 h-5 w-5" />Restaurantes</Link>
         </nav>
         <div className="px-4 py-4 border-t border-gray-700">
           <button onClick={logout} className="w-full flex items-center px-4 py-2 rounded-md hover:bg-red-600"><LogOut className="mr-3 h-5 w-5" />Sair</button>
