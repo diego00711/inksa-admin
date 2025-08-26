@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Painel de suporte/atendimento
 export default function SupportPage() {
   return (
     <div>
