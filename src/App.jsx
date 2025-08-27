@@ -19,6 +19,9 @@ import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 
+// Nova página de Payouts
+import FinanceiroPayouts from './pages/FinanceiroPayouts';
+
 function App() {
   return (
     <AuthProvider>
@@ -37,6 +40,7 @@ function App() {
                 <Route path="/admins" element={<AdminsPage />} />
                 <Route path="/relatorios" element={<ReportsPage />} />
                 <Route path="/financeiro" element={<FinanceDashboard />} />
+                <Route path="/financeiro/payouts" element={<FinanceiroPayouts />} />
                 <Route path="/suporte" element={<SupportPage />} />
                 <Route path="/configuracoes" element={<SettingsPage />} />
                 <Route path="/integracoes" element={<IntegrationsPage />} />
