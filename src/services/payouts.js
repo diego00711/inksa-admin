@@ -3,7 +3,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 function getAuthHeader() {
   try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
     return {};
