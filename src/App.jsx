@@ -15,6 +15,7 @@ import LogsPage from './pages/LogsPage';
 import AdminsPage from './pages/AdminsPage';
 import ReportsPage from './pages/ReportsPage';
 import FinanceDashboard from './pages/FinanceDashboard';
+import InvoicesList from './pages/InvoicesList';
 import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
@@ -37,6 +38,8 @@ function App() {
                 <Route path="/admins" element={<AdminsPage />} />
                 <Route path="/relatorios" element={<ReportsPage />} />
                 <Route path="/financeiro" element={<FinanceDashboard />} />
+                <Route path="/financeiro/dashboard" element={<FinanceDashboard />} />
+                <Route path="/financeiro/faturas" element={<InvoicesList />} />
                 <Route path="/suporte" element={<SupportPage />} />
                 <Route path="/configuracoes" element={<SettingsPage />} />
                 <Route path="/integracoes" element={<IntegrationsPage />} />
