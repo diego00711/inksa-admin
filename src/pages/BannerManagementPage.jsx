@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import authService from '../services/authService';
 
 const BannerManagementPage = () => {
@@ -7,6 +7,10 @@ const BannerManagementPage = () => {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState('');
+  const fileInputRef = useRef(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
@@ -15,7 +19,8 @@ const BannerManagementPage = () => {
     is_active: true
   });
 
-  // Carregar banners ao montar o componente
+  const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
+
   useEffect(() => {
     loadBanners();
   }, []);
@@ -26,9 +31,6 @@ const BannerManagementPage = () => {
       setError('');
       
       const token = authService.getToken();
-      const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
-      
-      console.log('🔍 Carregando banners da API:', `${API_URL}/api/banners`);
       
       const response = await fetch(`${API_URL}/api/banners`, {
         method: 'GET',
@@ -38,29 +40,88 @@ const BannerManagementPage = () => {
         },
       });
 
-      console.log('📡 Status da resposta:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erro da API:', errorText);
-        throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
+        throw new Error(`Erro HTTP: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('📥 Dados recebidos:', data);
-      
-      // Verificar se data.data existe e é um array
-      const bannersData = Array.isArray(data.data) ? data.data : [];
-      setBanners(bannersData);
-      
-      console.log('✅ Banners carregados:', bannersData.length);
+      setBanners(Array.isArray(data.data) ? data.data : []);
       
     } catch (error) {
-      console.error('❌ Erro ao carregar banners:', error);
+      console.error('Erro ao carregar banners:', error);
       setError('Erro ao carregar banners: ' + error.message);
-      setBanners([]); // Garantir que banners seja sempre um array
+      setBanners([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validações no frontend
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Tipo de arquivo não permitido. Use PNG, JPG, JPEG, GIF ou WEBP.');
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError('Arquivo muito grande. Máximo 5MB.');
+      return;
+    }
+
+    // Preview da imagem
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload da imagem
+    await uploadImage(file);
+  };
+
+  const uploadImage = async (file) => {
+    try {
+      setUploading(true);
+      setError('');
+
+      const token = authService.getToken();
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', file);
+
+      const response = await fetch(`${API_URL}/api/upload/banner-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formDataUpload,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Atualizar URL da imagem no formulário
+      setFormData(prev => ({
+        ...prev,
+        image_url: data.data.url
+      }));
+
+      console.log('Upload realizado com sucesso:', data.data);
+      
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      setError('Erro no upload da imagem: ' + error.message);
+      setImagePreview('');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -68,22 +129,19 @@ const BannerManagementPage = () => {
     e.preventDefault();
     
     if (!formData.title || !formData.image_url) {
-      setError('Título e URL da imagem são obrigatórios');
+      setError('Título e imagem são obrigatórios');
       return;
     }
 
     try {
       setError('');
       const token = authService.getToken();
-      const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
       
       const url = editingBanner 
         ? `${API_URL}/api/banners/${editingBanner.id}`
         : `${API_URL}/api/banners`;
       
       const method = editingBanner ? 'PUT' : 'POST';
-
-      console.log(`🚀 ${method} banner:`, url, formData);
 
       const response = await fetch(url, {
         method,
@@ -95,7 +153,7 @@ const BannerManagementPage = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
@@ -103,7 +161,6 @@ const BannerManagementPage = () => {
       await loadBanners();
       resetForm();
     } catch (error) {
-      console.error('❌ Erro ao salvar banner:', error);
       setError('Erro ao salvar banner: ' + error.message);
     }
   };
@@ -117,6 +174,7 @@ const BannerManagementPage = () => {
       link_url: banner.link_url || '',
       is_active: banner.is_active !== undefined ? banner.is_active : true
     });
+    setImagePreview(banner.image_url || '');
     setShowForm(true);
     setError('');
   };
@@ -129,7 +187,6 @@ const BannerManagementPage = () => {
     try {
       setError('');
       const token = authService.getToken();
-      const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
       
       const response = await fetch(`${API_URL}/api/banners/${banner.id}`, {
         method: 'DELETE',
@@ -140,14 +197,13 @@ const BannerManagementPage = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
       alert('Banner deletado com sucesso!');
       await loadBanners();
     } catch (error) {
-      console.error('❌ Erro ao deletar banner:', error);
       setError('Erro ao deletar banner: ' + error.message);
     }
   };
@@ -156,7 +212,6 @@ const BannerManagementPage = () => {
     try {
       setError('');
       const token = authService.getToken();
-      const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
       
       const response = await fetch(`${API_URL}/api/banners/${banner.id}/toggle-status`, {
         method: 'PUT',
@@ -167,7 +222,7 @@ const BannerManagementPage = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
@@ -175,7 +230,6 @@ const BannerManagementPage = () => {
       alert(`Banner ${action} com sucesso!`);
       await loadBanners();
     } catch (error) {
-      console.error('❌ Erro ao alterar status:', error);
       setError('Erro ao alterar status: ' + error.message);
     }
   };
@@ -191,6 +245,18 @@ const BannerManagementPage = () => {
     setEditingBanner(null);
     setShowForm(false);
     setError('');
+    setImagePreview('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, image_url: '' }));
+    setImagePreview('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   if (loading) {
@@ -229,25 +295,6 @@ const BannerManagementPage = () => {
         </div>
       )}
 
-      {/* Info sobre conexão */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <p className="text-sm text-blue-800">
-              API URL: {import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com'}/api/banners
-            </p>
-            <p className="text-sm text-blue-800">
-              Token presente: {authService.getToken() ? 'Sim' : 'Não'}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Formulário Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -278,16 +325,79 @@ const BannerManagementPage = () => {
                 />
               </div>
 
+              {/* Campo de Upload de Imagem */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">URL da Imagem *</label>
-                <input
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://exemplo.com/imagem.jpg"
-                  required
-                />
+                <label className="block text-sm font-medium mb-2">Imagem do Banner *</label>
+                
+                {/* Preview da Imagem */}
+                {imagePreview && (
+                  <div className="mb-3 relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded border"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {/* Input de Upload */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  
+                  {!imagePreview ? (
+                    <div>
+                      <svg className="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+                      >
+                        {uploading ? 'Enviando...' : 'Selecionar Imagem'}
+                      </button>
+                      <p className="text-sm text-gray-500 mt-2">
+                        PNG, JPG, JPEG, GIF ou WEBP (máx. 5MB)
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50"
+                    >
+                      {uploading ? 'Enviando...' : 'Trocar Imagem'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Campo URL (somente leitura quando há upload) */}
+                <div className="mt-2">
+                  <input
+                    type="url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="URL da imagem será preenchida automaticamente"
+                    readOnly={!!imagePreview}
+                  />
+                </div>
               </div>
 
               <div className="mb-4">
@@ -323,7 +433,8 @@ const BannerManagementPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  disabled={uploading || (!formData.image_url && !imagePreview)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
                 >
                   {editingBanner ? 'Atualizar' : 'Criar'}
                 </button>
