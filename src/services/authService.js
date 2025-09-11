@@ -2,7 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-d
 const AUTH_TOKEN_KEY = 'adminAuthToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';
 
-const processResponse = async (response) => {
+const processResponse = async (response ) => {
     if (response.status === 401) {
         localStorage.removeItem(AUTH_TOKEN_KEY);
         localStorage.removeItem(ADMIN_USER_DATA_KEY);
@@ -33,13 +33,16 @@ const authService = {
                 }),
             });
 
-            const data = await processResponse(response);
+            // --- INÍCIO DA CORREÇÃO ---
+            const result = await processResponse(response);
             
-            if (data && data.token) {
-                localStorage.setItem(AUTH_TOKEN_KEY, data.token);
-                localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(data.user));
-                return data;
+            // Acessa o token e o usuário dentro do objeto "data" aninhado
+            if (result && result.data && result.data.token) {
+                localStorage.setItem(AUTH_TOKEN_KEY, result.data.token);
+                localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(result.data.user));
+                return result.data; // Retorna o objeto com token e usuário
             }
+            // --- FIM DA CORREÇÃO ---
             
             throw new Error('Token não recebido');
         } catch (error) {
