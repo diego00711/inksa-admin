@@ -1,84 +1,335 @@
-// Versão DEBUG - Use esta temporariamente para ver exatamente o que a API retorna
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
+const AUTH_TOKEN_KEY = 'adminAuthToken';
+const ADMIN_USER_DATA_KEY = 'adminUser';
 
-async login(email, password) {
-    try {
-        console.log('🔐 INICIANDO LOGIN DEBUG');
-        console.log('📧 Email:', email);
-        
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                email, 
-                password,
-                user_type: 'admin' 
-            }),
-        });
-
-        console.log('📡 Status da resposta:', response.status);
-        console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
-        
-        const data = await response.json();
-        
-        console.log('📥 RESPOSTA COMPLETA DA API:');
-        console.log('=====================================');
-        console.log(JSON.stringify(data, null, 2));
-        console.log('=====================================');
-        
-        // Vamos verificar CADA propriedade da resposta
-        console.log('🔍 ANÁLISE DETALHADA:');
-        console.log('- data.status:', data.status);
-        console.log('- data.message:', data.message);
-        console.log('- data.session:', data.session);
-        console.log('- data.user:', data.user);
-        console.log('- data.token:', data.token);
-        console.log('- data.access_token:', data.access_token);
-        
-        if (data.session) {
-            console.log('🔍 DENTRO DE SESSION:');
-            console.log('- data.session.access_token:', data.session.access_token);
-            console.log('- data.session.refresh_token:', data.session.refresh_token);
-            console.log('- data.session.expires_at:', data.session.expires_at);
-        }
-        
-        if (data.user) {
-            console.log('🔍 DADOS DO USUÁRIO:');
-            console.log('- data.user.id:', data.user.id);
-            console.log('- data.user.email:', data.user.email);
-            console.log('- data.user.user_type:', data.user.user_type);
-            console.log('- data.user.name:', data.user.name);
-        }
-        
-        // FORÇAR SUCESSO SE TEMOS RESPOSTA SUCCESS
-        if (data.status === 'success' || response.ok) {
-            console.log('✅ FORÇANDO LOGIN COM SUCESSO');
-            
-            // Usar o token que encontramos na resposta anterior
-            const token = data.session?.access_token || 'eyJhbGciOiJIUzI1NiIsImtpZCI6IlBKNnRRTjU1dGhtMkUrWGwiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2picml0c3Rna3B6bnVpdmZ1cG56LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJkN2ZhMmQ2ZS02NmMxLTQ3NjgtODdjNS04YTcwMGY0OGYyY2UiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU2MTM0NDc4LCJpYXQiOjE3NTYxMzA4NzgsImVtYWlsIjoidGVzdGVfMTIzQGlua2FzYS5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoidGVzdGVfMTIzQGlua2FzYS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoicmVzdGF1cmFudGUgdGVzdGUiLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImQ3ZmEyZDZlLTY2YzEtNDc2OC04N2M1LThhNzAwZjQ4ZjJjZSIsInVzZXJfdHlwZSI6InJlc3RhdXJhbnQifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc1NjEzMDg3OH1dLCJzZXNzaW9uX2lkIjoiZDI1ODVkMmMtNTJmZi00NTI2LTk3ZWYtZGVhOWM3NWE1MGI2IiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.XzUHOpgTDXdm3BXNN1MR8F8uiDc0NKGmIBlW5OCqzEo';
-            
-            const userData = data.user || {
-                email: email,
-                user_type: 'admin',
-                name: 'Admin User',
-                id: 'admin-' + Date.now()
-            };
-            
-            console.log('💾 Salvando token:', token.substring(0, 50) + '...');
-            console.log('💾 Salvando userData:', userData);
-            
-            localStorage.setItem(AUTH_TOKEN_KEY, token);
-            localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(userData));
-            
-            console.log('✅ LOGIN FORÇADO COM SUCESSO!');
-            return { token, user: userData };
-        }
-        
-        throw new Error('Login falhou - Status: ' + data.status);
-        
-    } catch (error) {
-        console.error('❌ ERRO NO LOGIN DEBUG:', error);
-        throw error;
+const processResponse = async (response) => {
+    if (response.status === 401) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(ADMIN_USER_DATA_KEY);
+        window.location.href = '/login';
+        return null;
     }
-}
+    
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+};
+
+const authService = {
+    async login(email, password) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    password,
+                    user_type: 'admin' 
+                }),
+            });
+
+            const data = await processResponse(response);
+            
+            if (data && data.token) {
+                localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+                localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(data.user));
+                return data;
+            }
+            
+            throw new Error('Token não recebido');
+        } catch (error) {
+            console.error('Erro no login:', error);
+            throw error;
+        }
+    },
+
+    async logout() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            if (token) {
+                await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+            }
+        } catch (error) {
+            console.error('Erro no logout:', error);
+        } finally {
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            localStorage.removeItem(ADMIN_USER_DATA_KEY);
+            window.location.href = '/login';
+        }
+    },
+
+    // Dashboard KPIs
+    async getKpiSummary() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/kpi-summary`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar KPIs:', error);
+            throw error;
+        }
+    },
+
+    // Gráfico de Faturamento
+    async getRevenueChartData() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/stats/revenue-chart`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar dados do gráfico de faturamento:', error);
+            throw error;
+        }
+    },
+
+    // Pedidos Recentes
+    async getRecentOrders() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/orders/recent`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar pedidos recentes:', error);
+            throw error;
+        }
+    },
+
+    // Dashboard e Analytics (ainda disponível se precisar buscar todos de uma vez)
+    async getDashboardStats() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/dashboard`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar estatísticas:', error);
+            throw error;
+        }
+    },
+
+    // Gestão de Usuários
+    async getUsers(filters = {}) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/users?${queryParams}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar usuários:', error);
+            throw error;
+        }
+    },
+
+    async updateUser(userId, userData) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData),
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao atualizar usuário:', error);
+            throw error;
+        }
+    },
+
+    async blockUser(userId, reason) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/block`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ reason }),
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao bloquear usuário:', error);
+            throw error;
+        }
+    },
+
+    // Gestão de Restaurantes
+    async getRestaurants(filters = {}) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/restaurants?${queryParams}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar restaurantes:', error);
+            throw error;
+        }
+    },
+
+    async approveRestaurant(restaurantId) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/restaurants/${restaurantId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao aprovar restaurante:', error);
+            throw error;
+        }
+    },
+
+    // Gestão de Pedidos
+    async getOrders(filters = {}) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/orders?${queryParams}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar pedidos:', error);
+            throw error;
+        }
+    },
+
+    // Relatórios
+    async getReports(type, period) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/reports/${type}?period=${period}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar relatórios:', error);
+            throw error;
+        }
+    },
+
+    // Configurações do Sistema
+    async getSystemSettings() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar configurações:', error);
+            throw error;
+        }
+    },
+
+    async updateSystemSettings(settings) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings),
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao atualizar configurações:', error);
+            throw error;
+        }
+    },
+
+    getToken() {
+        return localStorage.getItem(AUTH_TOKEN_KEY);
+    },
+
+    getCurrentAdmin() {
+        const adminStr = localStorage.getItem(ADMIN_USER_DATA_KEY);
+        return adminStr ? JSON.parse(adminStr) : null;
+    },
+
+    isAuthenticated() {
+        return !!localStorage.getItem(AUTH_TOKEN_KEY);
+    }
+};
+
+export default authService;
