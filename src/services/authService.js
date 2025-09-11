@@ -1,12 +1,18 @@
-// src/services/authService.js - VERSÃO CORRIGIDA PARA ADMIN
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
-const AUTH_TOKEN_KEY = 'admin_token';
-const ADMIN_USER_DATA_KEY = 'admin_user_data';
+const AUTH_TOKEN_KEY = 'adminAuthToken';
+const ADMIN_USER_DATA_KEY = 'adminUser';
 
 const processResponse = async (response) => {
+    if (response.status === 401) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(ADMIN_USER_DATA_KEY);
+        window.location.href = '/login';
+        return null;
+    }
+    
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+        const error = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(error.message || `HTTP error! status: ${response.status}`);
     }
     
     return response.json();
@@ -41,7 +47,7 @@ const authService = {
                 token = data.token;
                 userData = data.user;
             }
-            // Formato 2: token em session.access_token (SUPABASE)
+            // Formato 2: token em session.access_token (SUPABASE - ATUAL)
             else if (data.session && data.session.access_token) {
                 token = data.session.access_token;
                 userData = data.user;
@@ -53,7 +59,7 @@ const authService = {
             }
             
             if (token && userData) {
-                // Verificar se é admin
+                // Verificar se é admin ou restaurant (ambos podem acessar o painel admin)
                 if (userData.user_type !== 'admin' && userData.user_type !== 'restaurant') {
                     throw new Error('Acesso negado. Apenas administradores podem acessar este painel.');
                 }
@@ -93,51 +99,67 @@ const authService = {
         }
     },
 
-    getCurrentUser() {
+    // Dashboard KPIs
+    async getKpiSummary() {
         try {
-            const userData = localStorage.getItem(ADMIN_USER_DATA_KEY);
-            return userData ? JSON.parse(userData) : null;
-        } catch (error) {
-            console.error('Erro ao obter usuário atual:', error);
-            return null;
-        }
-    },
-
-    getToken() {
-        return localStorage.getItem(AUTH_TOKEN_KEY);
-    },
-
-    isAuthenticated() {
-        const token = this.getToken();
-        const user = this.getCurrentUser();
-        return !!(token && user);
-    },
-
-    // Método para verificar se o token ainda é válido
-    async verifyToken() {
-        try {
-            const token = this.getToken();
-            if (!token) return false;
-
-            const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/kpi-summary`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
             });
-
-            return response.ok;
+            const result = await processResponse(response);
+            return result.data;
         } catch (error) {
-            console.error('Erro na verificação do token:', error);
-            return false;
+            console.error('Erro ao buscar KPIs:', error);
+            throw error;
         }
     },
 
-    // Dashboard e Analytics
+    // Gráfico de Faturamento
+    async getRevenueChartData() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/stats/revenue-chart`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar dados do gráfico de faturamento:', error);
+            throw error;
+        }
+    },
+
+    // Pedidos Recentes
+    async getRecentOrders() {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/orders/recent`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await processResponse(response);
+            return result.data;
+        } catch (error) {
+            console.error('Erro ao buscar pedidos recentes:', error);
+            throw error;
+        }
+    },
+
+    // Dashboard e Analytics (ainda disponível se precisar buscar todos de uma vez)
     async getDashboardStats() {
         try {
-            const token = this.getToken();
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
             const response = await fetch(`${API_BASE_URL}/api/admin/dashboard`, {
                 method: 'GET',
                 headers: {
@@ -148,19 +170,17 @@ const authService = {
 
             return await processResponse(response);
         } catch (error) {
-            console.error('Erro ao buscar estatísticas do dashboard:', error);
+            console.error('Erro ao buscar estatísticas:', error);
             throw error;
         }
     },
 
-    // Métodos para gerenciar usuários
-    async getUsers(page = 1, limit = 10, userType = null) {
+    // Gestão de Usuários
+    async getUsers(filters = {}) {
         try {
-            const token = this.getToken();
-            let url = `${API_BASE_URL}/api/admin/users?page=${page}&limit=${limit}`;
-            if (userType) url += `&user_type=${userType}`;
-
-            const response = await fetch(url, {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/users?${queryParams}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -175,33 +195,88 @@ const authService = {
         }
     },
 
-    async updateUserStatus(userId, isActive) {
+    async updateUser(userId, userData) {
         try {
-            const token = this.getToken();
-            const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/status`, {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ is_active: isActive }),
+                body: JSON.stringify(userData),
             });
 
             return await processResponse(response);
         } catch (error) {
-            console.error('Erro ao atualizar status do usuário:', error);
+            console.error('Erro ao atualizar usuário:', error);
             throw error;
         }
     },
 
-    // Métodos para gerenciar pedidos
-    async getOrders(page = 1, limit = 10, status = null) {
+    async blockUser(userId, reason) {
         try {
-            const token = this.getToken();
-            let url = `${API_BASE_URL}/api/orders?page=${page}&limit=${limit}`;
-            if (status) url += `&status=${status}`;
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/block`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ reason }),
+            });
 
-            const response = await fetch(url, {
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao bloquear usuário:', error);
+            throw error;
+        }
+    },
+
+    // Gestão de Restaurantes
+    async getRestaurants(filters = {}) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/restaurants?${queryParams}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao buscar restaurantes:', error);
+            throw error;
+        }
+    },
+
+    async approveRestaurant(restaurantId) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/restaurants/${restaurantId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao aprovar restaurante:', error);
+            throw error;
+        }
+    },
+
+    // Gestão de Pedidos
+    async getOrders(filters = {}) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`${API_BASE_URL}/api/admin/orders?${queryParams}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -216,31 +291,11 @@ const authService = {
         }
     },
 
-    // Métodos para relatórios financeiros
-    async getFinancialReport(startDate, endDate) {
+    // Relatórios
+    async getReports(type, period) {
         try {
-            const token = this.getToken();
-            const response = await fetch(`${API_BASE_URL}/api/admin/financial-report`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ start_date: startDate, end_date: endDate }),
-            });
-
-            return await processResponse(response);
-        } catch (error) {
-            console.error('Erro ao buscar relatório financeiro:', error);
-            throw error;
-        }
-    },
-
-    // Métodos para logs de auditoria
-    async getAuditLogs(page = 1, limit = 20) {
-        try {
-            const token = this.getToken();
-            const response = await fetch(`${API_BASE_URL}/api/admin/logs?page=${page}&limit=${limit}`, {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/reports/${type}?period=${period}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -250,34 +305,60 @@ const authService = {
 
             return await processResponse(response);
         } catch (error) {
-            console.error('Erro ao buscar logs de auditoria:', error);
+            console.error('Erro ao buscar relatórios:', error);
             throw error;
         }
     },
 
-    // Método para enviar notificações
-    async sendNotification(type, title, message, targetUsers = null) {
+    // Configurações do Sistema
+    async getSystemSettings() {
         try {
-            const token = this.getToken();
-            const response = await fetch(`${API_BASE_URL}/api/admin/notifications`, {
-                method: 'POST',
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+                method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    type,
-                    title,
-                    message,
-                    target_users: targetUsers,
-                }),
             });
 
             return await processResponse(response);
         } catch (error) {
-            console.error('Erro ao enviar notificação:', error);
+            console.error('Erro ao buscar configurações:', error);
             throw error;
         }
+    },
+
+    async updateSystemSettings(settings) {
+        try {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            const response = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings),
+            });
+
+            return await processResponse(response);
+        } catch (error) {
+            console.error('Erro ao atualizar configurações:', error);
+            throw error;
+        }
+    },
+
+    getToken() {
+        return localStorage.getItem(AUTH_TOKEN_KEY);
+    },
+
+    getCurrentAdmin() {
+        const adminStr = localStorage.getItem(ADMIN_USER_DATA_KEY);
+        return adminStr ? JSON.parse(adminStr) : null;
+    },
+
+    isAuthenticated() {
+        return !!localStorage.getItem(AUTH_TOKEN_KEY);
     }
 };
 
