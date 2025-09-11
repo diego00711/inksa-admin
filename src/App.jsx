@@ -22,6 +22,9 @@ import IntegrationsPage from './pages/IntegrationsPage';
 // Nova página de Payouts
 import FinanceiroPayouts from './pages/FinanceiroPayouts';
 
+// ✅ NOVA IMPORTAÇÃO
+import BannerManagementPage from './pages/BannerManagementPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -35,6 +38,7 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
+                <Route path="/banners" element={<BannerManagementPage />} /> {/* ✅ NOVA ROTA */}
                 {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
