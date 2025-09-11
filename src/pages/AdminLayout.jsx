@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, Users, LogOut, Store, FileText, Shield, PieChart, LifeBuoy, Settings, Link2 } from 'lucide-react';
+import { Home, Users, LogOut, Store, FileText, Shield, PieChart, LifeBuoy, Settings, Link2, Image } from 'lucide-react';
 
 export function AdminLayout() {
   const { logout } = useAuth();
@@ -10,6 +10,7 @@ export function AdminLayout() {
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: <Home className="mr-3 h-5 w-5" /> },
     { to: '/usuarios', label: 'Usuários', icon: <Users className="mr-3 h-5 w-5" /> },
+    { to: '/banners', label: 'Banners', icon: <Image className="mr-3 h-5 w-5" /> }, // ✅ NOVA LINHA
     { to: '/logs', label: 'Logs', icon: <FileText className="mr-3 h-5 w-5" /> },
     { to: '/admins', label: 'Admins', icon: <Shield className="mr-3 h-5 w-5" /> },
     { to: '/relatorios', label: 'Relatórios', icon: <PieChart className="mr-3 h-5 w-5" /> },
