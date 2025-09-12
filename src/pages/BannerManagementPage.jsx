@@ -1,4 +1,4 @@
-// BannerManagementPage.jsx - VERSÃO MODIFICADA COM POSIÇÃO DO TEXTO
+// BannerManagementPage.jsx - VERSÃO CORRIGIDA PARA ABRIR NOVO BANNER
 
 import React, { useState, useEffect, useRef } from 'react';
 import authService from '../services/authService';
@@ -13,14 +13,13 @@ const BannerManagementPage = () => {
   const [imagePreview, setImagePreview] = useState('');
   const fileInputRef = useRef(null);
   
-  // NOVO: Adicionado 'text_position' ao estado inicial do formulário
   const getInitialFormData = () => ({
     title: '',
     subtitle: '',
     image_url: '',
     link_url: '',
     is_active: true,
-    text_position: 'center' // Valor padrão
+    text_position: 'center'
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -132,7 +131,7 @@ const BannerManagementPage = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData), // formData já inclui text_position
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -148,7 +147,6 @@ const BannerManagementPage = () => {
     }
   };
 
-  // NOVO: Atualizado para incluir 'text_position' ao editar
   const handleEdit = (banner) => {
     setEditingBanner(banner);
     setFormData({
@@ -157,7 +155,7 @@ const BannerManagementPage = () => {
       image_url: banner.image_url || '',
       link_url: banner.link_url || '',
       is_active: banner.is_active !== undefined ? banner.is_active : true,
-      text_position: banner.text_position || 'center' // Carrega a posição ou usa 'center' como padrão
+      text_position: banner.text_position || 'center'
     });
     setImagePreview(banner.image_url || '');
     setShowForm(true);
@@ -210,7 +208,6 @@ const BannerManagementPage = () => {
     }
   };
 
-  // NOVO: Atualizado para usar a função que retorna o estado inicial
   const resetForm = () => {
     setFormData(getInitialFormData());
     setEditingBanner(null);
@@ -236,8 +233,15 @@ const BannerManagementPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gerenciar Banners</h1>
+        {/* BOTÃO CORRIGIDO */}
         <button
-          onClick={() => { setShowForm(true); resetForm(); }}
+          onClick={() => {
+            setEditingBanner(null);
+            setFormData(getInitialFormData());
+            setImagePreview('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setShowForm(true);
+          }}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
         >
           Novo Banner
@@ -257,7 +261,6 @@ const BannerManagementPage = () => {
             <h2 className="text-xl font-bold mb-4">{editingBanner ? 'Editar Banner' : 'Novo Banner'}</h2>
             
             <form onSubmit={handleSubmit}>
-              {/* ... campos title, subtitle ... */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Título *</label>
                 <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" required />
@@ -267,7 +270,6 @@ const BannerManagementPage = () => {
                 <textarea value={formData.subtitle} onChange={(e) => setFormData({...formData, subtitle: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" rows="2" />
               </div>
 
-              {/* ... campo de upload de imagem ... */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Imagem do Banner *</label>
                 {imagePreview && (
@@ -285,13 +287,11 @@ const BannerManagementPage = () => {
                 <input type="url" value={formData.image_url} onChange={(e) => setFormData({...formData, image_url: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 mt-2 text-sm" placeholder="URL da imagem" readOnly={!!imagePreview} />
               </div>
 
-              {/* ... campo link_url ... */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Link de Destino</label>
                 <input type="text" value={formData.link_url} onChange={(e) => setFormData({...formData, link_url: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" placeholder="/recompensas ou https://..." />
               </div>
 
-              {/* NOVO: Campo para selecionar a posição do texto */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Posição do Texto</label>
                 <select
@@ -305,7 +305,6 @@ const BannerManagementPage = () => {
                 </select>
               </div>
 
-              {/* ... campo is_active e botões ... */}
               <div className="mb-6">
                 <label className="flex items-center"><input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="mr-2" />Banner ativo</label>
               </div>
@@ -329,7 +328,6 @@ const BannerManagementPage = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preview</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
-                {/* NOVO: Coluna para Posição do Texto */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Posição Texto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
@@ -340,7 +338,6 @@ const BannerManagementPage = () => {
                 <tr key={banner.id}>
                   <td className="px-6 py-4"><img src={banner.image_url} alt={banner.title} className="w-16 h-10 object-cover rounded border" /></td>
                   <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{banner.title}</div></td>
-                  {/* NOVO: Célula com o valor da posição */}
                   <td className="px-6 py-4">
                     <span className="text-sm capitalize text-gray-700">{banner.text_position || 'Centro'}</span>
                   </td>
