@@ -1,4 +1,4 @@
-// BannerManagementPage.jsx - VERSÃO CORRIGIDA PARA ABRIR NOVO BANNER
+// BannerManagementPage.jsx - VERSÃO COMPLETA E CORRIGIDA (Título Opcional)
 
 import React, { useState, useEffect, useRef } from 'react';
 import authService from '../services/authService';
@@ -110,8 +110,9 @@ const BannerManagementPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.image_url) {
-      setError('Título e imagem são obrigatórios');
+    // VALIDAÇÃO CORRIGIDA: Apenas a imagem é obrigatória
+    if (!formData.image_url) {
+      setError('A imagem do banner é obrigatória');
       return;
     }
 
@@ -163,7 +164,7 @@ const BannerManagementPage = () => {
   };
 
   const handleDelete = async (banner) => {
-    if (!confirm(`Tem certeza que deseja deletar o banner "${banner.title}"?`)) return;
+    if (!confirm(`Tem certeza que deseja deletar o banner "${banner.title || 'sem título'}"?`)) return;
 
     try {
       setError('');
@@ -233,7 +234,6 @@ const BannerManagementPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gerenciar Banners</h1>
-        {/* BOTÃO CORRIGIDO */}
         <button
           onClick={() => {
             setEditingBanner(null);
@@ -262,8 +262,14 @@ const BannerManagementPage = () => {
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Título *</label>
-                <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" required />
+                <label className="block text-sm font-medium mb-2">Título</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  // required foi removido
+                />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Subtítulo</label>
@@ -336,8 +342,8 @@ const BannerManagementPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {banners.map((banner) => (
                 <tr key={banner.id}>
-                  <td className="px-6 py-4"><img src={banner.image_url} alt={banner.title} className="w-16 h-10 object-cover rounded border" /></td>
-                  <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{banner.title}</div></td>
+                  <td className="px-6 py-4"><img src={banner.image_url} alt={banner.title || 'Banner'} className="w-16 h-10 object-cover rounded border" /></td>
+                  <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{banner.title || <span className="text-gray-400 italic">Sem título</span>}</div></td>
                   <td className="px-6 py-4">
                     <span className="text-sm capitalize text-gray-700">{banner.text_position || 'Centro'}</span>
                   </td>
