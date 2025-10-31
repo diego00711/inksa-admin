@@ -1,49 +1,33 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+// src/services/finance.js
+import { api } from './api';
 
-function getAuthToken() {
-  try {
-    return localStorage.getItem('auth_token') || '';
-  } catch {
-    return '';
-  }
+// Dashboard (cartões + gráfico + recentes) – opcional, caso seu Dashboard consuma tudo de uma vez
+export function getDashboard() {
+  return api.request('/api/admin/dashboard', { method: 'GET' });
 }
 
-async function request(path, { method = 'GET', params, body, responseType = 'json' } = {}) {
-  if (!API_BASE) {
-    throw new Error('VITE_API_BASE_URL não configurado. Defina no .env.local');
-  }
+// Se seu front usa endpoints separados:
+export function getAdminMetrics(params) {
+  // era /admin/metrics -> no back é /api/admin/kpi-summary
+  return api.request('/api/admin/kpi-summary', { method: 'GET', params });
+}
 
-  const url = new URL(`${API_BASE}${path}`);
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
-    });
-  }
+export function getRevenueSeries(params) {
+  // era /admin/revenue-series -> no back é /api/admin/stats/revenue-chart
+  return api.request('/api/admin/stats/revenue-chart', { method: 'GET', params });
+}
 
-  const res = await fetch(url.toString(), {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
+export function getTransactions(params) {
+  // era /admin/transactions -> no back é /api/admin/orders/recent
+  return api.request('/api/admin/orders/recent', { method: 'GET', params });
+}
+
+// Export CSV – só deixe se existir no back.
+// Caso ainda não exista a rota, comente essa função ou trate no front.
+export function exportReportCSV(params) {
+  return api.request('/api/admin/reports/export', {
+    method: 'GET',
+    params,
+    responseType: 'blob',
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`API ${method} ${path} falhou (${res.status}): ${text}`);
-  }
-
-  if (responseType === 'blob') return res.blob();
-
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  return res.text();
 }
-
-export const financeApi = {
-  getAdminMetrics: (params) => request('/admin/metrics', { params }),
-  getRevenueSeries: (params) => request('/admin/revenue-series', { params }),
-  getTransactions: (params) => request('/admin/transactions', { params }),
-  exportReportCSV: (params) => request('/admin/reports/export', { params, responseType: 'blob' }),
-};
