@@ -1,0 +1,452 @@
+// AdminPayoutsPage.jsx — painel de repasses (payouts)
+// Requisitos: Tailwind CSS já presente no projeto. Opcional: ToastContext com addToast(tipo, msg).
+// Endpoints esperados (conforme backend que você colou):
+//  - POST   /api/admin/payouts/process
+//  - GET    /api/admin/payouts/list
+//  - GET    /api/admin/payouts/:payout_id/details
+//  - POST   /api/admin/payouts/:payout_id/pay
+//  - DELETE /api/admin/payouts/:payout_id
+
+import React, { useEffect, useMemo, useState } from 'react';
+
+// Se o projeto já tiver AuthService / ToastContext, use-os. Estes helpers abaixo são fallbacks.
+const getToken = () => {
+  try {
+    return localStorage.getItem('authToken') || localStorage.getItem('adminToken') || '';
+  } catch {
+    return '';
+  }
+};
+const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
+const useToastFallback = () => ({ addToast: (type, msg) => window.alert(`${type.toUpperCase()}: ${msg}`) });
+
+const API_BASE = import.meta?.env?.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
+const API_URL = `${API_BASE}/api/admin/payouts`;
+
+function Badge({ children, color = 'gray' }) {
+  const map = {
+    gray: 'bg-gray-100 text-gray-800',
+    blue: 'bg-blue-100 text-blue-800',
+    green: 'bg-green-100 text-green-800',
+    yellow: 'bg-yellow-100 text-yellow-800',
+    red: 'bg-red-100 text-red-800',
+    purple: 'bg-purple-100 text-purple-800',
+    pink: 'bg-pink-100 text-pink-800',
+    orange: 'bg-orange-100 text-orange-800',
+  };
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[color] || map.gray}`}>{children}</span>;
+}
+
+function Modal({ open, onClose, title, children, maxWidth = 'max-w-3xl' }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className={`relative bg-white w-full ${maxWidth} mx-4 rounded-xl shadow-xl border p-4`}> 
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">✕</button>
+        </div>
+        <div className="overflow-y-auto max-h-[70vh] pr-1">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminPayoutsPage() {
+  // se existir ToastContext no projeto, substitua este fallback por useToast()
+  const { addToast } = useToastFallback();
+
+  // filtros
+  const [partnerType, setPartnerType] = useState(''); // restaurant | delivery
+  const [status, setStatus] = useState(''); // pending | paid | cancelled
+  const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
+  const [toDate, setToDate] = useState('');
+  const [partnerId, setPartnerId] = useState('');
+  const [limit, setLimit] = useState(50);
+  const [offset, setOffset] = useState(0);
+
+  // dados
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // modais / ações
+  const [processOpen, setProcessOpen] = useState(false);
+  const [processPartnerType, setProcessPartnerType] = useState('restaurant');
+  const [processCycle, setProcessCycle] = useState('weekly');
+  const [processing, setProcessing] = useState(false);
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [details, setDetails] = useState(null); // { payout, items }
+
+  const [payOpen, setPayOpen] = useState(false);
+  const [payTarget, setPayTarget] = useState(null); // payout row
+  const [paymentMethod, setPaymentMethod] = useState('pix');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [paidAt, setPaidAt] = useState(''); // ISO local
+  const [paying, setPaying] = useState(false);
+
+  const queryString = useMemo(() => {
+    const p = new URLSearchParams();
+    if (partnerType) p.set('partner_type', partnerType);
+    if (status) p.set('status', status);
+    if (partnerId) p.set('partner_id', partnerId);
+    if (fromDate) p.set('from', fromDate);
+    if (toDate) p.set('to', toDate);
+    p.set('limit', String(limit));
+    p.set('offset', String(offset));
+    return p.toString();
+  }, [partnerType, status, partnerId, fromDate, toDate, limit, offset]);
+
+  async function loadList() {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${API_URL}/list?${queryString}`, { headers: { ...authHeaders() }, credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok || json?.status === 'error') throw new Error(json?.error || 'Falha ao listar payouts');
+      setRows(json?.data?.items || []);
+    } catch (e) {
+      setError(e.message || 'Erro ao carregar');
+      addToast('error', e.message || 'Erro ao carregar');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadList(); /* eslint-disable-next-line */ }, [queryString]);
+
+  function colorByStatus(s) {
+    switch ((s || '').toLowerCase()) {
+      case 'pending': return 'yellow';
+      case 'paid': return 'green';
+      case 'cancelled': return 'red';
+      default: return 'gray';
+    }
+  }
+
+  async function openDetails(payoutId) {
+    try {
+      const res = await fetch(`${API_URL}/${payoutId}/details`, { headers: { ...authHeaders() }, credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok || json?.status === 'error') throw new Error(json?.error || 'Falha ao carregar detalhes');
+      setDetails(json?.data || null);
+      setDetailsOpen(true);
+    } catch (e) {
+      addToast('error', e.message || 'Erro ao abrir detalhes');
+    }
+  }
+
+  async function onProcess() {
+    setProcessing(true);
+    try {
+      const res = await fetch(`${API_URL}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({ partner_type: processPartnerType, cycle_type: processCycle })
+      });
+      const json = await res.json();
+      if (!res.ok || json?.status === 'error') throw new Error(json?.error || 'Falha ao processar payouts');
+      addToast('success', `Gerados ${json?.data?.generated_count ?? 0} payouts`);
+      setProcessOpen(false);
+      loadList();
+    } catch (e) {
+      addToast('error', e.message || 'Erro ao processar payouts');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function openPay(row) {
+    setPayTarget(row);
+    setPaymentMethod('pix');
+    setPaymentRef('');
+    setPaidAt('');
+    setPayOpen(true);
+  }
+
+  async function confirmPay() {
+    if (!payTarget) return;
+    setPaying(true);
+    try {
+      const res = await fetch(`${API_URL}/${payTarget.id}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({ payment_method: paymentMethod, payment_ref: paymentRef, paid_at: paidAt || undefined })
+      });
+      const json = await res.json();
+      if (!res.ok || json?.status === 'error') throw new Error(json?.error || 'Falha ao marcar como pago');
+      addToast('success', 'Payout marcado como pago');
+      setPayOpen(false);
+      loadList();
+    } catch (e) {
+      addToast('error', e.message || 'Erro ao pagar payout');
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  async function cancelPayout(payoutId) {
+    if (!window.confirm('Cancelar este payout? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(`${API_URL}/${payoutId}`, { method: 'DELETE', headers: { ...authHeaders() }, credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok || json?.status === 'error') throw new Error(json?.error || 'Falha ao cancelar payout');
+      addToast('success', 'Payout cancelado');
+      loadList();
+    } catch (e) {
+      addToast('error', e.message || 'Erro ao cancelar payout');
+    }
+  }
+
+  return (
+    <div className="p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50 min-h-screen">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-extrabold text-gray-800">Repasses (Payouts)</h1>
+        <div className="flex gap-2">
+          <button onClick={() => setProcessOpen(true)} className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">Processar</button>
+          <button onClick={() => loadList()} className="px-4 py-2 rounded-lg bg-white border font-semibold hover:bg-gray-50">Atualizar</button>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div>
+            <label className="text-xs text-gray-500">Parceiro</label>
+            <select value={partnerType} onChange={(e) => { setOffset(0); setPartnerType(e.target.value); }} className="w-full mt-1 border rounded-lg p-2">
+              <option value="">Todos</option>
+              <option value="restaurant">Restaurante</option>
+              <option value="delivery">Entregador</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Status</label>
+            <select value={status} onChange={(e) => { setOffset(0); setStatus(e.target.value); }} className="w-full mt-1 border rounded-lg p-2">
+              <option value="">Todos</option>
+              <option value="pending">Pendente</option>
+              <option value="paid">Pago</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">De</label>
+            <input type="date" value={fromDate} onChange={(e) => { setOffset(0); setFromDate(e.target.value); }} className="w-full mt-1 border rounded-lg p-2" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Até</label>
+            <input type="date" value={toDate} onChange={(e) => { setOffset(0); setToDate(e.target.value); }} className="w-full mt-1 border rounded-lg p-2" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-500">Partner ID (UUID)</label>
+            <input value={partnerId} onChange={(e) => { setOffset(0); setPartnerId(e.target.value.trim()); }} placeholder="Opcional" className="w-full mt-1 border rounded-lg p-2" />
+          </div>
+        </div>
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600">
+              <tr>
+                <th className="px-3 py-2 text-left">Criado</th>
+                <th className="px-3 py-2 text-left">Parceiro</th>
+                <th className="px-3 py-2 text-left">Período</th>
+                <th className="px-3 py-2 text-right">Bruto</th>
+                <th className="px-3 py-2 text-right">Comissão</th>
+                <th className="px-3 py-2 text-right">Líquido</th>
+                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-3 py-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-500">Carregando...</td></tr>
+              )}
+              {!loading && rows.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-500">Sem registros</td></tr>
+              )}
+              {!loading && rows.map((r) => (
+                <tr key={r.id} className="border-t hover:bg-gray-50">
+                  <td className="px-3 py-2 align-top">
+                    <div className="text-gray-800 font-medium">{new Date(r.created_at).toLocaleString('pt-BR')}</div>
+                    <div className="text-[11px] text-gray-500">#{r.id}</div>
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <div className="capitalize font-medium text-gray-800">{r.partner_type}</div>
+                    <div className="text-[11px] text-gray-500 break-all">{r.partner_id}</div>
+                  </td>
+                  <td className="px-3 py-2 align-top text-gray-700">
+                    <div>{new Date(r.period_start).toLocaleDateString('pt-BR')} — {new Date(r.period_end).toLocaleDateString('pt-BR')}</div>
+                  </td>
+                  <td className="px-3 py-2 align-top text-right">R$ {Number(r.gross_amount || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 align-top text-right">R$ {Number(r.commission_amount || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 align-top text-right font-semibold">R$ {Number(r.net_amount || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 align-top">
+                    <Badge color={colorByStatus(r.status)}>{(r.status || '').toUpperCase()}</Badge>
+                    {r.paid_at && (
+                      <div className="text-[11px] text-gray-500 mt-1">Pago: {new Date(r.paid_at).toLocaleString('pt-BR')}</div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 align-top whitespace-nowrap">
+                    <div className="flex gap-1">
+                      <button onClick={() => openDetails(r.id)} className="px-3 py-1.5 rounded-lg border text-xs hover:bg-gray-50">Detalhes</button>
+                      {r.status === 'pending' && (
+                        <>
+                          <button onClick={() => openPay(r)} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs hover:bg-emerald-700">Pagar</button>
+                          <button onClick={() => cancelPayout(r.id)} className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs hover:bg-rose-700">Cancelar</button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* paginação simples */}
+        <div className="flex items-center justify-between p-3 border-t bg-gray-50">
+          <div className="text-xs text-gray-600">Limite
+            <select className="ml-2 border rounded p-1 text-xs" value={limit} onChange={(e) => { setOffset(0); setLimit(Number(e.target.value)); }}>
+              {[20, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-50">Anterior</button>
+            <button onClick={() => setOffset(offset + limit)} className="px-3 py-1.5 rounded-lg border text-xs">Próxima</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal PROCESSAR */}
+      <Modal open={processOpen} onClose={() => setProcessOpen(false)} title="Processar payouts">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-gray-500">Parceiro</label>
+            <select value={processPartnerType} onChange={(e) => setProcessPartnerType(e.target.value)} className="w-full mt-1 border rounded-lg p-2">
+              <option value="restaurant">Restaurante</option>
+              <option value="delivery">Entregador</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Ciclo</label>
+            <select value={processCycle} onChange={(e) => setProcessCycle(e.target.value)} className="w-full mt-1 border rounded-lg p-2">
+              <option value="weekly">Semanal</option>
+              <option value="bi-weekly">Quinzenal</option>
+              <option value="monthly">Mensal</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={() => setProcessOpen(false)} className="px-4 py-2 rounded-lg border">Cancelar</button>
+          <button onClick={onProcess} disabled={processing} className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50">
+            {processing ? 'Processando...' : 'Processar'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Modal DETALHES */}
+      <Modal open={detailsOpen} onClose={() => setDetailsOpen(false)} title="Detalhes do payout" maxWidth="max-w-5xl">
+        {!details && <div className="text-gray-500">Carregando...</div>}
+        {details && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <div className="text-xs text-gray-500">Payout ID</div>
+                <div className="text-sm font-mono break-all">{details.payout?.id}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Parceiro</div>
+                <div className="text-sm">{details.payout?.partner_type} · <span className="font-mono text-xs break-all">{details.payout?.partner_id}</span></div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Período</div>
+                <div className="text-sm">{new Date(details.payout?.period_start).toLocaleDateString('pt-BR')} — {new Date(details.payout?.period_end).toLocaleDateString('pt-BR')}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3 border">
+                <div className="text-xs text-gray-500">Bruto</div>
+                <div className="text-lg font-bold">R$ {Number(details.payout?.gross_amount || 0).toFixed(2)}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 border">
+                <div className="text-xs text-gray-500">Comissão</div>
+                <div className="text-lg font-bold">R$ {Number(details.payout?.commission_amount || 0).toFixed(2)}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 border">
+                <div className="text-xs text-gray-500">Líquido</div>
+                <div className="text-lg font-bold">R$ {Number(details.payout?.net_amount || 0).toFixed(2)}</div>
+              </div>
+            </div>
+
+            {(details.items || []).length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="min-w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Data</th>
+                      <th className="px-3 py-2 text-left">Order ID</th>
+                      <th className="px-3 py-2 text-right">Valor</th>
+                      <th className="px-3 py-2 text-right">Entrega</th>
+                      <th className="px-3 py-2 text-right">Comissão</th>
+                      <th className="px-3 py-2 text-right">Líquido</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {details.items.map((it, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="px-3 py-2">{it.created_at ? new Date(it.created_at).toLocaleString('pt-BR') : '-'}</td>
+                        <td className="px-3 py-2 font-mono break-all">{it.order_id}</td>
+                        <td className="px-3 py-2 text-right">R$ {Number(it.order_amount || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right">R$ {Number(it.delivery_fee || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right">R$ {Number(it.commission_amount || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right">R$ {Number(it.net_amount || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2">{it.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">Nenhum item disponível para este payout.</div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal PAGAR */}
+      <Modal open={payOpen} onClose={() => setPayOpen(false)} title="Marcar payout como pago">
+        <div className="space-y-3">
+          {payTarget && (
+            <div className="text-xs text-gray-500">Payout: <span className="font-mono break-all">{payTarget.id}</span></div>
+          )}
+          <div>
+            <label className="text-xs text-gray-500">Método de pagamento</label>
+            <select className="w-full mt-1 border rounded-lg p-2" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <option value="pix">PIX</option>
+              <option value="transfer">Transferência</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Referência / TXID / Comprovante</label>
+            <input className="w-full mt-1 border rounded-lg p-2" value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="txid_..." />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Pago em (opcional)</label>
+            <input type="datetime-local" className="w-full mt-1 border rounded-lg p-2" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={() => setPayOpen(false)} className="px-4 py-2 rounded-lg border">Cancelar</button>
+          <button onClick={confirmPay} disabled={paying} className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50">{paying ? 'Marcando...' : 'Confirmar pagamento'}</button>
+        </div>
+      </Modal>
+    </div>
+  );
+}
