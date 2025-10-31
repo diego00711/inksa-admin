@@ -1,31 +1,21 @@
-// Serviço de API para payouts
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+// src/services/payouts.js
+import { createAuthHeaders, apiFetch } from './api';
 
-function getAuthHeader() {
-  try {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
-
-export async function processPayouts(payload) {
-  const res = await fetch(`${API_BASE}/api/admin/payouts/process`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeader(),
-    },
-    body: JSON.stringify(payload),
-    credentials: "include",
+/**
+ * Dispara o processamento de payouts no backend.
+ * @param {"restaurant"|"delivery"} partnerType
+ * @param {"weekly"|"bi-weekly"|"monthly"} cycleType
+ */
+export async function processPayouts(partnerType, cycleType) {
+  const headers = await createAuthHeaders();
+  return apiFetch('/api/admin/payouts/process', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      partner_type: partnerType,
+      cycle_type: cycleType,
+    }),
+    // cookies não são necessários para Bearer; mas manter não atrapalha
+    credentials: 'include',
   });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data?.error || `Erro ao processar payouts (${res.status})`;
-    throw new Error(msg);
-  }
-  return data;
 }
