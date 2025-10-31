@@ -1,44 +1,59 @@
 // src/services/api.js
-import { supabase } from '../lib/supabaseClient';
+// Base do back (igual ao que você usa no restante do admin)
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-// Base do backend Flask
-export const API_BASE =
-  import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
-
-/**
- * Cria headers com Authorization: Bearer <access_token> do Supabase.
- * Usa também Content-Type: application/json por padrão.
- */
-export async function createAuthHeaders(extra = {}) {
+// tenta várias chaves de token (compatível com AuthContext/localStorage)
+function getAuthToken() {
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
+    return (
+      localStorage.getItem('admin_token') ||
+      localStorage.getItem('token') ||
+      localStorage.getItem('auth_token') ||
+      ''
+    );
+  } catch {
+    return '';
+  }
+}
 
-    const token = data?.session?.access_token || null;
-    return {
+async function request(path, { method = 'GET', params, body, responseType = 'json' } = {}) {
+  if (!API_BASE) {
+    throw new Error('VITE_API_URL não configurado. Defina no .env.local do admin.');
+  }
+
+  const url = new URL(`${API_BASE}${path}`);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+    });
+  }
+
+  const res = await fetch(url.toString(), {
+    method,
+    headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...extra,
-    };
-  } catch (e) {
-    console.error('Erro ao recuperar token:', e);
-    // retorna ao menos o content-type para chamadas públicas
-    return { 'Content-Type': 'application/json', ...extra };
+      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+    },
+    credentials: 'include',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    // tenta extrair mensagem do back
+    const txt = await res.text().catch(() => '');
+    let msg = txt;
+    try {
+      const j = JSON.parse(txt);
+      msg = j?.message || j?.error || txt;
+    } catch {}
+    throw new Error(`API ${method} ${path} falhou (${res.status}): ${msg}`);
   }
+
+  if (responseType === 'blob') return res.blob();
+
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return res.json();
+  return res.text();
 }
 
-/**
- * Utilitário padronizado de fetch com parse de JSON e tratamento básico de erro.
- */
-export async function apiFetch(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, options);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data?.error || `Erro HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.payload = data;
-    throw err;
-  }
-  return data;
-}
+export const api = { request };
