@@ -1,5 +1,5 @@
 // src/services/payouts.js
-import { createAuthHeaders, apiFetch } from './api';
+import { api } from './api';
 
 /**
  * Dispara o processamento de payouts no backend.
@@ -7,15 +7,16 @@ import { createAuthHeaders, apiFetch } from './api';
  * @param {"weekly"|"bi-weekly"|"monthly"} cycleType
  */
 export async function processPayouts(partnerType, cycleType) {
-  const headers = await createAuthHeaders();
-  return apiFetch('/api/admin/payouts/process', {
+  return api.request('/api/admin/payouts/process', {
     method: 'POST',
-    headers,
-    body: JSON.stringify({
+    body: {
       partner_type: partnerType,
       cycle_type: cycleType,
-    }),
-    // cookies não são necessários para Bearer; mas manter não atrapalha
-    credentials: 'include',
+    },
   });
+}
+
+// (opcional) se quiser listar históricos no futuro
+export async function listPayouts(params) {
+  return api.request('/api/admin/payouts', { params });
 }
