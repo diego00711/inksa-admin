@@ -1,194 +1,105 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import authService from '../services/authService'; // Corrija o import para minúsculo
-import { Loader2 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-
-// Cores para o gráfico (personalizáveis para combinar com seu design)
-const COLORS = {
-  admin: '#EF4444',     // Tailwind red-500
-  restaurant: '#3B82F6', // Tailwind blue-500
-  client: '#22C55E',    // Tailwind green-500
-  delivery: '#F59E0B',   // Tailwind yellow-500
-  default: '#6B7280'    // Tailwind gray-500
-};
+// src/pages/UsuariosPage.jsx
+import { useEffect, useMemo, useState } from 'react';
+import { getAdminUsers } from '../services/admin';
 
 export function UsuariosPage() {
-  const [users, setUsers] = useState([]); // Estado para armazenar os usuários
-  const [isLoading, setIsLoading] = useState(true); // Estado para controlar o carregamento
-  const [error, setError] = useState(null); // Estado para armazenar erros
-  const [activeTypeFilter, setActiveTypeFilter] = useState('todos'); // Filtro por tipo de usuário
-  const [cityFilter, setCityFilter] = useState(''); // Novo estado para o filtro por cidade
-
-  // Função para buscar usuários da API, memoizada com useCallback
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Chama o serviço de autenticação, passando os filtros como objeto
-      const usersResp = await authService.getUsers({
-        user_type: activeTypeFilter,
-        city: cityFilter
-      });
-      // O backend retorna { status, data }, então pegamos a lista:
-      setUsers(usersResp.data || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeTypeFilter, cityFilter]);
+  const [tab, setTab] = useState('todos'); // 'todos' | 'client' | 'restaurant' | 'delivery' | 'admin'
+  const [city, setCity] = useState('');
+  const [users, setUsers] = useState([]);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    (async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        const json = await getAdminUsers({
+          user_type: tab === 'todos' ? undefined : tab,
+          city: city || undefined,
+        });
+        setUsers(json?.data || []);
+      } catch (e) {
+        setErr(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [tab, city]);
 
-  // Prepara os dados para o gráfico de pizza
-  const chartData = useMemo(() => {
-    const typeCounts = users.reduce((acc, user) => {
-      acc[user.user_type] = (acc[user.user_type] || 0) + 1;
-      return acc;
-    }, {});
-
-    return Object.keys(typeCounts).map(key => ({
-      name: key.charAt(0).toUpperCase() + key.slice(1),
-      value: typeCounts[key],
-      color: COLORS[key] || COLORS.default
-    }));
-  }, [users]);
-
-  // Extrai e ordena cidades únicas para o filtro dropdown
-  const uniqueCities = useMemo(() => {
-    const cities = users.map(user => user.city).filter(Boolean);
-    return [...new Set(cities)].sort();
-  }, [users]);
-
-  const filterOptions = ['todos', 'client', 'restaurant', 'delivery', 'admin'];
+  const total = users.length;
+  const tabs = useMemo(
+    () => ([
+      { id: 'todos', label: 'Todos' },
+      { id: 'client', label: 'Client' },
+      { id: 'restaurant', label: 'Restaurant' },
+      { id: 'delivery', label: 'Delivery' },
+      { id: 'admin', label: 'Admin' },
+    ]),
+    []
+  );
 
   return (
-    <div>
-      {/* Cabeçalho e Botões de Filtro por Tipo */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Gestão de Usuários</h1>
-        <div className="flex items-center gap-2">
-          {filterOptions.map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveTypeFilter(filter)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                activeTypeFilter === filter
-                  ? 'bg-gray-800 text-white shadow-md'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Gestão de Usuários</h1>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-3 py-1 rounded border ${tab === t.id ? 'bg-gray-800 text-white' : 'bg-white'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="ml-auto">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Filtrar por cidade"
+            className="border rounded px-3 py-1"
+          />
         </div>
       </div>
 
-      {/* Novo Filtro de Cidade */}
-      <div className="mb-6 flex items-center gap-4">
-        <label htmlFor="city-filter" className="text-gray-700 font-medium">Filtrar por Cidade:</label>
-        <select
-          id="city-filter"
-          value={cityFilter}
-          onChange={(e) => setCityFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-        >
-          <option value="">Todas as Cidades</option>
-          {uniqueCities.map(city => (
-            <option key={city} value={city}>{city}</option>
-          ))}
-        </select>
-        {cityFilter && (
-            <button
-                onClick={() => setCityFilter('')}
-                className="ml-2 px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600 transition-colors"
-            >
-                Limpar
-            </button>
-        )}
-      </div>
+      <div className="bg-white border rounded-lg p-4">
+        <div className="text-sm text-gray-600 mb-3">Total de usuários: <strong>{total}</strong></div>
 
-      {/* Gráfico de Distribuição de Usuários por Tipo */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Distribuição de Usuários por Tipo</h2>
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `${value} usuários`} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-gray-500 text-center">Nenhum dado para exibir o gráfico.</p>
-        )}
-      </div>
+        {loading && <div>Carregando…</div>}
+        {err && <div className="text-red-600">Erro ao carregar usuários: {err}</div>}
 
-      {/* Total de Usuários Filtrados */}
-      <div className="mb-4 text-gray-700 font-semibold">
-        Total de usuários: <span className="text-gray-900 text-xl">{users.length}</span>
-      </div>
-      
-      {/* Tabela de Usuários */}
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-gray-500" /></div>
-          ) : error ? (
-            <div className="text-red-500 text-center p-8">Erro ao carregar usuários: {error}</div>
-          ) : (
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3">Nome Completo</th>
-                  <th scope="col" className="px-6 py-3">Email</th>
-                  <th scope="col" className="px-6 py-3">Tipo</th>
-                  <th scope="col" className="px-6 py-3">Cidade</th>
-                  <th scope="col" className="px-6 py-3">Data de Criação</th>
+        {!loading && !err && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="p-2">ID</th>
+                  <th className="p-2">Email</th>
+                  <th className="p-2">Tipo</th>
+                  <th className="p-2">Nome</th>
+                  <th className="p-2">Cidade</th>
+                  <th className="p-2">Criado em</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
-                  <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                      {user.full_name || 'Não disponível'}
-                    </td>
-                    <td className="px-6 py-4">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
-                        user.user_type === 'restaurant' ? 'bg-blue-100 text-blue-800' :
-                        user.user_type === 'client' ? 'bg-green-100 text-green-800' :
-                        user.user_type === 'delivery' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.user_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">{user.city || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                    </td>
+                {users.map(u => (
+                  <tr key={u.id} className="border-t">
+                    <td className="p-2 font-mono">{u.id}</td>
+                    <td className="p-2">{u.email}</td>
+                    <td className="p-2">{u.user_type}</td>
+                    <td className="p-2">{u.full_name || '-'}</td>
+                    <td className="p-2">{u.city || '-'}</td>
+                    <td className="p-2">{u.created_at}</td>
                   </tr>
                 ))}
+                {users.length === 0 && (
+                  <tr><td className="p-2 text-gray-500" colSpan="6">Nenhum usuário encontrado.</td></tr>
+                )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
