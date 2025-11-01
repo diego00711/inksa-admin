@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { notify } = useNotification();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,11 +16,12 @@ export function LoginPage() {
 
     try {
       await login(email, password);
-      notify('Login realizado com sucesso!', 'success');
+      // Notificação simples para não depender de useNotification
+      alert('Login realizado com sucesso!');
       navigate('/');
     } catch (error) {
       console.error('Erro no login:', error);
-      notify('Credenciais inválidas. Tente novamente.', 'error');
+      alert('Credenciais inválidas. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -68,5 +67,5 @@ export function LoginPage() {
   );
 }
 
-// ✅ Corrigido: adicionando export default para compatibilidade com App.jsx
+// default export para compatibilidade com App.jsx
 export default LoginPage;
