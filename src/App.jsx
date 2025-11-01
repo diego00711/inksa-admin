@@ -3,12 +3,12 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { Notifications } from './components/Notifications';
 
-import { LoginPage } from './pages/LoginPage';
-import { AdminLayout } from './pages/AdminLayout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { UsuariosPage } from './pages/UsuariosPage';
-import { RestaurantesPage } from './pages/RestaurantesPage';
-import { DashboardPage } from './pages/DashboardPage';
+import LoginPage from './pages/LoginPage';
+import AdminLayout from './pages/AdminLayout';
+import ProtectedRoute from './components/ProtectedRoute';
+import UsuariosPage from './pages/UsuariosPage';
+import RestaurantesPage from './pages/RestaurantesPage';
+import DashboardPage from './pages/DashboardPage';
 
 // Novas páginas premium (apenas esqueleto)
 import LogsPage from './pages/LogsPage';
@@ -22,7 +22,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 // Nova página de Payouts
 import FinanceiroPayouts from './pages/FinanceiroPayouts';
 
-// ✅ NOVA IMPORTAÇÃO
+// ✅ Nova importação
 import BannerManagementPage from './pages/BannerManagementPage';
 
 function App() {
@@ -38,7 +38,8 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
-                <Route path="/banners" element={<BannerManagementPage />} /> {/* ✅ NOVA ROTA */}
+                <Route path="/banners" element={<BannerManagementPage />} /> {/* ✅ Nova rota */}
+
                 {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
