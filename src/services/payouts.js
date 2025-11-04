@@ -1,31 +1,65 @@
-// Serviço de API para payouts
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+// src/services/payouts.js
+const API = import.meta.env.VITE_API_URL;
 
-function getAuthHeader() {
-  try {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
+function authHeaders() {
+  const t = localStorage.getItem("access_token");
+  return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-export async function processPayouts(payload) {
-  const res = await fetch(`${API_BASE}/api/admin/payouts/process`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeader(),
-    },
-    body: JSON.stringify(payload),
-    credentials: "include",
+export async function listPayouts(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== "")
+  ).toString();
+  const r = await fetch(`${API}/api/admin/payouts${qs ? `?${qs}` : ""}`, {
+    headers: { ...authHeaders() },
   });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data?.error || `Erro ao processar payouts (${res.status})`;
-    throw new Error(msg);
-  }
-  return data;
+export async function getPayout(id) {
+  const r = await fetch(`${API}/api/admin/payouts/${id}`, {
+    headers: { ...authHeaders() },
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+export async function createPayout(payload) {
+  const r = await fetch(`${API}/api/admin/payouts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+export async function approvePayout(id) {
+  const r = await fetch(`${API}/api/admin/payouts/${id}/approve`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+export async function rejectPayout(id, reason = "") {
+  const r = await fetch(`${API}/api/admin/payouts/${id}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+export async function payPayout(id, external_ref) {
+  const r = await fetch(`${API}/api/admin/payouts/${id}/pay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ external_ref }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }
