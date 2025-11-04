@@ -10,7 +10,7 @@ import { UsuariosPage } from './pages/UsuariosPage';
 import { RestaurantesPage } from './pages/RestaurantesPage';
 import { DashboardPage } from './pages/DashboardPage';
 
-// Novas páginas premium (apenas esqueleto)
+// Páginas premium
 import LogsPage from './pages/LogsPage';
 import AdminsPage from './pages/AdminsPage';
 import ReportsPage from './pages/ReportsPage';
@@ -19,11 +19,9 @@ import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 
-// Nova página de Payouts
-import FinanceiroPayouts from './pages/FinanceiroPayouts';
-
-// ✅ NOVA IMPORTAÇÃO
+// Banner Manager e Payouts
 import BannerManagementPage from './pages/BannerManagementPage';
+import FinanceiroPayouts from './pages/FinanceiroPayouts';
 
 function App() {
   return (
@@ -38,7 +36,8 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
-                <Route path="/banners" element={<BannerManagementPage />} /> {/* ✅ NOVA ROTA */}
+                <Route path="/banners" element={<BannerManagementPage />} />
+
                 {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
