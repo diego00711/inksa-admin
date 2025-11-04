@@ -1,325 +1,221 @@
+// src/pages/FinanceiroPayouts.jsx
 import { useEffect, useMemo, useState } from "react";
 import {
   listPayouts,
-  createPayout,
-  approvePayout,
-  rejectPayout,
-  payPayout,
+  processPayouts,
+  markPayoutPaid,
+  cancelPayout,
   getPayout,
 } from "../services/payouts";
 
-const Badge = ({ s }) => {
-  const cls =
-    {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-blue-100 text-blue-800",
-      paid: "bg-green-100 text-green-800",
-      rejected: "bg-red-100 text-red-800",
-    }[s] || "bg-gray-100 text-gray-800";
-  return (
-    <span className={`px-2 py-1 rounded text-xs font-semibold ${cls}`}>{s}</span>
-  );
-};
-
 export default function FinanceiroPayouts() {
   const [items, setItems] = useState([]);
-  const [status, setStatus] = useState("");
-  const [courierId, setCourierId] = useState("");
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({
-    courier_id: "",
-    amount: "",
-    method: "pix",
-    notes: "",
-  });
+  const [partnerType, setPartnerType] = useState(""); // "", "restaurant", "delivery"
+  const [status, setStatus] = useState(""); // "", "pending", "paid", "cancelled"
+  const [page, setPage] = useState(0);
+  const limit = 20;
 
-  const total = useMemo(
-    () => items.reduce((acc, it) => acc + Number(it.amount || 0), 0),
-    [items]
+  const params = useMemo(
+    () => ({
+      partner_type: partnerType,
+      status,
+      limit,
+      offset: page * limit,
+    }),
+    [partnerType, status, page]
   );
 
-  async function fetchData() {
-    setLoading(true);
+  async function fetchPage() {
     try {
-      const data = await listPayouts({
-        status: status || undefined,
-        courier_id: courierId || undefined,
-      });
-      setItems(data.items || []);
+      setLoading(true);
+      const res = await listPayouts(params);
+      setItems(res.items || []);
+      setTotal(res.total || 0);
     } catch (e) {
       console.error(e);
-      alert("Falha ao carregar payouts");
+      alert(`Falha ao carregar payouts: ${e.message}`);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerType, status, page]);
 
-  useEffect(() => {
-    fetchData();
-  }, [status]);
+  const páginas = Math.max(1, Math.ceil(total / limit));
 
-  async function onCreate(e) {
-    e.preventDefault();
+  async function onProcessClick() {
+    const partner_type = prompt('Digite o tipo de parceiro para gerar ("restaurant" ou "delivery")', "delivery");
+    if (!partner_type) return;
+    const cycle_type = prompt('Ciclo ("weekly", "bi-weekly" ou "monthly")', "weekly") || "weekly";
     try {
-      const payload = {
-        courier_id: form.courier_id.trim(),
-        amount: Number(form.amount),
-        method: form.method,
-        notes: form.notes || undefined,
-      };
-      const { payout } = await createPayout(payload);
-      setItems((prev) => [payout, ...prev]);
-      setShowCreate(false);
-      setForm({ courier_id: "", amount: "", method: "pix", notes: "" });
+      setLoading(true);
+      const res = await processPayouts({ partner_type, cycle_type });
+      alert(`Processados: ${res.generated_count} payouts.`);
+      setPage(0);
+      await fetchPage();
     } catch (e) {
       console.error(e);
-      alert("Erro ao criar payout");
+      alert(`Erro ao processar: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function onApprove(id) {
+  async function onMarkPaid(id) {
+    const method = prompt('Método (ex: "pix", "transfer")', "pix");
+    const ref = prompt("Ref. externa (opcional)", "");
     try {
-      const { payout } = await approvePayout(id);
-      setItems((prev) => prev.map((x) => (x.id === id ? payout : x)));
+      setLoading(true);
+      await markPayoutPaid(id, { payment_method: method, payment_ref: ref });
+      await fetchPage();
     } catch (e) {
-      alert("Erro ao aprovar");
+      console.error(e);
+      alert(`Erro ao marcar pago: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function onReject(id) {
-    const reason = prompt("Motivo da rejeição (opcional):") || "";
+  async function onCancel(id) {
+    if (!confirm("Confirmar cancelamento deste payout?")) return;
     try {
-      const { payout } = await rejectPayout(id, reason);
-      setItems((prev) => prev.map((x) => (x.id === id ? payout : x)));
+      setLoading(true);
+      await cancelPayout(id);
+      await fetchPage();
     } catch (e) {
-      alert("Erro ao rejeitar");
+      console.error(e);
+      alert(`Erro ao cancelar: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function onPay(id) {
-    const ref = prompt("Ref. externa (opcional, ex.: txid Pix ou id do MP):") || undefined;
+  async function onView(id) {
     try {
-      const { payout } = await payPayout(id, ref);
-      setItems((prev) => prev.map((x) => (x.id === id ? payout : x)));
+      const res = await getPayout(id);
+      console.log(res);
+      alert(`Payout ${id}\nStatus: ${res?.payout?.status}\nNet: ${res?.payout?.total_net}`);
     } catch (e) {
-      alert("Erro ao marcar como pago");
-    }
-  }
-
-  async function onInspect(id) {
-    try {
-      const { payout } = await getPayout(id);
-      alert(
-        `Payout ${payout.id}\n\nCourier: ${payout.courier_id}\nValor: R$ ${Number(
-          payout.amount
-        ).toFixed(2)}\nStatus: ${payout.status}\nMétodo: ${
-          payout.method
-        }\nRef: ${payout.external_ref || "-"}\nCriado: ${
-          payout.created_at
-        }\nAtualizado: ${payout.updated_at}`
-      );
-    } catch {
-      /* ignore */
+      console.error(e);
+      alert(`Erro ao carregar detalhes: ${e.message}`);
     }
   }
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Payouts</h1>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Payouts</h1>
+        <div className="flex items-center gap-2">
           <select
-            className="border rounded px-2 py-1"
+            className="border rounded px-3 py-2"
+            value={partnerType}
+            onChange={(e) => { setPage(0); setPartnerType(e.target.value); }}
+          >
+            <option value="">Todos</option>
+            <option value="restaurant">Restaurantes</option>
+            <option value="delivery">Entregadores</option>
+          </select>
+
+          <select
+            className="border rounded px-3 py-2"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => { setPage(0); setStatus(e.target.value); }}
           >
             <option value="">Todos</option>
             <option value="pending">Pendentes</option>
-            <option value="approved">Aprovados</option>
             <option value="paid">Pagos</option>
-            <option value="rejected">Rejeitados</option>
+            <option value="cancelled">Cancelados</option>
           </select>
+
           <button
-            onClick={() => setShowCreate(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+            onClick={onProcessClick}
+            disabled={loading}
           >
             Nova solicitação
           </button>
         </div>
-      </header>
+      </div>
 
-      <section className="bg-white rounded-xl shadow p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex gap-2">
-            <input
-              placeholder="Filtrar por Courier ID"
-              className="border rounded px-2 py-1"
-              value={courierId}
-              onChange={(e) => setCourierId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && fetchData()}
-            />
-            <button onClick={fetchData} className="border px-3 py-1 rounded">
-              Filtrar
-            </button>
-          </div>
-          <div className="text-sm text-gray-600">
-            Total listado: R$ {total.toFixed(2)}
-          </div>
-        </div>
-
-        <div className="overflow-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-3 py-2">ID</th>
-                <th className="text-left px-3 py-2">Courier</th>
-                <th className="text-right px-3 py-2">Valor</th>
-                <th className="text-left px-3 py-2">Método</th>
-                <th className="text-left px-3 py-2">Status</th>
-                <th className="text-left px-3 py-2">Ref. Externa</th>
-                <th className="text-left px-3 py-2">Atualizado</th>
-                <th className="px-3 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-4">
-                    Carregando...
+      <div className="border rounded overflow-hidden bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left">ID</th>
+              <th className="px-3 py-2 text-left">Tipo</th>
+              <th className="px-3 py-2 text-left">Parceiro</th>
+              <th className="px-3 py-2 text-left">Bruto</th>
+              <th className="px-3 py-2 text-left">Taxa</th>
+              <th className="px-3 py-2 text-left">Líquido</th>
+              <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2 text-left">Método</th>
+              <th className="px-3 py-2 text-left">Ref. Externa</th>
+              <th className="px-3 py-2 text-left">Atualizado</th>
+              <th className="px-3 py-2 text-left">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td className="px-3 py-3" colSpan={11}>Carregando…</td></tr>
+            ) : items.length === 0 ? (
+              <tr><td className="px-3 py-3" colSpan={11}>Nenhum registro.</td></tr>
+            ) : (
+              items.map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td className="px-3 py-2">{p.id}</td>
+                  <td className="px-3 py-2">{p.partner_type}</td>
+                  <td className="px-3 py-2">{p.partner_id}</td>
+                  <td className="px-3 py-2">{Number(p.total_gross || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                  <td className="px-3 py-2">{Number(p.commission_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                  <td className="px-3 py-2 font-semibold">{Number(p.total_net || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                  <td className="px-3 py-2">{p.status}</td>
+                  <td className="px-3 py-2">{p.payment_method || "-"}</td>
+                  <td className="px-3 py-2">{p.payment_ref || "-"}</td>
+                  <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString() : "-"}</td>
+                  <td className="px-3 py-2 space-x-2">
+                    <button className="text-indigo-600 hover:underline" onClick={() => onView(p.id)}>Ver</button>
+                    {p.status === "pending" && (
+                      <>
+                        <button className="text-green-600 hover:underline" onClick={() => onMarkPaid(p.id)}>Marcar pago</button>
+                        <button className="text-red-600 hover:underline" onClick={() => onCancel(p.id)}>Cancelar</button>
+                      </>
+                    )}
                   </td>
                 </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-4">
-                    Sem registros.
-                  </td>
-                </tr>
-              ) : (
-                items.map((it) => (
-                  <tr key={it.id} className="border-b">
-                    <td className="px-3 py-2">{it.id}</td>
-                    <td className="px-3 py-2">{it.courier_id}</td>
-                    <td className="px-3 py-2 text-right">
-                      R$ {Number(it.amount).toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2">{it.method}</td>
-                    <td className="px-3 py-2">
-                      <Badge s={it.status} />
-                    </td>
-                    <td className="px-3 py-2">{it.external_ref || "-"}</td>
-                    <td className="px-3 py-2">
-                      {new Date(it.updated_at).toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => onInspect(it.id)}
-                          className="text-gray-700 hover:underline"
-                        >
-                          Ver
-                        </button>
-                        {it.status === "pending" && (
-                          <>
-                            <button
-                              onClick={() => onApprove(it.id)}
-                              className="text-blue-600 hover:underline"
-                            >
-                              Aprovar
-                            </button>
-                            <button
-                              onClick={() => onReject(it.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Rejeitar
-                            </button>
-                          </>
-                        )}
-                        {(it.status === "approved" || it.status === "pending") && (
-                          <button
-                            onClick={() => onPay(it.id)}
-                            className="text-green-700 hover:underline"
-                          >
-                            Marcar Pago
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
-          <form
-            onSubmit={onCreate}
-            className="bg-white rounded-xl p-6 shadow w-full max-w-md space-y-3"
+      <div className="flex items-center justify-between">
+        <div>Total: {total}</div>
+        <div className="space-x-2">
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0 || loading}
           >
-            <h2 className="text-lg font-semibold">Nova Solicitação</h2>
-            <input
-              placeholder="Courier ID (UUID)"
-              className="border rounded px-3 py-2 w-full"
-              value={form.courier_id}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, courier_id: e.target.value }))
-              }
-              required
-            />
-            <input
-              placeholder="Valor (R$)"
-              type="number"
-              step="0.01"
-              min="0"
-              className="border rounded px-3 py-2 w-full"
-              value={form.amount}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, amount: e.target.value }))
-              }
-              required
-            />
-            <select
-              className="border rounded px-3 py-2 w-full"
-              value={form.method}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, method: e.target.value }))
-              }
-            >
-              <option value="pix">PIX</option>
-              <option value="manual">Manual</option>
-            </select>
-            <textarea
-              placeholder="Observações"
-              className="border rounded px-3 py-2 w-full"
-              rows={3}
-              value={form.notes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="px-3 py-2 border rounded"
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="px-3 py-2 bg-indigo-600 text-white rounded">
-                Criar
-              </button>
-            </div>
-          </form>
+            Anterior
+          </button>
         </div>
-      )}
+        <div>Página {page + 1} / {páginas}</div>
+        <div className="space-x-2">
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => setPage((p) => Math.min(páginas - 1, p + 1))}
+            disabled={page >= páginas - 1 || loading}
+          >
+            Próxima
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
