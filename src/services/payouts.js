@@ -1,65 +1,69 @@
 // src/services/payouts.js
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL; // ex: https://inksa-auth-flask-dev.onrender.com
+const ADMIN_PAYOUTS = `${API}/api/admin/payouts`;
 
 function authHeaders() {
   const t = localStorage.getItem("access_token");
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+async function handle(r) {
+  const txt = await r.text();
+  let data;
+  try { data = JSON.parse(txt); } catch { data = { error: txt || `HTTP ${r.status}` }; }
+  if (!r.ok) throw new Error(data?.error || data?.message || `HTTP ${r.status}`);
+  return data;
+}
+
+// Lista payouts (filtros opcionais)
 export async function listPayouts(params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== "")
   ).toString();
-  const r = await fetch(`${API}/api/admin/payouts${qs ? `?${qs}` : ""}`, {
+  const r = await fetch(`${ADMIN_PAYOUTS}${qs ? `?${qs}` : ""}`, {
     headers: { ...authHeaders() },
+    credentials: "include",
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return handle(r);
 }
 
+// Detalhe
 export async function getPayout(id) {
-  const r = await fetch(`${API}/api/admin/payouts/${id}`, {
+  const r = await fetch(`${ADMIN_PAYOUTS}/${id}`, {
     headers: { ...authHeaders() },
+    credentials: "include",
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return handle(r);
 }
 
-export async function createPayout(payload) {
-  const r = await fetch(`${API}/api/admin/payouts`, {
+// Processar/gerar payouts a partir de pedidos entregues
+export async function processPayouts({ partner_type, cycle_type = "weekly" }) {
+  const r = await fetch(`${ADMIN_PAYOUTS}/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(payload),
+    credentials: "include",
+    body: JSON.stringify({ partner_type, cycle_type }),
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return handle(r);
 }
 
-export async function approvePayout(id) {
-  const r = await fetch(`${API}/api/admin/payouts/${id}/approve`, {
+// Marcar como pago
+export async function markPayoutPaid(id, { payment_method, payment_ref, paid_at } = {}) {
+  const r = await fetch(`${ADMIN_PAYOUTS}/${id}/mark-paid`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ payment_method, payment_ref, paid_at }),
+  });
+  return handle(r);
+}
+
+// Cancelar
+export async function cancelPayout(id) {
+  const r = await fetch(`${ADMIN_PAYOUTS}/${id}/cancel`, {
     method: "POST",
     headers: { ...authHeaders() },
+    credentials: "include",
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-export async function rejectPayout(id, reason = "") {
-  const r = await fetch(`${API}/api/admin/payouts/${id}/reject`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ reason }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-export async function payPayout(id, external_ref) {
-  const r = await fetch(`${API}/api/admin/payouts/${id}/pay`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ external_ref }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return handle(r);
 }
