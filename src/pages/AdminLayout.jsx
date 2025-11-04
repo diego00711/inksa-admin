@@ -1,7 +1,20 @@
-import React from 'react'; 
+import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, Users, LogOut, Store, FileText, Shield, PieChart, LifeBuoy, Settings, Link2, Image } from 'lucide-react';
+import {
+  Home,
+  Users,
+  LogOut,
+  Store,
+  FileText,
+  Shield,
+  PieChart,
+  LifeBuoy,
+  Settings,
+  Link2,
+  Image,
+  DollarSign,
+} from 'lucide-react';
 
 export function AdminLayout() {
   const { logout } = useAuth();
@@ -10,11 +23,15 @@ export function AdminLayout() {
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: <Home className="mr-3 h-5 w-5" /> },
     { to: '/usuarios', label: 'Usuários', icon: <Users className="mr-3 h-5 w-5" /> },
-    { to: '/banners', label: 'Banners', icon: <Image className="mr-3 h-5 w-5" /> }, // ✅ NOVA LINHA
+    { to: '/banners', label: 'Banners', icon: <Image className="mr-3 h-5 w-5" /> },
     { to: '/logs', label: 'Logs', icon: <FileText className="mr-3 h-5 w-5" /> },
     { to: '/admins', label: 'Admins', icon: <Shield className="mr-3 h-5 w-5" /> },
     { to: '/relatorios', label: 'Relatórios', icon: <PieChart className="mr-3 h-5 w-5" /> },
-    { to: '/financeiro', label: 'Financeiro', icon: <span className="mr-3">💰</span> },
+
+    // --- Bloco Financeiro ---
+    { to: '/financeiro', label: 'Financeiro', icon: <DollarSign className="mr-3 h-5 w-5" /> },
+    { to: '/financeiro/payouts', label: 'Payouts', icon: <span className="mr-3">💸</span> },
+
     { to: '/suporte', label: 'Suporte', icon: <LifeBuoy className="mr-3 h-5 w-5" /> },
     { to: '/configuracoes', label: 'Configurações', icon: <Settings className="mr-3 h-5 w-5" /> },
     { to: '/integracoes', label: 'Integrações', icon: <Link2 className="mr-3 h-5 w-5" /> },
@@ -31,9 +48,9 @@ export function AdminLayout() {
             <Link
               key={link.to}
               to={link.to}
-              className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition
-                ${pathname === link.to ? 'bg-gray-700' : ''}
-              `}
+              className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition ${
+                pathname === link.to ? 'bg-gray-700' : ''
+              }`}
             >
               {link.icon}
               {link.label}
@@ -41,11 +58,15 @@ export function AdminLayout() {
           ))}
         </nav>
         <div className="px-4 py-4 border-t border-gray-700">
-          <button onClick={logout} className="w-full flex items-center px-4 py-2 rounded-md hover:bg-red-600">
+          <button
+            onClick={logout}
+            className="w-full flex items-center px-4 py-2 rounded-md hover:bg-red-600"
+          >
             <LogOut className="mr-3 h-5 w-5" />Sair
           </button>
         </div>
       </aside>
+
       <main className="flex-1 p-8 overflow-y-auto">
         <Outlet />
       </main>
