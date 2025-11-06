@@ -1,9 +1,10 @@
+// src/pages/DashboardPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { getMetrics, getRevenueSeries, getTransactions } from '../services/analytics';
+import authService from '../services/authService';
 
-// Cores extras para gráficos e KPIs
+// Paleta
 const COLORS = {
   blue: "#2563eb",
   green: "#22C55E",
@@ -15,7 +16,7 @@ const COLORS = {
   yellow: "#fde047"
 };
 
-// KPI Card mais versátil
+// KPI Card
 const KpiCard = ({ title, value, icon: Icon, color, tooltip }) => (
   <div className={`p-6 rounded-lg shadow-lg text-white relative ${color}`}>
     <div className="flex justify-between items-start">
@@ -63,7 +64,7 @@ const OrdersStatusPie = ({ data }) => {
   if (!entries.length) return null;
 
   const chartData = entries.map(([status, count]) => ({
-    name: status.charAt(0).toUpperCase() + status.slice(1),
+    name: status?.charAt(0).toUpperCase() + status?.slice(1),
     value: Number(count || 0),
     color: statusColors[status] || COLORS.gray
   }));
@@ -132,95 +133,66 @@ export function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [ordersStatus, setOrdersStatus] = useState({});
   const [clientsGrowth, setClientsGrowth] = useState([]);
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState('week'); // hoje não altera o backend, mas mantemos o UI
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const makeRange = (p) => {
-    const end = new Date();
-    const start = new Date();
-    if (p === 'month') start.setMonth(end.getMonth() - 1);
-    else start.setDate(end.getDate() - 7);
-    const fmt = (d) => d.toISOString().slice(0, 10);
-    return { from: fmt(start), to: fmt(end) };
-  };
-
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
+    (async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const { from, to } = makeRange(period);
-
-        const [m, s, t] = await Promise.all([
-          getMetrics({ from, to }),
-          getRevenueSeries({ from, to }),
-          getTransactions({ from, to, limit: 20 }),
-        ]);
-
+        // 1 chamada só: /api/admin/dashboard
+        const resp = await authService.getDashboardStats();
         if (!mounted) return;
 
-        // --- KPIs ---
-        const mkpis = m?.kpis || m || {};
-        // normaliza nomes possíveis
+        // resp esperado: { kpis, chartData, recentOrders, ordersStatus, clientsGrowth }
+        const mkpis = resp?.kpis || {};
         const k = {
-          totalRevenue: Number(mkpis.totalRevenue ?? mkpis.total_revenue ?? 0),
-          ordersToday: Number(mkpis.ordersToday ?? mkpis.orders_today ?? 0),
-          averageTicket: Number(mkpis.averageTicket ?? mkpis.avg_ticket ?? 0),
-          newClientsToday: Number(mkpis.newClientsToday ?? mkpis.new_clients_today ?? 0),
-
-          ordersInProgress: Number(mkpis.ordersInProgress ?? mkpis.orders_in_progress ?? 0),
-          ordersCanceled: Number(mkpis.ordersCanceled ?? mkpis.orders_canceled ?? 0),
-          restaurantsPending: Number(mkpis.restaurantsPending ?? mkpis.restaurants_pending ?? 0),
-          activeDeliverymen: Number(mkpis.activeDeliverymen ?? mkpis.active_deliverymen ?? 0),
+          totalRevenue: Number(mkpis.totalRevenue ?? 0),
+          ordersToday: Number(mkpis.ordersToday ?? 0),
+          averageTicket: Number(mkpis.averageTicket ?? 0),
+          newClientsToday: Number(mkpis.newClientsToday ?? 0),
+          ordersInProgress: Number(mkpis.ordersInProgress ?? 0),
+          ordersCanceled: Number(mkpis.ordersCanceled ?? 0),
+          restaurantsPending: Number(mkpis.restaurantsPending ?? 0),
+          activeDeliverymen: Number(mkpis.activeDeliverymen ?? 0),
         };
         setKpis(k);
 
-        // --- Série de receita e crescimento de clientes ---
-        const sItems = s?.items || s || [];
-        const normSeries = sItems.map((row) => ({
-          formatted_date: row.formatted_date || row.date || row.day,
-          daily_revenue: Number(row.daily_revenue ?? row.revenue ?? row.value ?? 0),
-          total_clients: Number(row.total_clients ?? 0),
-        }));
-        setChartData(normSeries);
-        // crescimento de clientes: reaproveita a mesma série (separada para seu componente)
-        setClientsGrowth(
-          normSeries.map((r) => ({ formatted_date: r.formatted_date, total_clients: r.total_clients }))
-        );
+        setChartData(Array.isArray(resp?.chartData) ? resp.chartData : []);
+        setClientsGrowth(Array.isArray(resp?.clientsGrowth) ? resp.clientsGrowth : []);
+        setOrdersStatus(resp?.ordersStatus || {});
 
-        // --- Pedidos por status ---
-        const statusMap = mkpis.ordersStatus || mkpis.orders_status || {};
-        setOrdersStatus(statusMap);
-
-        // --- Pedidos recentes / transações ---
-        const tItems = t?.items || t || [];
+        const ro = Array.isArray(resp?.recentOrders) ? resp.recentOrders : [];
         setRecentOrders(
-          tItems.map((it) => ({
+          ro.map((it) => ({
             id: it.id,
-            client_name: it.customer_name ?? it.client_name ?? '-',
+            client_name: it.client_name ?? '-',
             restaurant_name: it.restaurant_name ?? '-',
-            total_amount: Number(it.amount ?? it.total ?? 0),
+            total_amount: Number(it.total_amount ?? it.amount ?? it.total ?? 0),
             status: it.status ?? '-',
             created_at: it.created_at,
           }))
         );
-
       } catch (err) {
         console.error(err);
         setError(err?.message || 'Ocorreu um erro ao buscar os dados do dashboard.');
       } finally {
         if (mounted) setIsLoading(false);
       }
-    };
-    load();
+    })();
     return () => { mounted = false; };
-  }, [period]);
+  }, [period]); // mantemos o estado period para futuro (quando /dashboard aceitar filtros)
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
   }
 
   if (error) {
@@ -240,7 +212,7 @@ export function DashboardPage() {
 
   const periodOptions = [
     { value: "week", label: "Esta Semana" },
-    { value: "month", label: "Este Mês" }
+    { value: "month", label: "Este Mês" },
   ];
 
   return (
@@ -250,7 +222,7 @@ export function DashboardPage() {
         <p className="text-gray-600">Este é o resumo da sua plataforma em tempo real.</p>
       </div>
 
-      {/* Filtro de período */}
+      {/* Filtro de período (visual por enquanto) */}
       <div className="mb-2 flex flex-wrap gap-3">
         {periodOptions.map(opt => (
           <button
