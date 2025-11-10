@@ -368,6 +368,15 @@ function normalizeGamificationOverview(raw) {
   };
 }
 
+function pickFirstNonEmpty(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    return value;
+  }
+  return undefined;
+}
+
 function normalizeGamificationLeaderboard(raw) {
   const collection = Array.isArray(raw)
     ? raw
@@ -392,13 +401,17 @@ function normalizeGamificationLeaderboard(raw) {
         entry.slug ??
         null,
       name:
-        entry.name ??
-        entry.display_name ??
-        entry.full_name ??
-        entry.nickname ??
-        entry.first_name && entry.last_name
-          ? `${entry.first_name} ${entry.last_name}`
-          : entry.first_name ?? 'Participante',
+        pickFirstNonEmpty(
+          entry.name,
+          entry.display_name,
+          entry.full_name,
+          entry.nickname,
+          entry.first_name && entry.last_name
+            ? `${entry.first_name} ${entry.last_name}`
+            : undefined,
+          entry.first_name,
+          'Participante'
+        ),
       xp: Number(entry.xp ?? entry.points ?? entry.total_xp ?? entry.score ?? 0) || 0,
       level: entry.level ?? entry.tier ?? entry.rank ?? null,
       city: entry.city ?? entry.location ?? entry.address_city ?? null,
