@@ -4,6 +4,60 @@ import { Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck } 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { getMetrics, getRevenueSeries, getTransactions } from '../services/analytics';
 
+const FALLBACK_DASHBOARD = {
+  kpis: {
+    totalRevenue: 48250.4,
+    ordersToday: 128,
+    averageTicket: 54.9,
+    newClientsToday: 23,
+    ordersInProgress: 14,
+    ordersCanceled: 7,
+    restaurantsPending: 3,
+    activeDeliverymen: 28,
+  },
+  revenueSeries: Array.from({ length: 7 }).map((_, idx) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - idx));
+    return {
+      formatted_date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      daily_revenue: 4200 + idx * 350,
+      total_clients: 800 + idx * 35,
+    };
+  }),
+  ordersStatus: {
+    concluido: 312,
+    pendente: 41,
+    em_andamento: 26,
+    cancelado: 12,
+  },
+  recentOrders: [
+    {
+      id: 'ord-fallback-1',
+      client_name: 'Maria Souza',
+      restaurant_name: 'Restaurante Sabor & Arte',
+      total_amount: 128.4,
+      status: 'concluído',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'ord-fallback-2',
+      client_name: 'João Pereira',
+      restaurant_name: 'Bistrô da Vila',
+      total_amount: 86.2,
+      status: 'em andamento',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'ord-fallback-3',
+      client_name: 'Ana Lima',
+      restaurant_name: 'Sushibar Origami',
+      total_amount: 142.9,
+      status: 'pendente',
+      created_at: new Date().toISOString(),
+    },
+  ],
+};
+
 // Paleta
 const COLORS = {
   blue: "#2563eb",
@@ -130,6 +184,7 @@ export function DashboardPage() {
   const [period, setPeriod] = useState('week');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const makeRange = (p) => {
     const end = new Date();
@@ -146,6 +201,7 @@ export function DashboardPage() {
       try {
         setIsLoading(true);
         setError(null);
+        setIsUsingFallback(false);
 
         const { from, to } = makeRange(period);
 
@@ -197,6 +253,17 @@ export function DashboardPage() {
       } catch (err) {
         console.error(err);
         setError(err?.message || 'Ocorreu um erro ao buscar os dados do dashboard.');
+        setIsUsingFallback(true);
+        setKpis(FALLBACK_DASHBOARD.kpis);
+        setChartData(FALLBACK_DASHBOARD.revenueSeries);
+        setClientsGrowth(
+          FALLBACK_DASHBOARD.revenueSeries.map((row) => ({
+            formatted_date: row.formatted_date,
+            total_clients: row.total_clients,
+          }))
+        );
+        setOrdersStatus(FALLBACK_DASHBOARD.ordersStatus);
+        setRecentOrders(FALLBACK_DASHBOARD.recentOrders);
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -207,10 +274,6 @@ export function DashboardPage() {
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500 text-center p-4 bg-red-100 rounded-lg">Erro ao carregar o dashboard: {error}</div>;
   }
 
   if (!kpis) {
@@ -235,6 +298,12 @@ export function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-800">Boa tarde, Admin!</h1>
         <p className="text-gray-600">Este é o resumo da sua plataforma em tempo real.</p>
       </div>
+
+      {isUsingFallback && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+          Não foi possível conectar à API ({error}). Mostrando dados simulados para que você continue acompanhando os indicadores.
+        </div>
+      )}
 
       <div className="mb-2 flex flex-wrap gap-3">
         {periodOptions.map(opt => (

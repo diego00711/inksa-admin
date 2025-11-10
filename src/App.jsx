@@ -9,10 +9,11 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { UsuariosPage } from './pages/UsuariosPage';
 import { RestaurantesPage } from './pages/RestaurantesPage';
 import { DashboardPage } from './pages/DashboardPage';
+import EvaluationsGamificationPage from './pages/EvaluationsGamificationPage';
 
 // Páginas premium
 import LogsPage from './pages/LogsPage';
-import AdminsPage from './pages/AdminsPage';
+import AdminsPage, { AdminsPage as AdminsPageComponent } from './pages/AdminsPage';
 import ReportsPage from './pages/ReportsPage';
 import FinanceDashboard from './pages/FinanceDashboard';
 import SupportPage from './pages/SupportPage';
@@ -36,11 +37,13 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
+                <Route path="/avaliacoes" element={<EvaluationsGamificationPage />} />
                 <Route path="/banners" element={<BannerManagementPage />} />
 
                 {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
+                <Route path="/administradores" element={<AdminsPageComponent />} />
                 <Route path="/relatorios" element={<ReportsPage />} />
                 <Route path="/financeiro" element={<FinanceDashboard />} />
                 <Route path="/financeiro/payouts" element={<FinanceiroPayouts />} />
