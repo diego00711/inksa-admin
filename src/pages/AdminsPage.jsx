@@ -110,9 +110,9 @@ function normalizeAdmin(raw) {
     raw.name ??
     raw.full_name ??
     raw.display_name ??
-    raw.first_name && raw.last_name
+    (raw.first_name && raw.last_name
       ? `${raw.first_name} ${raw.last_name}`
-      : raw.first_name ?? 'Administrador sem nome';
+      : raw.first_name ?? 'Administrador sem nome');
 
   const roleValue = (raw.role ?? raw.permission ?? raw.access_level ?? 'manager').toString();
   const normalizedRole = ROLE_OPTIONS.find(({ value }) => value === roleValue)
