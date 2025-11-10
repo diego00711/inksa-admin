@@ -100,6 +100,16 @@ function adaptDraftToAdmin(draft) {
   };
 }
 
+function pickFirstNonEmpty(...candidates) {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+
+  return '';
+}
+
 function normalizeAdmin(raw) {
   if (!raw || typeof raw !== 'object') {
     return null;
@@ -107,12 +117,13 @@ function normalizeAdmin(raw) {
 
   const id = raw.id ?? raw.uuid ?? raw._id ?? raw.email ?? raw.user_id ?? null;
   const name =
-    raw.name ??
-    raw.full_name ??
-    raw.display_name ??
-    (raw.first_name && raw.last_name
-      ? `${raw.first_name} ${raw.last_name}`
-      : raw.first_name ?? 'Administrador sem nome');
+    pickFirstNonEmpty(
+      raw.name,
+      raw.full_name,
+      raw.display_name,
+      raw.first_name && raw.last_name ? `${raw.first_name} ${raw.last_name}` : raw.first_name,
+      'Administrador sem nome',
+    ) || 'Administrador sem nome';
 
   const roleValue = (raw.role ?? raw.permission ?? raw.access_level ?? 'manager').toString();
   const normalizedRole = ROLE_OPTIONS.find(({ value }) => value === roleValue)
