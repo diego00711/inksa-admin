@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Loader2,
   Mail,
@@ -50,8 +50,55 @@ const FALLBACK_ADMINS = [
     role: 'manager',
     status: 'ativo',
     lastLogin: new Date().toISOString(),
+    isOffline: false,
   },
 ];
+
+const LOCAL_DRAFTS_KEY = 'inksaAdminDraftInvites';
+
+function readDraftInvites() {
+  try {
+    const stored = localStorage.getItem(LOCAL_DRAFTS_KEY);
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Não foi possível ler os convites locais:', error);
+    return [];
+  }
+}
+
+function persistDraftInvites(drafts) {
+  try {
+    if (!drafts || drafts.length === 0) {
+      localStorage.removeItem(LOCAL_DRAFTS_KEY);
+      return;
+    }
+
+    localStorage.setItem(LOCAL_DRAFTS_KEY, JSON.stringify(drafts));
+  } catch (error) {
+    console.warn('Não foi possível salvar os convites locais:', error);
+  }
+}
+
+function adaptDraftToAdmin(draft) {
+  if (!draft) return null;
+
+  const normalizedEmail = draft.email ? draft.email.toLowerCase() : '';
+  const generatedId = draft.id ?? `draft-${normalizedEmail || Date.now()}`;
+
+  return {
+    id: generatedId,
+    name: draft.name || 'Convite sem nome',
+    email: draft.email || '',
+    role: draft.role || 'manager',
+    status: 'pendente',
+    lastLogin: null,
+    isOffline: true,
+    savedAt: draft.savedAt ?? new Date().toISOString(),
+  };
+}
 
 function normalizeAdmin(raw) {
   if (!raw || typeof raw !== 'object') {
@@ -102,6 +149,8 @@ function normalizeAdmin(raw) {
     role: normalizedRole,
     status: normalizedStatus,
     lastLogin,
+    isOffline: Boolean(raw.isOffline),
+    savedAt: raw.savedAt ?? raw.saved_at ?? null,
     raw,
   };
 }
@@ -119,6 +168,45 @@ export function AdminsPage() {
   });
   const [formError, setFormError] = useState('');
   const [feedback, setFeedback] = useState('');
+
+  const getNormalizedDrafts = useCallback(() => {
+    const drafts = readDraftInvites();
+
+    return drafts
+      .map(adaptDraftToAdmin)
+      .filter(Boolean)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, []);
+
+  const removeDraftByEmail = useCallback(
+    (email) => {
+      const drafts = readDraftInvites();
+      const sanitizedEmail = email ? email.toLowerCase() : '';
+
+      const filteredDrafts = drafts.filter((draft) => {
+        const draftEmail = draft.email ? draft.email.toLowerCase() : '';
+        return draftEmail !== sanitizedEmail;
+      });
+
+      persistDraftInvites(filteredDrafts);
+      return filteredDrafts;
+    },
+    []
+  );
+
+  const upsertDraftInvite = useCallback((draft) => {
+    const drafts = readDraftInvites();
+    const sanitizedEmail = draft.email ? draft.email.toLowerCase() : '';
+
+    const filteredDrafts = drafts.filter((item) => {
+      const itemEmail = item.email ? item.email.toLowerCase() : '';
+      return itemEmail !== sanitizedEmail;
+    });
+
+    const updatedDrafts = [draft, ...filteredDrafts];
+    persistDraftInvites(updatedDrafts);
+    return updatedDrafts;
+  }, []);
 
   const fetchAdmins = async () => {
     try {
@@ -142,10 +230,46 @@ export function AdminsPage() {
         .filter(Boolean)
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-      setAdmins(normalized.length > 0 ? normalized : FALLBACK_ADMINS);
+      const storedDrafts = readDraftInvites();
+      const draftsToKeep = storedDrafts.filter((draft) => {
+        const draftEmail = draft.email ? draft.email.toLowerCase() : '';
+
+        return !normalized.some((admin) => {
+          const adminEmail = admin.email ? admin.email.toLowerCase() : '';
+          return adminEmail && adminEmail === draftEmail;
+        });
+      });
+
+      if (draftsToKeep.length !== storedDrafts.length) {
+        persistDraftInvites(draftsToKeep);
+      }
+
+      const normalizedDrafts = draftsToKeep
+        .map(adaptDraftToAdmin)
+        .filter(Boolean)
+        .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+
+      const merged = [
+        ...normalizedDrafts,
+        ...normalized.filter((admin) => {
+          const adminEmail = admin.email ? admin.email.toLowerCase() : '';
+          return !normalizedDrafts.some((draft) => {
+            const draftEmail = draft.email ? draft.email.toLowerCase() : '';
+            return draftEmail && draftEmail === adminEmail;
+          });
+        }),
+      ];
+
+      setAdmins(merged.length > 0 ? merged : FALLBACK_ADMINS);
     } catch (err) {
       setError(err.message || 'Não foi possível carregar os administradores.');
-      setAdmins((prev) => (prev.length > 0 ? prev : FALLBACK_ADMINS));
+      const draftFallback = getNormalizedDrafts();
+
+      setAdmins((prev) => {
+        if (prev.length > 0) return prev;
+        if (draftFallback.length > 0) return draftFallback;
+        return FALLBACK_ADMINS;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -189,18 +313,19 @@ export function AdminsPage() {
       return;
     }
 
+    const payload = {
+      name: formValues.name.trim(),
+      email: formValues.email.trim().toLowerCase(),
+      role: formValues.role,
+    };
+
     setIsSubmitting(true);
     try {
-      const payload = {
-        name: formValues.name.trim(),
-        email: formValues.email.trim().toLowerCase(),
-        role: formValues.role,
-      };
-
       const created = await adminsService.createAdmin(payload);
 
       const normalized = normalizeAdmin(created?.admin ?? created);
       if (normalized) {
+        removeDraftByEmail(normalized.email);
         setAdmins((prev) => [
           normalized,
           ...prev.filter(
@@ -213,7 +338,32 @@ export function AdminsPage() {
       setFormValues({ name: '', email: '', role: formValues.role });
     } catch (err) {
       console.error('Falha ao criar administrador', err);
-      setFormError(err.message || 'Não foi possível enviar o convite.');
+      const offlineDraft = {
+        id: `draft-${Date.now()}`,
+        name: payload.name,
+        email: payload.email,
+        role: payload.role,
+        savedAt: new Date().toISOString(),
+      };
+
+      upsertDraftInvite(offlineDraft);
+
+      const adaptedDraft = adaptDraftToAdmin(offlineDraft);
+
+      setAdmins((prev) => [
+        adaptedDraft,
+        ...prev.filter((admin) => {
+          const adminEmail = admin.email ? admin.email.toLowerCase() : '';
+          const draftEmail = adaptedDraft.email ? adaptedDraft.email.toLowerCase() : '';
+          const isFallback = admin.id === FALLBACK_ADMINS[0].id;
+          return adminEmail !== draftEmail && !isFallback;
+        }),
+      ]);
+
+      setFeedback(
+        'Falha ao conectar com o servidor. O convite foi salvo localmente e pode ser reenviado quando a conexão for restabelecida.'
+      );
+      setFormError(err.message || 'Não foi possível enviar o convite agora.');
     } finally {
       setIsSubmitting(false);
     }
@@ -258,6 +408,11 @@ export function AdminsPage() {
     ];
   }, [admins]);
 
+  const offlineDrafts = useMemo(
+    () => admins.filter((admin) => admin.isOffline),
+    [admins]
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -275,6 +430,22 @@ export function AdminsPage() {
           <RefreshCcw className="h-4 w-4" /> Atualizar lista
         </button>
       </div>
+
+      {offlineDrafts.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          {offlineDrafts.length === 1 ? (
+            <p>
+              Há 1 convite salvo localmente aguardando sincronização. Verifique sua conexão e clique em "Atualizar lista"
+              para tentar reenviar.
+            </p>
+          ) : (
+            <p>
+              Há {offlineDrafts.length} convites salvos localmente aguardando sincronização. Verifique sua conexão e clique em
+              "Atualizar lista" para tentar reenviar.
+            </p>
+          )}
+        </div>
+      )}
 
       <section className="grid gap-4 md:grid-cols-3">
         {metrics.map(({ label, value, icon: Icon, description }) => (
@@ -341,6 +512,11 @@ export function AdminsPage() {
                         <td className="px-6 py-4">
                           <div className="font-medium text-gray-900">{admin.name || '—'}</div>
                           <div className="text-xs text-gray-500">ID: {admin.id || 'indefinido'}</div>
+                          {admin.isOffline && (
+                            <div className="mt-1 text-xs font-medium text-amber-600">
+                              Rascunho local • {admin.savedAt ? new Date(admin.savedAt).toLocaleString('pt-BR') : 'aguardando sincronização'}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-gray-600">{admin.email || '—'}</td>
                         <td className="px-6 py-4">
