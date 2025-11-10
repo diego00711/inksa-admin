@@ -1,103 +1,74 @@
-// src/services/bannerService.js
+import { buildUrl, getStoredToken, request } from './api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
-const API_URL = `${API_BASE}/api`;
+const BANNERS_ENDPOINT = '/api/banners';
 
 class BannerService {
-  // Método auxiliar para fazer requisições autenticadas
-  async makeRequest(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-      ...options,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Erro HTTP ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  // Buscar todos os banners
   async getAllBanners() {
-    return this.makeRequest('/banners');
+    return request(BANNERS_ENDPOINT);
   }
 
-  // Criar banner promocional
   async createPromotionalBanner(bannerData) {
-    return this.makeRequest('/banners', {
+    return request(BANNERS_ENDPOINT, {
       method: 'POST',
-      body: JSON.stringify({
+      body: {
         ...bannerData,
         is_sponsored: false,
-        banner_type: 'promotional'
-      }),
+        banner_type: 'promotional',
+      },
     });
   }
 
-  // Criar banner patrocinado
   async createSponsoredBanner(bannerData) {
-    return this.makeRequest('/banners', {
+    return request(BANNERS_ENDPOINT, {
       method: 'POST',
-      body: JSON.stringify({
+      body: {
         ...bannerData,
         is_sponsored: true,
-        banner_type: 'sponsored'
-      }),
+        banner_type: 'sponsored',
+      },
     });
   }
 
-  // Atualizar banner
   async updateBanner(id, updates) {
-    return this.makeRequest(`/banners/${id}`, {
+    return request(`${BANNERS_ENDPOINT}/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(updates),
+      body: updates,
     });
   }
 
-  // Deletar banner
   async deleteBanner(id) {
-    return this.makeRequest(`/banners/${id}`, {
+    return request(`${BANNERS_ENDPOINT}/${id}`, {
       method: 'DELETE',
     });
   }
 
-  // Upload de imagem
   async uploadBannerImage(file) {
     const formData = new FormData();
     formData.append('image', file);
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/banners/upload`, {
+    const token = getStoredToken();
+    const response = await fetch(buildUrl(`${BANNERS_ENDPOINT}/upload`), {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
 
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error('Erro ao fazer upload da imagem');
+      throw new Error(payload?.message || 'Erro ao fazer upload da imagem');
     }
 
-    const result = await response.json();
-    return result.image_url;
+    return payload?.image_url || payload?.url || null;
   }
 
-  // Alternar status do banner
   async toggleBannerStatus(id, isActive) {
     return this.updateBanner(id, { is_active: isActive });
   }
 
-  // Buscar analytics dos banners
   async getBannerAnalytics() {
-    return this.makeRequest('/banners/analytics');
+    return request(`${BANNERS_ENDPOINT}/analytics`);
   }
 }
 
