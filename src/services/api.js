@@ -1,50 +1,35 @@
 // src/services/api.js
+import axios from "axios";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  'https://inksa-auth-flask-dev.onrender.com'
-).replace(/\/+$/, '');
+  "https://inksa-auth-flask-dev.onrender.com"
+).replace(/\/+$/, "");
 
-function getToken() {
-  try {
-    return localStorage.getItem('adminAuthToken');
-  } catch {
-    return null;
-  }
-}
-
-async function request(path, { method = 'GET', headers = {}, body } = {}) {
-  const token = getToken();
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-    body,
-  });
-
-  if (res.status === 401) {
-    localStorage.removeItem('adminAuthToken');
-    localStorage.removeItem('adminUser');
-    // Se estiver fora do /login, volta pro login
-    if (!location.pathname.includes('/login')) window.location.href = '/login';
-    throw new Error('Não autorizado');
-  }
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data.message || data.error || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  return data;
-}
-
-export default {
-  get:  (p)        => request(p),
-  post: (p, body)  => request(p, { method: 'POST', body: JSON.stringify(body) }),
-  put:  (p, body)  => request(p, { method: 'PUT',  body: JSON.stringify(body) }),
-  del:  (p)        => request(p, { method: 'DELETE' }),
+const api = axios.create({
   baseURL: API_BASE_URL,
-};
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+});
+
+// Intercepta token automaticamente
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("adminAuthToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("adminAuthToken");
+      localStorage.removeItem("adminUser");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
