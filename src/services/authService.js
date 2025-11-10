@@ -1,6 +1,5 @@
 // src/services/authService.js
 
-// Use a mesma env do Vercel (VITE_API_BASE_URL). Mantive fallback para VITE_API_URL.
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
@@ -12,15 +11,21 @@ const ADMIN_USER_DATA_KEY = 'adminUser';
 
 const processResponse = async (response) => {
   if (response.status === 401) {
-    // token inválido/ausente – limpa e volta ao login
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_DATA_KEY);
     window.location.href = '/login';
     return null;
   }
 
-  // tenta parsear o json (mesmo em erro)
-  const body = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let body = {};
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { message: text };
+    }
+  }
 
   if (!response.ok) {
     const msg = body.message || body.error || `HTTP error ${response.status}`;
@@ -30,10 +35,40 @@ const processResponse = async (response) => {
   return body;
 };
 
+function getStoredToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function buildUrl(path, params = {}) {
+  const url = new URL(`${API_BASE_URL}${path}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    url.searchParams.set(key, value);
+  });
+  return url.toString();
+}
+
+async function authorizedRequest(path, { method = 'GET', params, body, headers = {} } = {}) {
+  const token = getStoredToken();
+  const url = buildUrl(path, params);
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  return processResponse(response);
+}
+
 const authService = {
   async login(email, password) {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,13 +78,12 @@ const authService = {
         }),
       });
 
-      const result = await processResponse(res);
+      const result = await processResponse(response);
       if (!result) throw new Error('Falha ao autenticar');
 
-      // ✅ Backend retorna: { status, message, access_token, data: { user: {...} } }
       const token =
         result.access_token ??
-        result.data?.token ?? // fallback se algum dia vier aninhado
+        result.data?.token ??
         null;
 
       if (!token) throw new Error('Token não recebido do servidor');
@@ -61,7 +95,6 @@ const authService = {
         localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(user));
       }
 
-      // padroniza retorno
       return { token, user };
     } catch (err) {
       console.error('Erro no login:', err);
@@ -71,7 +104,7 @@ const authService = {
 
   async logout() {
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = getStoredToken();
       if (token) {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
@@ -91,196 +124,106 @@ const authService = {
   // -------- Dashboard --------
 
   async getKpiSummary() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/kpi-summary`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    const result = await processResponse(res);
-    return result?.data;
-  }
+    const result = await authorizedRequest('/api/admin/kpi-summary');
+    return result?.data ?? result;
+  },
 
-  ,
   async getRevenueChartData() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/stats/revenue-chart`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    const result = await processResponse(res);
-    return result?.data;
-  }
+    const result = await authorizedRequest('/api/admin/stats/revenue-chart');
+    return result?.data ?? result;
+  },
 
-  ,
   async getRecentOrders() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/orders/recent`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    const result = await processResponse(res);
-    return result?.data;
-  }
+    const result = await authorizedRequest('/api/admin/orders/recent');
+    return result?.data ?? result;
+  },
 
-  ,
-  // Endpoint que o Dashboard usa para pegar tudo de uma vez
   async getDashboardStats() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/dashboard`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    return await processResponse(res);
-  }
+    return authorizedRequest('/api/admin/dashboard');
+  },
 
-  ,
   // -------- Usuários --------
 
   async getUsers(filters = {}) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const qs = new URLSearchParams(filters).toString();
-    const res = await fetch(`${API_BASE_URL}/api/admin/users?${qs}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    return await processResponse(res);
-  }
+    return authorizedRequest('/api/admin/users', { params: filters });
+  },
 
-  ,
   async updateUser(userId, userData) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
+    return authorizedRequest(`/api/admin/users/${userId}`, {
       method: 'PUT',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
+      body: userData,
     });
-    return await processResponse(res);
-  }
+  },
 
-  ,
   async blockUser(userId, reason) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/block`, {
+    return authorizedRequest(`/api/admin/users/${userId}/block`, {
       method: 'POST',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ reason }),
+      body: { reason },
     });
-    return await processResponse(res);
-  }
+  },
 
-  ,
   // -------- Restaurantes --------
 
   async getRestaurants(filters = {}) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const qs = new URLSearchParams(filters).toString();
-    const res = await fetch(`${API_BASE_URL}/api/admin/restaurants?${qs}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
+    return authorizedRequest('/api/admin/restaurants', { params: filters });
+  },
+
+  async getAllRestaurants(filters = {}) {
+    const result = await this.getRestaurants(filters);
+    const payload = result?.data ?? result;
+
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.results)) return payload.results;
+    if (Array.isArray(payload?.data)) return payload.data;
+
+    return [];
+  },
+
+  async updateRestaurant(restaurantId, restaurantData) {
+    return authorizedRequest(`/api/admin/restaurants/${restaurantId}`, {
+      method: 'PUT',
+      body: restaurantData,
     });
-    return await processResponse(res);
-  }
+  },
 
-  ,
   async approveRestaurant(restaurantId) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(
-      `${API_BASE_URL}/api/admin/restaurants/${restaurantId}/approve`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return await processResponse(res);
-  }
+    return authorizedRequest(`/api/admin/restaurants/${restaurantId}/approve`, {
+      method: 'POST',
+    });
+  },
 
-  ,
   // -------- Pedidos --------
 
   async getOrders(filters = {}) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const qs = new URLSearchParams(filters).toString();
-    const res = await fetch(`${API_BASE_URL}/api/admin/orders?${qs}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    return await processResponse(res);
-  }
+    return authorizedRequest('/api/admin/orders', { params: filters });
+  },
 
-  ,
   // -------- Relatórios --------
 
   async getReports(type, period) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(
-      `${API_BASE_URL}/api/admin/reports/${type}?period=${period}`,
-      {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return await processResponse(res);
-  }
+    return authorizedRequest(`/api/admin/reports/${type}`, {
+      params: { period },
+    });
+  },
 
-  ,
   // -------- Configurações --------
 
   async getSystemSettings() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    });
-    return await processResponse(res);
-  }
+    return authorizedRequest('/api/admin/settings');
+  },
 
-  ,
   async updateSystemSettings(settings) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+    return authorizedRequest('/api/admin/settings', {
       method: 'PUT',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(settings),
+      body: settings,
     });
-    return await processResponse(res);
-  }
+  },
 
-  ,
-
-  // -------- helpers --------
+  // -------- Helpers --------
 
   getToken() {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return getStoredToken();
   },
 
   getCurrentAdmin() {
@@ -293,7 +236,7 @@ const authService = {
   },
 
   isAuthenticated() {
-    return !!localStorage.getItem(AUTH_TOKEN_KEY);
+    return !!getStoredToken();
   },
 };
 

@@ -1,8 +1,8 @@
 // Local: src/pages/RestaurantesPage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AuthService from '../services/authService';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Star, Zap } from 'lucide-react';
 
 export function RestaurantesPage() {
   const [restaurants, setRestaurants] = useState([]);
@@ -15,14 +15,90 @@ export function RestaurantesPage() {
   // NOVO: Estado para controlar o loading do botão de salvar
   const [isSaving, setIsSaving] = useState(false);
 
+  const extractRatingInfo = (restaurant) => {
+    if (!restaurant) return null;
+
+    const ratingCandidate = [
+      restaurant.average_rating,
+      restaurant.avg_rating,
+      restaurant.rating,
+      restaurant.review_score,
+      restaurant.score,
+    ].find((value) => value !== undefined && value !== null);
+
+    const ratingValue = ratingCandidate !== undefined && ratingCandidate !== null
+      ? Number(ratingCandidate)
+      : null;
+
+    const reviewsCount = Number(
+      restaurant.total_reviews ??
+      restaurant.reviews_count ??
+      restaurant.rating_count ??
+      restaurant.num_reviews ??
+      0
+    );
+
+    if ((ratingValue === null || Number.isNaN(ratingValue)) && reviewsCount === 0) {
+      return null;
+    }
+
+    return {
+      rating: ratingValue !== null && !Number.isNaN(ratingValue) ? ratingValue : 0,
+      reviews: reviewsCount,
+    };
+  };
+
+  const extractGamificationInfo = (restaurant) => {
+    if (!restaurant) return null;
+
+    const level =
+      restaurant.gamification_level ??
+      restaurant.level ??
+      restaurant.rank ??
+      restaurant.tier ??
+      null;
+
+    const pointsCandidate =
+      restaurant.gamification_points ??
+      restaurant.points ??
+      restaurant.total_xp ??
+      restaurant.xp ??
+      null;
+
+    const streakCandidate =
+      restaurant.gamification_streak ??
+      restaurant.streak ??
+      restaurant.current_streak ??
+      null;
+
+    const hasData =
+      (level !== null && level !== undefined) ||
+      (pointsCandidate !== null && pointsCandidate !== undefined) ||
+      (streakCandidate !== null && streakCandidate !== undefined);
+
+    if (!hasData) return null;
+
+    const points =
+      pointsCandidate !== null && pointsCandidate !== undefined && !Number.isNaN(Number(pointsCandidate))
+        ? Number(pointsCandidate)
+        : null;
+
+    const streak =
+      streakCandidate !== null && streakCandidate !== undefined && !Number.isNaN(Number(streakCandidate))
+        ? Number(streakCandidate)
+        : null;
+
+    return { level, points, streak };
+  };
+
   // Função para buscar os dados iniciais
   const fetchRestaurants = async () => {
     try {
       setIsLoading(true);
       const data = await AuthService.getAllRestaurants();
-      setRestaurants(data);
+      setRestaurants(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Não foi possível carregar os restaurantes.');
     } finally {
       setIsLoading(false);
     }
@@ -73,14 +149,17 @@ export function RestaurantesPage() {
     }
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant => {
-    const name = restaurant.restaurant_name || '';
-    const nameMatch = name.toLowerCase().includes(searchTerm.toLowerCase());
-    const statusMatch = statusFilter === 'todos' || 
-                        (statusFilter === 'aberto' && restaurant.is_open) || 
-                        (statusFilter === 'fechado' && !restaurant.is_open);
-    return nameMatch && statusMatch;
-  });
+  const filteredRestaurants = useMemo(() => {
+    return restaurants.filter((restaurant) => {
+      const name = restaurant.restaurant_name || '';
+      const nameMatch = name.toLowerCase().includes(searchTerm.toLowerCase());
+      const statusMatch =
+        statusFilter === 'todos' ||
+        (statusFilter === 'aberto' && restaurant.is_open) ||
+        (statusFilter === 'fechado' && !restaurant.is_open);
+      return nameMatch && statusMatch;
+    });
+  }, [restaurants, searchTerm, statusFilter]);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8" /></div>;
@@ -110,6 +189,8 @@ export function RestaurantesPage() {
                 <th scope="col" className="px-6 py-3">CNPJ</th>
                 <th scope="col" className="px-6 py-3">Telefone</th>
                 <th scope="col" className="px-6 py-3">Cidade</th>
+                <th scope="col" className="px-6 py-3">Avaliação</th>
+                <th scope="col" className="px-6 py-3">Gamificação</th>
                 <th scope="col" className="px-6 py-3">Status</th>
                 <th scope="col" className="px-6 py-3 text-center">Ações</th>
               </tr>
@@ -121,6 +202,53 @@ export function RestaurantesPage() {
                   <td className="px-6 py-4">{restaurant.cnpj || '-'}</td>
                   <td className="px-6 py-4">{restaurant.phone || '-'}</td>
                   <td className="px-6 py-4">{restaurant.address_city || '-'}</td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const info = extractRatingInfo(restaurant);
+                      if (!info) {
+                        return <span className="text-sm text-gray-400">Sem dados</span>;
+                      }
+
+                      return (
+                        <div className="flex flex-col">
+                          <span className="flex items-center text-sm font-semibold text-gray-900">
+                            <Star className="mr-1 h-4 w-4 text-yellow-500" fill="currentColor" />
+                            {info.rating.toFixed(1)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {info.reviews === 1
+                              ? '1 avaliação'
+                              : `${info.reviews} avaliações`}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const info = extractGamificationInfo(restaurant);
+                      if (!info) {
+                        return <span className="text-sm text-gray-400">—</span>;
+                      }
+
+                      return (
+                        <div className="flex flex-col text-sm text-gray-700">
+                          <span className="font-semibold text-gray-900">
+                            {info.level ? `Nível ${info.level}` : 'Nível não definido'}
+                          </span>
+                          {info.points !== null && (
+                            <span className="flex items-center text-xs text-gray-500">
+                              <Zap className="mr-1 h-3 w-3 text-indigo-500" />
+                              {Number(info.points).toLocaleString('pt-BR')} XP
+                            </span>
+                          )}
+                          {info.streak && info.streak > 0 && (
+                            <span className="text-xs text-amber-600">🔥 {info.streak} dias de sequência</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.is_open ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }`}>
                       {restaurant.is_open ? 'Aberto' : 'Fechado'}
