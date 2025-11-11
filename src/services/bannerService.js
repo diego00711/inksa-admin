@@ -1,10 +1,10 @@
-import { buildUrl, getStoredToken, request } from './api';
+import { buildUrl, getServiceBaseUrl, getStoredToken, request } from './api';
 
 const BANNERS_ENDPOINT = '/api/banners';
 
 class BannerService {
   async getAllBanners() {
-    return request(BANNERS_ENDPOINT);
+    return request(BANNERS_ENDPOINT, { service: 'banners' });
   }
 
   async createPromotionalBanner(bannerData) {
@@ -15,6 +15,7 @@ class BannerService {
         is_sponsored: false,
         banner_type: 'promotional',
       },
+      service: 'banners',
     });
   }
 
@@ -26,6 +27,7 @@ class BannerService {
         is_sponsored: true,
         banner_type: 'sponsored',
       },
+      service: 'banners',
     });
   }
 
@@ -33,12 +35,14 @@ class BannerService {
     return request(`${BANNERS_ENDPOINT}/${id}`, {
       method: 'PUT',
       body: updates,
+      service: 'banners',
     });
   }
 
   async deleteBanner(id) {
     return request(`${BANNERS_ENDPOINT}/${id}`, {
       method: 'DELETE',
+      service: 'banners',
     });
   }
 
@@ -47,13 +51,16 @@ class BannerService {
     formData.append('image', file);
 
     const token = getStoredToken();
-    const response = await fetch(buildUrl(`${BANNERS_ENDPOINT}/upload`), {
-      method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: formData,
-    });
+    const response = await fetch(
+      buildUrl(`${BANNERS_ENDPOINT}/upload`, {}, getServiceBaseUrl('banners')),
+      {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      }
+    );
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
@@ -68,7 +75,7 @@ class BannerService {
   }
 
   async getBannerAnalytics() {
-    return request(`${BANNERS_ENDPOINT}/analytics`);
+    return request(`${BANNERS_ENDPOINT}/analytics`, { service: 'banners' });
   }
 }
 

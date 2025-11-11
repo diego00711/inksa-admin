@@ -30,6 +30,7 @@ const authService = {
       },
       auth: false,
       redirectOn401: false,
+      service: 'auth',
     });
 
     const token =
@@ -60,7 +61,7 @@ const authService = {
 
   async logout() {
     try {
-      await request('/api/auth/logout', { method: 'POST' });
+      await request('/api/auth/logout', { method: 'POST', service: 'auth' });
     } catch (error) {
       // se a sessão já expirou ignoramos o erro
       if (error?.message?.includes('Sessão expirada')) {
@@ -74,32 +75,42 @@ const authService = {
   },
 
   async getKpiSummary(params = {}) {
-    const result = await request('/api/admin/kpi-summary', { params });
+    const result = await request('/api/admin/kpi-summary', {
+      params,
+      service: 'analytics',
+    });
     return result ?? {};
   },
 
   async getRevenueChartData(params = {}) {
-    const result = await request('/api/admin/stats/revenue-chart', { params });
+    const result = await request('/api/admin/stats/revenue-chart', {
+      params,
+      service: 'analytics',
+    });
     return result ?? [];
   },
 
   async getRecentOrders(params = {}) {
-    const result = await request('/api/admin/orders/recent', { params });
+    const result = await request('/api/admin/orders/recent', {
+      params,
+      service: 'restaurants',
+    });
     return unwrapCollection(result);
   },
 
   async getDashboardStats(params = {}) {
-    return request('/api/admin/dashboard', { params });
+    return request('/api/admin/dashboard', { params, service: 'analytics' });
   },
 
   async getUsers(filters = {}) {
-    return request('/api/admin/users', { params: filters });
+    return request('/api/admin/users', { params: filters, service: 'customers' });
   },
 
   async updateUser(userId, userData) {
     return request(`/api/admin/users/${userId}`, {
       method: 'PUT',
       body: userData,
+      service: 'customers',
     });
   },
 
@@ -107,11 +118,15 @@ const authService = {
     return request(`/api/admin/users/${userId}/block`, {
       method: 'POST',
       body: { reason },
+      service: 'customers',
     });
   },
 
   async getRestaurants(filters = {}) {
-    return request('/api/admin/restaurants', { params: filters });
+    return request('/api/admin/restaurants', {
+      params: filters,
+      service: 'restaurants',
+    });
   },
 
   async getAllRestaurants(filters = {}) {
@@ -123,33 +138,40 @@ const authService = {
     return request(`/api/admin/restaurants/${restaurantId}`, {
       method: 'PUT',
       body: restaurantData,
+      service: 'restaurants',
     });
   },
 
   async approveRestaurant(restaurantId) {
     return request(`/api/admin/restaurants/${restaurantId}/approve`, {
       method: 'POST',
+      service: 'restaurants',
     });
   },
 
   async getOrders(filters = {}) {
-    return request('/api/admin/orders', { params: filters });
+    return request('/api/admin/orders', {
+      params: filters,
+      service: 'restaurants',
+    });
   },
 
   async getReports(type, period) {
     return request(`/api/admin/reports/${type}`, {
       params: { period },
+      service: 'analytics',
     });
   },
 
   async getSystemSettings() {
-    return request('/api/admin/settings');
+    return request('/api/admin/settings', { service: 'auth' });
   },
 
   async updateSystemSettings(settings) {
     return request('/api/admin/settings', {
       method: 'PUT',
       body: settings,
+      service: 'auth',
     });
   },
 

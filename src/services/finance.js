@@ -43,12 +43,13 @@ function unwrapCollection(payload) {
   return [];
 }
 
-async function requestFirst(paths, options) {
+async function requestFirst(paths, options = {}) {
   let lastError = null;
+  const finalOptions = { service: 'finance', ...options };
 
   for (const path of paths) {
     try {
-      return await request(path, options);
+      return await request(path, finalOptions);
     } catch (error) {
       if (shouldBubble(error)) {
         throw error;
@@ -94,7 +95,7 @@ export const financeApi = {
 
     for (const path of EXPORT_PATHS) {
       try {
-        const response = await request(path, { params, raw: true });
+        const response = await request(path, { params, raw: true, service: 'finance' });
         if (!response.ok) {
           const message = await response.text().catch(() => '');
           lastError = new Error(message || `Falha ao exportar relatório (${response.status}).`);

@@ -4,6 +4,52 @@ export const API_BASE_URL = (
   'https://inksa-auth-flask-dev.onrender.com'
 ).replace(/\/+$/, '');
 
+const FALLBACK_BASE = API_BASE_URL;
+
+function sanitizeBaseUrl(url) {
+  if (!url) return FALLBACK_BASE;
+  try {
+    return url.replace(/\/+$/, '');
+  } catch {
+    return FALLBACK_BASE;
+  }
+}
+
+export const SERVICE_BASE_URLS = {
+  auth: sanitizeBaseUrl(import.meta.env.VITE_AUTH_API_URL || FALLBACK_BASE),
+  restaurants: sanitizeBaseUrl(
+    import.meta.env.VITE_RESTAURANTS_API_URL || import.meta.env.VITE_PARTNERS_API_URL || FALLBACK_BASE
+  ),
+  customers: sanitizeBaseUrl(
+    import.meta.env.VITE_CUSTOMERS_API_URL || import.meta.env.VITE_CLIENTS_API_URL || FALLBACK_BASE
+  ),
+  deliveries: sanitizeBaseUrl(
+    import.meta.env.VITE_DELIVERIES_API_URL || import.meta.env.VITE_DRIVERS_API_URL || FALLBACK_BASE
+  ),
+  gamification: sanitizeBaseUrl(
+    import.meta.env.VITE_GAMIFICATION_API_URL || import.meta.env.VITE_ANALYTICS_API_URL || FALLBACK_BASE
+  ),
+  finance: sanitizeBaseUrl(import.meta.env.VITE_FINANCE_API_URL || FALLBACK_BASE),
+  analytics: sanitizeBaseUrl(import.meta.env.VITE_ANALYTICS_API_URL || FALLBACK_BASE),
+  support: sanitizeBaseUrl(import.meta.env.VITE_SUPPORT_API_URL || FALLBACK_BASE),
+  payouts: sanitizeBaseUrl(import.meta.env.VITE_PAYOUTS_API_URL || FALLBACK_BASE),
+  banners: sanitizeBaseUrl(import.meta.env.VITE_MARKETING_API_URL || FALLBACK_BASE),
+};
+
+function resolveBaseUrl({ service, baseUrl } = {}) {
+  if (baseUrl) {
+    return sanitizeBaseUrl(baseUrl);
+  }
+  if (service && SERVICE_BASE_URLS[service]) {
+    return SERVICE_BASE_URLS[service];
+  }
+  return FALLBACK_BASE;
+}
+
+export function getServiceBaseUrl(service) {
+  return resolveBaseUrl({ service });
+}
+
 export const AUTH_TOKEN_KEY = 'adminAuthToken';
 export const ADMIN_USER_DATA_KEY = 'adminUser';
 
@@ -74,8 +120,13 @@ export function clearStoredSession({ redirectToLogin = true } = {}) {
   }
 }
 
-export function buildUrl(path, params = {}) {
-  const url = new URL(path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
+export function buildUrl(path, params = {}, baseOverride) {
+  const baseUrl = baseOverride ? sanitizeBaseUrl(baseOverride) : FALLBACK_BASE;
+  const url = new URL(
+    path.startsWith('http')
+      ? path
+      : `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+  );
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
     url.searchParams.set(key, Array.isArray(value) ? value.join(',') : String(value));
@@ -101,8 +152,11 @@ export async function request(path, {
   auth = true,
   raw = false,
   redirectOn401 = true,
+  service,
+  baseUrl,
 } = {}) {
-  const url = buildUrl(path, params);
+  const resolvedBaseUrl = resolveBaseUrl({ service, baseUrl });
+  const url = buildUrl(path, params, resolvedBaseUrl);
   const token = auth ? getStoredToken() : null;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
@@ -170,6 +224,7 @@ export async function del(path, options) {
 
 export default {
   API_BASE_URL,
+  SERVICE_BASE_URLS,
   AUTH_TOKEN_KEY,
   ADMIN_USER_DATA_KEY,
   getStoredToken,
@@ -177,6 +232,7 @@ export default {
   getStoredAdmin,
   setStoredAdmin,
   clearStoredSession,
+  getServiceBaseUrl,
   buildUrl,
   request,
   get,
