@@ -18,42 +18,69 @@ export default function FinanceDashboard() {
   const [metrics, setMetrics] = useState(null);
   const [series, setSeries] = useState([]);
   const [tx, setTx] = useState({ items: [], loading: true });
+  const [error, setError] = useState(null);
 
   const params = useMemo(() => ({ from: range.from, to: range.to }), [range]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function loadOverview() {
       try {
-        const [m, s] = await Promise.all([
+        setError(null);
+        const [metricsResponse, seriesResponse] = await Promise.all([
           financeApi.getAdminMetrics(params),
           financeApi.getRevenueSeries(params),
         ]);
-        if (!cancelled) {
-          setMetrics(m);
-          setSeries(s?.data || []);
-        }
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) {
-          setMetrics(null);
-          setSeries([]);
-        }
+
+        if (cancelled) return;
+
+        setMetrics(metricsResponse && typeof metricsResponse === 'object' ? metricsResponse : null);
+        setSeries(Array.isArray(seriesResponse) ? seriesResponse : []);
+      } catch (err) {
+        console.error('Erro ao carregar métricas financeiras:', err);
+        if (cancelled) return;
+        setError(err?.message || 'Não foi possível carregar os indicadores financeiros.');
+        setMetrics(null);
+        setSeries([]);
       }
-    })();
-    return () => { cancelled = true; };
+    }
+
+    loadOverview();
+
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
 
   useEffect(() => {
     let cancelled = false;
     setTx((prev) => ({ ...prev, loading: true }));
-    financeApi.getTransactions({ ...params, limit: 20 })
-      .then((r) => !cancelled && setTx({ items: r?.data || [], loading: false }))
-      .catch((e) => {
-        console.error(e);
-        !cancelled && setTx({ items: [], loading: false });
-      });
-    return () => { cancelled = true; };
+
+    async function loadTransactions() {
+      try {
+        const response = await financeApi.getTransactions({ ...params, limit: 20 });
+        if (cancelled) return;
+
+        const items = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.items)
+          ? response.items
+          : [];
+
+        setTx({ items, loading: false });
+      } catch (err) {
+        console.error('Erro ao carregar transações:', err);
+        if (cancelled) return;
+        setTx({ items: [], loading: false });
+      }
+    }
+
+    loadTransactions();
+
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
 
   return (
@@ -62,6 +89,12 @@ export default function FinanceDashboard() {
         <h1 className="text-2xl font-bold">Financeiro</h1>
         <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
       </div>
+
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard

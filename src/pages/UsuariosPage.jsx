@@ -34,15 +34,26 @@ export function UsuariosPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Chama o serviço de autenticação, passando os filtros como objeto
-      const usersResp = await authService.getUsers({
+      const response = await authService.getUsers({
         user_type: activeTypeFilter,
-        city: cityFilter
+        city: cityFilter,
       });
-      // O backend retorna { status, data }, então pegamos a lista:
-      setUsers(usersResp.data || []);
+
+      const normalized = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.items)
+        ? response.items
+        : Array.isArray(response?.results)
+        ? response.results
+        : [];
+
+      setUsers(normalized);
     } catch (err) {
-      setError(err.message);
+      console.error('Erro ao carregar usuários:', err);
+      setError(err?.message || 'Não foi possível carregar os usuários.');
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
