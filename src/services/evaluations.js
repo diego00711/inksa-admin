@@ -1,3 +1,4 @@
+// src/services/evaluations.js
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
@@ -35,6 +36,7 @@ async function request(path, { method = 'GET', params, body } = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: 'include',
   });
 
   if (response.status === 401) {
@@ -47,11 +49,7 @@ async function request(path, { method = 'GET', params, body } = {}) {
   const text = await response.text();
   let payload = {};
   if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { message: text };
-    }
+    try { payload = JSON.parse(text); } catch { payload = { message: text }; }
   }
 
   if (!response.ok) {
@@ -62,6 +60,7 @@ async function request(path, { method = 'GET', params, body } = {}) {
   return payload.data ?? payload;
 }
 
+/* --- Avaliações (mantém /api/admin/...) --- */
 export function fetchEvaluationSummary(params = {}) {
   return request('/api/admin/evaluations/summary', { params });
 }
@@ -70,16 +69,17 @@ export function fetchEvaluations(params = {}) {
   return request('/api/admin/evaluations', { params });
 }
 
+/* --- Gamificação (corrigido p/ /api/gamification/...) --- */
 export function fetchGamificationOverview(params = {}) {
-  return request('/api/admin/gamification/overview', { params });
+  return request('/api/gamification/overview', { params });
 }
 
 export function fetchGamificationLeaderboard(params = {}) {
-  return request('/api/admin/gamification/leaderboard', { params });
+  return request('/api/gamification/leaderboard', { params });
 }
 
 export function triggerGamificationRecalculation(params = {}) {
-  return request('/api/admin/gamification/recalculate', {
+  return request('/api/gamification/recalculate', {
     method: 'POST',
     body: params,
   });
