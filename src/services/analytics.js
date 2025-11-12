@@ -25,7 +25,6 @@ async function getJson(pathWithQuery) {
   });
 
   if (res.status === 401) {
-    // token inválido/ausente: limpa e volta ao login
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_DATA_KEY);
     window.location.href = '/login';
@@ -36,7 +35,6 @@ async function getJson(pathWithQuery) {
   if (!res.ok) {
     throw new Error(body.message || body.error || `HTTP ${res.status}`);
   }
-  // muitos dos nossos endpoints retornam { status, data }
   return body.data ?? body;
 }
 
