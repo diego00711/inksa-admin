@@ -2,7 +2,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 function getAuthToken() {
   try {
-    return localStorage.getItem('auth_token') || '';
+    return localStorage.getItem('adminAuthToken') || '';
   } catch {
     return '';
   }

@@ -6,7 +6,7 @@ const API_URL = `${API_BASE}/api`;
 class BannerService {
   // Método auxiliar para fazer requisições autenticadas
   async makeRequest(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('adminAuthToken');
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ class BannerService {
     const formData = new FormData();
     formData.append('image', file);
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('adminAuthToken');
     const response = await fetch(`${API_URL}/banners/upload`, {
       method: 'POST',
       headers: {

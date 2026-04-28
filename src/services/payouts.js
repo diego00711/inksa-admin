@@ -3,7 +3,7 @@ const API = import.meta.env.VITE_API_URL; // ex: https://inksa-auth-flask-dev.on
 const ADMIN_PAYOUTS = `${API}/api/admin/payouts`;
 
 function authHeaders() {
-  const t = localStorage.getItem("access_token");
+  const t = localStorage.getItem("adminAuthToken");
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
