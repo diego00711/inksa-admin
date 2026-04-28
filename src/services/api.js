@@ -1,7 +1,5 @@
-// src/services/analytics.js
-import api from "./api.js";
-
-export async function getDashboard() {
-  const { data } = await api.get("/api/admin/dashboard");
-  return data;
-}
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  'https://inksa-auth-flask-dev.onrender.com'
+).replace(/\/+$/, '');

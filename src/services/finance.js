@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+import { API_BASE_URL as API_BASE } from './api';
 
 function getAuthToken() {
   try {

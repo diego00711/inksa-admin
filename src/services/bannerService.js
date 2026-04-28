@@ -1,7 +1,7 @@
 // src/services/bannerService.js
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
-const API_URL = `${API_BASE}/api`;
+import { API_BASE_URL } from './api';
+const API_URL = `${API_BASE_URL}/api`;
 
 class BannerService {
   // Método auxiliar para fazer requisições autenticadas

@@ -1,9 +1,5 @@
 // src/services/evaluations.js
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL ||
-  'https://inksa-auth-flask-dev.onrender.com'
-).replace(/\/+$/, '');
+import { API_BASE_URL } from './api';
 
 const AUTH_TOKEN_KEY = 'adminAuthToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';

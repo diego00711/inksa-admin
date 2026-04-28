@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import authService from '../services/authService';
+import { API_BASE_URL } from '../services/api';
 
 const BannerManagementPage = () => {
   const [banners, setBanners] = useState([]);
@@ -24,7 +25,7 @@ const BannerManagementPage = () => {
 
   const [formData, setFormData] = useState(getInitialFormData());
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
+  const API_URL = API_BASE_URL;
 
   useEffect(( ) => {
     loadBanners();

@@ -1,5 +1,5 @@
 // src/services/payouts.js
-const API = import.meta.env.VITE_API_URL; // ex: https://inksa-auth-flask-dev.onrender.com
+import { API_BASE_URL as API } from './api';
 const ADMIN_PAYOUTS = `${API}/api/admin/payouts`;
 
 function authHeaders() {
