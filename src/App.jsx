@@ -23,6 +23,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 // Banner Manager e Payouts
 import BannerManagementPage from './pages/BannerManagementPage';
 import FinanceiroPayouts from './pages/FinanceiroPayouts';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
                 <Route path="/suporte" element={<SupportPage />} />
                 <Route path="/configuracoes" element={<SettingsPage />} />
                 <Route path="/integracoes" element={<IntegrationsPage />} />
+                <Route path="/perfil" element={<ProfilePage />} />
               </Route>
             </Route>
           </Routes>
