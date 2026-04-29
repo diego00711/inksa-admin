@@ -10,9 +10,11 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(() => AuthService.getCurrentAdmin());
 
   const checkAuth = useCallback(() => {
     setIsAuthenticated(AuthService.isAuthenticated());
+    setUser(AuthService.getCurrentAdmin());
     setIsLoading(false);
   }, []);
 
@@ -24,6 +26,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await AuthService.login(email, password);
       setIsAuthenticated(true);
+      setUser(AuthService.getCurrentAdmin());
     } catch (error) {
       setIsAuthenticated(false);
       throw error;
@@ -33,11 +36,18 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     AuthService.logout();
     setIsAuthenticated(false);
+    setUser(null);
   };
+
+  const refreshUser = useCallback(() => {
+    setUser(AuthService.getCurrentAdmin());
+  }, []);
 
   const value = {
     isAuthenticated,
     isLoading,
+    user,
+    refreshUser,
     login,
     logout,
   };
