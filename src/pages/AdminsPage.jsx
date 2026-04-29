@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Ban,
   Loader2,
   Mail,
   Plus,
   RefreshCcw,
+  RotateCcw,
   ShieldCheck,
+  Trash2,
   UserPlus,
 } from 'lucide-react';
 import adminsService from '../services/admins';
@@ -179,6 +182,8 @@ export function AdminsPage() {
   });
   const [formError, setFormError] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
 
   const getNormalizedDrafts = useCallback(() => {
     const drafts = readDraftInvites();
@@ -218,6 +223,58 @@ export function AdminsPage() {
     persistDraftInvites(updatedDrafts);
     return updatedDrafts;
   }, []);
+
+  const handleDeactivate = async (admin) => {
+    if (admin.isOffline) return;
+    setActionLoading(admin.id);
+    try {
+      await adminsService.updateAdmin(admin.id, { status: 'inativo' });
+      setAdmins((prev) =>
+        prev.map((a) => (a.id === admin.id ? { ...a, status: 'inativo' } : a))
+      );
+      setFeedback(`${admin.name} foi desativado com sucesso.`);
+    } catch (err) {
+      setFeedback(`Falha ao desativar: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReactivate = async (admin) => {
+    if (admin.isOffline) return;
+    setActionLoading(admin.id);
+    try {
+      await adminsService.updateAdmin(admin.id, { status: 'ativo' });
+      setAdmins((prev) =>
+        prev.map((a) => (a.id === admin.id ? { ...a, status: 'ativo' } : a))
+      );
+      setFeedback(`${admin.name} foi reativado com sucesso.`);
+    } catch (err) {
+      setFeedback(`Falha ao reativar: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async (admin) => {
+    if (admin.isOffline) {
+      removeDraftByEmail(admin.email);
+      setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+      setConfirmDeleteId(null);
+      return;
+    }
+    setActionLoading(admin.id);
+    try {
+      await adminsService.deleteAdmin(admin.id);
+      setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+      setFeedback(`${admin.name} foi removido.`);
+    } catch (err) {
+      setFeedback(`Falha ao remover: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+      setConfirmDeleteId(null);
+    }
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -512,11 +569,14 @@ export function AdminsPage() {
                     <th scope="col" className="px-6 py-3">Função</th>
                     <th scope="col" className="px-6 py-3">Último acesso</th>
                     <th scope="col" className="px-6 py-3 text-right">Status</th>
+                    <th scope="col" className="px-6 py-3 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {filteredAdmins.map((admin) => {
                     const preset = STATUS_PRESETS[admin.status] ?? STATUS_PRESETS.pendente;
+                    const isWorking = actionLoading === admin.id;
+                    const isConfirmingDelete = confirmDeleteId === admin.id;
 
                     return (
                       <tr key={admin.id ?? admin.email} className="hover:bg-gray-50/80">
@@ -544,6 +604,59 @@ export function AdminsPage() {
                           <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${preset.className}`}>
                             {preset.label}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {isWorking ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 ml-auto" />
+                          ) : isConfirmingDelete ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-xs text-gray-500">Confirmar exclusão?</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(admin)}
+                                className="rounded px-2 py-1 text-xs font-semibold text-white bg-red-600 hover:bg-red-700"
+                              >
+                                Excluir
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="rounded px-2 py-1 text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {admin.status === 'ativo' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeactivate(admin)}
+                                  title="Desativar"
+                                  className="inline-flex items-center gap-1 rounded border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                                >
+                                  <Ban className="h-3.5 w-3.5" /> Desativar
+                                </button>
+                              ) : admin.status === 'inativo' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleReactivate(admin)}
+                                  title="Reativar"
+                                  className="inline-flex items-center gap-1 rounded border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" /> Reativar
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(admin.id)}
+                                title="Excluir"
+                                className="inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Excluir
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
