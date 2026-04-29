@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { getMetrics, getRevenueSeries, getTransactions } from '../services/analytics';
+import { useAuth } from '../context/AuthContext';
 
 const FALLBACK_DASHBOARD = {
   kpis: {
@@ -176,6 +177,7 @@ const RecentOrdersList = ({ orders }) => (
 );
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const [kpis, setKpis] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
@@ -292,10 +294,19 @@ export function DashboardPage() {
     { value: "month", label: "Este Mês" }
   ];
 
+  const adminName =
+    user?.name ||
+    user?.full_name ||
+    (user?.email ? user.email.split('@')[0] : null) ||
+    'Admin';
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Boa tarde, Admin!</h1>
+        <h1 className="text-3xl font-bold text-gray-800">{greeting}, {adminName}!</h1>
         <p className="text-gray-600">Este é o resumo da sua plataforma em tempo real.</p>
       </div>
 
