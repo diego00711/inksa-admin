@@ -15,10 +15,11 @@ import {
   Image,
   DollarSign,
   Star,
+  UserCircle,
 } from 'lucide-react';
 
 export function AdminLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { pathname } = useLocation();
   const normalizedPath = React.useMemo(() => {
     if (!pathname) return '/';
@@ -48,6 +49,7 @@ export function AdminLayout() {
     { to: '/suporte', label: 'Suporte', icon: <LifeBuoy className="mr-3 h-5 w-5" /> },
     { to: '/configuracoes', label: 'Configurações', icon: <Settings className="mr-3 h-5 w-5" /> },
     { to: '/integracoes', label: 'Integrações', icon: <Link2 className="mr-3 h-5 w-5" /> },
+    { to: '/perfil', label: 'Meu Perfil', icon: <UserCircle className="mr-3 h-5 w-5" /> },
   ];
 
   const isLinkActive = (link) => {
@@ -82,6 +84,30 @@ export function AdminLayout() {
             </Link>
           ))}
         </nav>
+        {user && (
+          <div className="px-4 py-3 border-t border-gray-700 bg-gray-900/40">
+            <Link to="/perfil" className="flex items-center gap-3 rounded-md p-2 hover:bg-gray-700 transition">
+              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                <span className="text-white text-xs font-bold">
+                  {(user.name || user.full_name || user.email || 'A')
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0].toUpperCase())
+                    .join('')}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {user.name || user.full_name || (user.email || '').split('@')[0] || 'Administrador'}
+                </p>
+                <p className="text-xs text-gray-400 truncate capitalize">
+                  {user.role || user.user_type || 'admin'}
+                </p>
+              </div>
+            </Link>
+          </div>
+        )}
         <div className="px-4 py-4 border-t border-gray-700">
           <button
             onClick={logout}
