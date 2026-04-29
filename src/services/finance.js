@@ -42,8 +42,8 @@ async function request(path, { method = 'GET', params, body, responseType = 'jso
 }
 
 export const financeApi = {
-  getAdminMetrics: (params) => request('/admin/metrics', { params }),
-  getRevenueSeries: (params) => request('/admin/revenue-series', { params }),
-  getTransactions: (params) => request('/admin/transactions', { params }),
-  exportReportCSV: (params) => request('/admin/reports/export', { params, responseType: 'blob' }),
+  getAdminMetrics: (params) => request('/api/admin/metrics', { params }),
+  getRevenueSeries: (params) => request('/api/admin/revenue-series', { params }),
+  getTransactions: (params) => request('/api/admin/transactions', { params }),
+  exportReportCSV: (params) => request('/api/admin/reports/export', { params, responseType: 'blob' }),
 };
