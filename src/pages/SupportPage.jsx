@@ -93,35 +93,7 @@ function usePersistedTickets(initialTickets) {
 }
 
 export default function SupportPage() {
-  const [tickets, setTickets] = usePersistedTickets([
-    {
-      id: 'SUP-1523',
-      subject: 'Integração com gateway de pagamentos',
-      createdAt: '2024-02-12T09:24:00',
-      requester: 'Paula Fernandes',
-      status: 'andamento',
-      lastUpdate: '2024-02-13T16:10:00',
-      category: 'Integração',
-    },
-    {
-      id: 'SUP-1507',
-      subject: 'Erro ao atualizar cardápio',
-      createdAt: '2024-02-10T14:05:00',
-      requester: 'Rogério Lima',
-      status: 'aguardando',
-      lastUpdate: '2024-02-11T11:40:00',
-      category: 'Restaurantes',
-    },
-    {
-      id: 'SUP-1488',
-      subject: 'Dúvida sobre relatório financeiro',
-      createdAt: '2024-02-08T08:35:00',
-      requester: 'Carla Souza',
-      status: 'resolvido',
-      lastUpdate: '2024-02-08T18:20:00',
-      category: 'Financeiro',
-    },
-  ]);
+  const [tickets, setTickets] = usePersistedTickets([]);
   const [filter, setFilter] = useState('todos');
   const [formData, setFormData] = useState({
     subject: '',
