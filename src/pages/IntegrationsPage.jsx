@@ -1,319 +1,242 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Plug,
   Activity,
-  AlertTriangle,
+  AlertCircle,
+  CheckCircle2,
+  CreditCard,
+  Database,
+  Loader2,
   RefreshCcw,
-  Copy,
-  ExternalLink,
-  ShieldCheck,
-  Settings2,
+  Server,
+  XCircle,
 } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
-const STORAGE_KEY = 'inksa.integrations.config';
+function useHealthCheck() {
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastChecked, setLastChecked] = useState(null);
 
-const DEFAULT_INTEGRATIONS = [
-  {
-    id: 'ifood',
-    name: 'iFood',
-    description: 'Receba e sincronize pedidos automaticamente com o marketplace.',
-    docsUrl: 'https://portal.ifood.com.br/docs',
-    status: 'connected',
-    lastSync: '2024-02-13T16:20:00',
-    apiKey: 'ifood_live_***_92da',
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Envio de notificações e confirmação de pedidos via WhatsApp.',
-    docsUrl: 'https://business.whatsapp.com/',
-    status: 'pending',
-    lastSync: null,
-    apiKey: '',
-  },
-  {
-    id: 'rdstation',
-    name: 'RD Station',
-    description: 'Integração com CRM para nutrir leads captados pelo app.',
-    docsUrl: 'https://ajuda.rdstation.com.br/',
-    status: 'error',
-    lastSync: '2024-02-11T10:05:00',
-    apiKey: 'rd_prod_***_118f',
-  },
-  {
-    id: 'webhooks',
-    name: 'Webhooks personalizados',
-    description: 'Cadastre URLs para receber eventos de pedidos, entregas e pagamentos.',
-    docsUrl: 'https://docs.inksa.app/webhooks',
-    status: 'connected',
-    lastSync: '2024-02-13T17:05:00',
-    endpoints: [
-      { id: 'orders', label: 'Pedidos', url: 'https://webhook.site/orders-inksa' },
-      { id: 'payouts', label: 'Pagamentos', url: 'https://webhook.site/payouts-inksa' },
-    ],
-  },
-];
-
-const STATUS_STYLES = {
-  connected: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  pending: 'bg-amber-50 border-amber-200 text-amber-700',
-  error: 'bg-rose-50 border-rose-200 text-rose-700',
-};
-
-function usePersistedIntegrations() {
-  const [state, setState] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULT_INTEGRATIONS;
+  const check = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return DEFAULT_INTEGRATIONS;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return DEFAULT_INTEGRATIONS;
-      return parsed;
-    } catch (error) {
-      console.warn('Falha ao carregar integrações', error);
-      return DEFAULT_INTEGRATIONS;
+      const res = await fetch(`${API_BASE_URL}/api/health`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await res.json();
+      setHealth(data);
+      setLastChecked(new Date());
+    } catch (err) {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        setError('Timeout — backend não respondeu em 10 s');
+      } else {
+        setError(err.message || 'Falha ao contatar o servidor');
+      }
+      setHealth(null);
+    } finally {
+      setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.warn('Falha ao salvar integrações', error);
-    }
-  }, [state]);
+    check();
+  }, [check]);
 
-  return [state, setState];
+  return { health, loading, error, lastChecked, check };
 }
 
-function IntegrationStatus({ status }) {
-  const label =
-    status === 'connected' ? 'Conectado' : status === 'pending' ? 'Configuração pendente' : 'Erro de conexão';
-  const badgeClass = STATUS_STYLES[status] ?? 'bg-slate-100 border-slate-200 text-slate-600';
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass}`}>
-      <Activity className="h-4 w-4" />
-      {label}
+function StatusBadge({ ok }) {
+  if (ok === null || ok === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
+        <Activity className="h-3.5 w-3.5" /> Verificando…
+      </span>
+    );
+  }
+  return ok ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+      <CheckCircle2 className="h-3.5 w-3.5" /> Conectado
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+      <XCircle className="h-3.5 w-3.5" /> Desconectado
     </span>
   );
 }
 
-export default function IntegrationsPage() {
-  const [integrations, setIntegrations] = usePersistedIntegrations();
-  const [selected, setSelected] = useState(integrations[0]);
-  const [feedback, setFeedback] = useState(null);
-
-  useEffect(() => {
-    setSelected((prev) => integrations.find((item) => item.id === prev?.id) ?? integrations[0]);
-  }, [integrations]);
-
-  useEffect(() => {
-    if (!feedback) return;
-    const timer = setTimeout(() => setFeedback(null), 4000);
-    return () => clearTimeout(timer);
-  }, [feedback]);
-
-  const logs = useMemo(
-    () => [
-      {
-        id: 'log-1',
-        type: 'info',
-        message: 'Sincronização do iFood concluída com sucesso.',
-        timestamp: '2024-02-13T16:22:00',
-      },
-      {
-        id: 'log-2',
-        type: 'warning',
-        message: 'Webhook de pagamentos atrasado 3 minutos (nova tentativa agendada).',
-        timestamp: '2024-02-13T16:18:00',
-      },
-      {
-        id: 'log-3',
-        type: 'error',
-        message: 'Token do RD Station expirado. Necessário atualizar credenciais.',
-        timestamp: '2024-02-13T10:15:00',
-      },
-    ],
-    []
+function IntegrationCard({ icon: Icon, iconColor, title, description, statusOk, detail, loading }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconColor}`}>
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+            <p className="text-sm text-slate-500">{description}</p>
+          </div>
+        </div>
+        {loading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-slate-400 shrink-0" />
+        ) : (
+          <StatusBadge ok={statusOk} />
+        )}
+      </div>
+      {detail && (
+        <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {detail}
+        </div>
+      )}
+    </div>
   );
+}
 
-  const updateIntegration = (id, patch) => {
-    setIntegrations((prev) => prev.map((integration) => (integration.id === id ? { ...integration, ...patch } : integration)));
-    setFeedback({ type: 'success', message: 'Configuração salva localmente. Sincronize com o backend para concluir.' });
-  };
+export default function IntegrationsPage() {
+  const { health, loading, error, lastChecked, check } = useHealthCheck();
 
-  const regenerateKey = (integration) => {
-    const newKey = `${integration.id}_${Math.random().toString(16).slice(2, 10)}_${Math.random().toString(16).slice(2, 6)}`;
-    updateIntegration(integration.id, { apiKey: newKey, status: 'pending' });
-    setFeedback({ type: 'success', message: 'Geramos uma nova chave. Atualize no fornecedor externo para finalizar.' });
-  };
-
-  const toggleStatus = (integration) => {
-    const statusCycle = integration.status === 'connected' ? 'pending' : 'connected';
-    updateIntegration(integration.id, { status: statusCycle, lastSync: new Date().toISOString() });
-  };
+  const backendOk = health ? health.status === 'healthy' || health.status === 'ok' : null;
+  const dbOk = health ? health.database === 'connected' : null;
+  const mpOk = health ? health.mercado_pago === 'configured' : null;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-800">Integrações</h1>
-        <p className="text-slate-600">Monitore conectores, tokens e endpoints críticos do ecossistema.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Integrações</h1>
+          <p className="text-slate-500 mt-1">
+            Status em tempo real dos serviços e plataformas conectados ao Inksa.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={check}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+        >
+          <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Verificando…' : 'Testar todas'}
+        </button>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {integrations.map((integration) => (
-          <button
-            type="button"
-            key={integration.id}
-            onClick={() => setSelected(integration)}
-            className={`text-left rounded-xl border px-4 py-5 shadow-sm transition hover:shadow-md focus:outline-none ${
-              selected?.id === integration.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800">{integration.name}</h2>
-              <Plug className="h-5 w-5 text-blue-500" />
-            </div>
-            <p className="mt-2 text-sm text-slate-500">{integration.description}</p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <IntegrationStatus status={integration.status} />
-              {integration.lastSync && (
-                <span className="text-xs text-slate-400">
-                  Última sincronização {new Date(integration.lastSync).toLocaleString('pt-BR')}
-                </span>
-              )}
-            </div>
-          </button>
-        ))}
-      </section>
-
-      {selected && (
-        <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <article className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold text-slate-800">{selected.name}</h2>
-                <p className="text-sm text-slate-500">{selected.description}</p>
-              </div>
-              <IntegrationStatus status={selected.status} />
-            </header>
-
-            {feedback && (
-              <div
-                className={`rounded-lg border px-3 py-2 text-sm ${
-                  feedback.type === 'success'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border-rose-200 bg-rose-50 text-rose-700'
-                }`}
-              >
-                {feedback.message}
-              </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600" htmlFor="apiKey">
-                  Chave de API / Token
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="apiKey"
-                    value={selected.apiKey ?? ''}
-                    onChange={(event) => updateIntegration(selected.id, { apiKey: event.target.value })}
-                    placeholder="Cole aqui a chave fornecida pelo parceiro"
-                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard?.writeText(selected.apiKey ?? '')}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600"
-                    title="Copiar chave"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600" htmlFor="docsLink">
-                  Documentação oficial
-                </label>
-                <a
-                  id="docsLink"
-                  href={selected.docsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:border-blue-300"
-                >
-                  <ExternalLink className="h-4 w-4" /> Abrir documentação
-                </a>
-              </div>
-            </div>
-
-            {selected.endpoints && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-600">Endpoints configurados</h3>
-                <ul className="space-y-2">
-                  {selected.endpoints.map((endpoint) => (
-                    <li key={endpoint.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
-                      <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600">{endpoint.label}</span>
-                      <code className="flex-1 break-all text-xs text-slate-500">{endpoint.url}</code>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard?.writeText(endpoint.url)}
-                        className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:border-blue-300 hover:text-blue-600"
-                      >
-                        Copiar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => regenerateKey(selected)}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
-              >
-                <RefreshCcw className="h-4 w-4" /> Regenerar chave
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleStatus(selected)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600"
-              >
-                <ShieldCheck className="h-4 w-4" /> {selected.status === 'connected' ? 'Forçar reconexão' : 'Marcar como conectado'}
-              </button>
-            </div>
-          </article>
-
-          <aside className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="flex items-center gap-3">
-              <Settings2 className="h-5 w-5 text-blue-500" />
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800">Monitoramento em tempo real</h3>
-                <p className="text-sm text-slate-500">Eventos recentes das integrações.</p>
-              </div>
-            </header>
-
-            <ul className="space-y-3">
-              {logs.map((log) => (
-                <li key={log.id} className="rounded-lg border border-slate-200 p-3 text-sm text-slate-600">
-                  <p className="font-medium text-slate-800">{log.message}</p>
-                  <p className="text-xs text-slate-400">{new Date(log.timestamp).toLocaleString('pt-BR')}</p>
-                </li>
-              ))}
-            </ul>
-
-            <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              <AlertTriangle className="mr-2 inline h-4 w-4" /> Atualize as credenciais expostas ou expiradas para retomar as sincronizações automáticas.
-            </div>
-          </aside>
-        </section>
+      {lastChecked && (
+        <p className="text-xs text-slate-400">
+          Última verificação: {lastChecked.toLocaleString('pt-BR')}
+        </p>
       )}
+
+      {error && (
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <IntegrationCard
+          icon={Server}
+          iconColor="bg-indigo-500"
+          title="Backend / API"
+          description="Servidor Flask hospedado no Render."
+          statusOk={backendOk}
+          loading={loading}
+          detail={
+            health
+              ? `Endpoint: ${API_BASE_URL} — status: ${health.status}`
+              : loading
+              ? 'Aguardando resposta do servidor…'
+              : error
+              ? 'Servidor inacessível ou sem resposta.'
+              : null
+          }
+        />
+
+        <IntegrationCard
+          icon={Database}
+          iconColor="bg-emerald-500"
+          title="Banco de dados (Supabase)"
+          description="PostgreSQL gerenciado pelo Supabase."
+          statusOk={dbOk}
+          loading={loading}
+          detail={
+            health
+              ? `Conexão: ${health.database ?? 'desconhecida'}`
+              : loading
+              ? 'Verificando conexão com o banco…'
+              : error
+              ? 'Não foi possível verificar o banco de dados.'
+              : null
+          }
+        />
+
+        <IntegrationCard
+          icon={CreditCard}
+          iconColor="bg-sky-500"
+          title="Mercado Pago"
+          description="Gateway de pagamentos para pedidos e repasses."
+          statusOk={mpOk}
+          loading={loading}
+          detail={
+            health
+              ? health.mercado_pago === 'configured'
+                ? 'SDK inicializado com access token configurado.'
+                : 'Access token não configurado no servidor.'
+              : loading
+              ? 'Verificando SDK do Mercado Pago…'
+              : error
+              ? 'Não foi possível verificar o Mercado Pago.'
+              : null
+          }
+        />
+      </div>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Resumo do ambiente</h2>
+
+        {loading && !health ? (
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando status…
+          </div>
+        ) : error && !health ? (
+          <div className="text-sm text-rose-600">{error}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="py-2 pr-6 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Serviço</th>
+                  <th className="py-2 pr-6 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                  <th className="py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Detalhe</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <tr>
+                  <td className="py-3 pr-6 font-medium text-slate-700">Backend (Flask)</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={backendOk} /></td>
+                  <td className="py-3 text-slate-500">{health?.status ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-6 font-medium text-slate-700">Supabase / PostgreSQL</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={dbOk} /></td>
+                  <td className="py-3 text-slate-500">{health?.database ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-6 font-medium text-slate-700">Mercado Pago</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={mpOk} /></td>
+                  <td className="py-3 text-slate-500">{health?.mercado_pago ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-6 font-medium text-slate-700">CORS habilitado</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={health?.cors_enabled ?? null} /></td>
+                  <td className="py-3 text-slate-500">{health?.cors_enabled != null ? String(health.cors_enabled) : '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
