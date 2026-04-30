@@ -606,9 +606,9 @@ function normalizeLeaderboard(raw) {
     id: entry?.id ?? entry?.partner_id ?? entry?.user_id ?? `leaderboard-${index}`,
     position: entry?.position ?? entry?.rank ?? index + 1,
     name: firstValue(entry?.name, entry?.restaurant_name, entry?.partner_name, entry?.delivery_name, 'Participante'),
-    type: firstValue(entry?.type, entry?.partner_type, entry?.category, ''),
-    xp: parseNumber(entry?.xp ?? entry?.points ?? entry?.score),
-    level: firstValue(entry?.level, entry?.rank_label, entry?.tier, ''),
+    type: firstValue(entry?.profile_type, entry?.type, entry?.partner_type, entry?.category, ''),
+    xp: parseNumber(entry?.xp ?? entry?.points ?? entry?.score ?? entry?.total_points),
+    level: firstValue(entry?.level_name, entry?.level, entry?.rank_label, entry?.tier, ''),
     badges: Array.isArray(entry?.badges)
       ? entry.badges.map((badge, badgeIndex) => ({
           id: badge?.id ?? badge?.slug ?? `badge-${index}-${badgeIndex}`,

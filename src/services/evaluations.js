@@ -56,22 +56,60 @@ async function request(path, { method = 'GET', params, body } = {}) {
   return payload.data ?? payload;
 }
 
-/* --- Avaliações (mantém /api/admin/...) --- */
-export function fetchEvaluationSummary(params = {}) {
-  return request('/api/admin/evaluations/summary', { params });
+function toApiParams(params = {}) {
+  return {
+    partner_type: params.scope,
+    start_date: params.from,
+    end_date: params.to,
+  };
 }
 
+// GET /api/admin/gamification (métricas) + /api/admin/gamification/rating-distribution
+// merged into a single object so normalizeSummary works without changes in the page.
+export async function fetchEvaluationSummary(params = {}) {
+  const apiParams = toApiParams(params);
+  const [metrics, distData] = await Promise.all([
+    request('/api/admin/gamification', { params: apiParams }),
+    request('/api/admin/gamification/rating-distribution', { params: apiParams }).catch(() => ({})),
+  ]);
+
+  // Convert [{rating, count}] → {1: n, 2: n, …}
+  const distribution = {};
+  (distData?.distribution ?? []).forEach(({ rating, count }) => {
+    distribution[rating] = count;
+  });
+
+  // The API returns response_rate as a percentage (e.g. 85.5).
+  // The page displays Math.round(summary.responseRate * 100)%, so store as decimal (0–1).
+  const rr = metrics?.response_rate ?? metrics?.responseRate;
+  const responseRate = rr != null ? rr / 100 : null;
+
+  return { ...metrics, response_rate: responseRate, distribution };
+}
+
+// GET /api/admin/gamification/reviews
 export function fetchEvaluations(params = {}) {
-  return request('/api/admin/evaluations', { params });
+  return request('/api/admin/gamification/reviews', {
+    params: {
+      limit: params.limit ?? 10,
+      ...toApiParams(params),
+    },
+  });
 }
 
-/* --- Gamificação (corrigido p/ /api/gamification/...) --- */
+// GET /api/admin/gamification (overview/gamification sidebar)
 export function fetchGamificationOverview(params = {}) {
-  return request('/api/gamification/overview', { params });
+  return request('/api/admin/gamification', { params: toApiParams(params) });
 }
 
+// GET /api/admin/gamification/leaderboard
 export function fetchGamificationLeaderboard(params = {}) {
-  return request('/api/gamification/leaderboard', { params });
+  return request('/api/admin/gamification/leaderboard', {
+    params: {
+      scope: params.scope,
+      limit: params.limit ?? 10,
+    },
+  });
 }
 
 export function triggerGamificationRecalculation(params = {}) {
