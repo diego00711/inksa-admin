@@ -1,84 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Globe, Shield, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import authService from '../services/authService';
 
-const SETTINGS_KEY = 'inksa_admin_settings';
-
-const defaultSettings = {
-  notifications: {
-    newOrders: true,
-    newUsers: true,
-    pendingRestaurants: true,
-    lowStock: false,
-  },
-  platform: {
-    currency: 'BRL',
-    timezone: 'America/Sao_Paulo',
-    maintenanceMode: false,
-  },
-  security: {
-    sessionTimeout: 60,
-    requireMfa: false,
-  },
+const DEFAULTS = {
+  contact_email: '',
+  contact_whatsapp: '',
+  contact_phone: '',
+  financial_platform_commission: '10',
+  financial_delivery_commission: '8',
+  financial_min_order_value: '15',
+  platform_name: 'Inksa Delivery',
+  platform_max_delivery_radius: '15',
+  platform_maintenance_mode: 'false',
 };
 
-function mergeWithDefaults(saved) {
-  return {
-    notifications: { ...defaultSettings.notifications, ...(saved?.notifications ?? {}) },
-    platform: { ...defaultSettings.platform, ...(saved?.platform ?? {}) },
-    security: { ...defaultSettings.security, ...(saved?.security ?? {}) },
-  };
+function SectionCard({ icon: Icon, title, children }) {
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <Icon className="w-4 h-4" />
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
 }
 
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? mergeWithDefaults(JSON.parse(raw)) : defaultSettings;
-  } catch {
-    return defaultSettings;
-  }
+function Field({ label, hint, children }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      {children}
+      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+    </div>
+  );
 }
+
+const inputCls =
+  'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState(defaultSettings);
+  const [fields, setFields] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
-  const [apiAvailable, setApiAvailable] = useState(true);
+  const [saveStatus, setSaveStatus] = useState(null);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const data = await authService.getSystemSettings();
-        const merged = mergeWithDefaults(data?.data ?? data ?? {});
-        setSettings(merged);
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
-        setApiAvailable(true);
-      } catch {
-        setSettings(loadFromStorage());
-        setApiAvailable(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSettings();
+    authService
+      .getSystemSettings()
+      .then((result) => {
+        const data = result?.data ?? result ?? {};
+        setFields((prev) => ({ ...prev, ...data }));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const set = (section, key, value) =>
-    setSettings((prev) => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
+  const set = (key, value) => setFields((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
     setSaving(true);
     setSaveStatus(null);
     try {
-      if (apiAvailable) {
-        await authService.updateSystemSettings(settings);
-      }
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      await authService.updateSystemSettings(fields);
       setSaveStatus('success');
     } catch {
-      // fallback: salva apenas localmente
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       setSaveStatus('error');
     } finally {
       setSaving(false);
@@ -97,15 +83,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-          {!apiAvailable && (
-            <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Modo offline — alterações salvas localmente
-            </p>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
         <button
           onClick={handleSave}
           disabled={saving}
@@ -123,70 +101,105 @@ export default function SettingsPage() {
       </div>
 
       {saveStatus === 'error' && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          Não foi possível salvar no servidor. Configurações salvas localmente.
+          Não foi possível salvar as configurações. Tente novamente.
         </div>
       )}
 
-      {/* Notificações */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Bell className="w-4 h-4" />
-          Notificações
-        </h3>
-        <div className="space-y-3">
-          {[
-            { key: 'newOrders', label: 'Novos pedidos criados' },
-            { key: 'newUsers', label: 'Novos usuários cadastrados' },
-            { key: 'pendingRestaurants', label: 'Restaurantes aguardando aprovação' },
-            { key: 'lowStock', label: 'Alertas de baixo estoque' },
-          ].map(({ key, label }) => (
-            <label key={key} className="flex items-center justify-between py-1 cursor-pointer">
-              <span className="text-sm text-gray-700">{label}</span>
-              <input
-                type="checkbox"
-                checked={settings.notifications[key]}
-                onChange={(e) => set('notifications', key, e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-            </label>
-          ))}
+      {/* Contato */}
+      <SectionCard icon={Phone} title="Contato">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="E-mail de contato">
+            <input
+              type="email"
+              value={fields.contact_email}
+              onChange={(e) => set('contact_email', e.target.value)}
+              placeholder="contato@inksa.com"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="WhatsApp">
+            <input
+              type="text"
+              value={fields.contact_whatsapp}
+              onChange={(e) => set('contact_whatsapp', e.target.value)}
+              placeholder="+55 49 99999-9999"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Telefone">
+            <input
+              type="text"
+              value={fields.contact_phone}
+              onChange={(e) => set('contact_phone', e.target.value)}
+              placeholder="+55 49 3333-3333"
+              className={inputCls}
+            />
+          </Field>
         </div>
-      </div>
+      </SectionCard>
+
+      {/* Financeiro */}
+      <SectionCard icon={DollarSign} title="Financeiro">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado sobre cada pedido">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={fields.financial_platform_commission}
+              onChange={(e) => set('financial_platform_commission', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Comissão de entrega (%)" hint="Percentual retido sobre a taxa de entrega">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={fields.financial_delivery_commission}
+              onChange={(e) => set('financial_delivery_commission', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Pedido mínimo (R$)" hint="Valor mínimo para aceitar um pedido">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={fields.financial_min_order_value}
+              onChange={(e) => set('financial_min_order_value', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+      </SectionCard>
 
       {/* Plataforma */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Globe className="w-4 h-4" />
-          Plataforma
-        </h3>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Moeda</label>
-            <select
-              value={settings.platform.currency}
-              onChange={(e) => set('platform', 'currency', e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="BRL">BRL — Real Brasileiro</option>
-              <option value="USD">USD — Dólar Americano</option>
-              <option value="EUR">EUR — Euro</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Fuso horário</label>
-            <select
-              value={settings.platform.timezone}
-              onChange={(e) => set('platform', 'timezone', e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="America/Sao_Paulo">São Paulo (UTC−3)</option>
-              <option value="America/Manaus">Manaus (UTC−4)</option>
-              <option value="America/Fortaleza">Fortaleza (UTC−3)</option>
-              <option value="America/Belem">Belém (UTC−3)</option>
-            </select>
-          </div>
+      <SectionCard icon={Globe} title="Plataforma">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Nome da plataforma">
+            <input
+              type="text"
+              value={fields.platform_name}
+              onChange={(e) => set('platform_name', e.target.value)}
+              placeholder="Inksa Delivery"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Raio máximo de entrega (km)">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={fields.platform_max_delivery_radius}
+              onChange={(e) => set('platform_max_delivery_radius', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
           <div className="sm:col-span-2">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
@@ -197,54 +210,14 @@ export default function SettingsPage() {
               </div>
               <input
                 type="checkbox"
-                checked={settings.platform.maintenanceMode}
-                onChange={(e) => set('platform', 'maintenanceMode', e.target.checked)}
+                checked={fields.platform_maintenance_mode === 'true'}
+                onChange={(e) => set('platform_maintenance_mode', e.target.checked ? 'true' : 'false')}
                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
             </label>
           </div>
         </div>
-      </div>
-
-      {/* Segurança */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Shield className="w-4 h-4" />
-          Segurança
-        </h3>
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Tempo limite de sessão (minutos)
-            </label>
-            <input
-              type="number"
-              min="5"
-              max="480"
-              value={settings.security.sessionTimeout}
-              onChange={(e) => set('security', 'sessionTimeout', Number(e.target.value))}
-              className="mt-1 block w-28 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-            <p className="mt-1 text-xs text-gray-500">Entre 5 e 480 minutos</p>
-          </div>
-          <label className="flex items-center justify-between cursor-pointer">
-            <div>
-              <span className="text-sm font-medium text-gray-700">
-                Autenticação de dois fatores (MFA)
-              </span>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Exige verificação adicional no login de admins
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.security.requireMfa}
-              onChange={(e) => set('security', 'requireMfa', e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-          </label>
-        </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }

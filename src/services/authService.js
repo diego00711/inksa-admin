@@ -216,6 +216,12 @@ const authService = {
     });
   },
 
+  // -------- Permissões --------
+
+  async getPermissions(userId) {
+    return authorizedRequest(`/api/admin/permissions/${userId}`);
+  },
+
   // -------- Helpers --------
 
   getToken() {

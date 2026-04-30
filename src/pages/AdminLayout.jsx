@@ -1,5 +1,5 @@
-import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Home,
@@ -18,39 +18,53 @@ import {
   UserCircle,
 } from 'lucide-react';
 
+const NAV_LINKS = [
+  { to: '/', label: 'Dashboard', icon: Home, page: 'dashboard' },
+  { to: '/usuarios', label: 'Usuários', icon: Users, page: 'usuarios' },
+  { to: '/restaurantes', label: 'Restaurantes', icon: Store, page: 'restaurantes' },
+  { to: '/avaliacoes', label: 'Avaliações & Gamificação', icon: Star, page: 'avaliacoes' },
+  { to: '/banners', label: 'Banners', icon: Image, page: 'banners' },
+  { to: '/logs', label: 'Logs', icon: FileText, page: 'logs' },
+  { to: '/admins', label: 'Administradores', icon: Shield, page: 'administradores', matchers: ['/admins', '/administradores'] },
+  { to: '/relatorios', label: 'Relatórios', icon: PieChart, page: 'relatorios' },
+  { to: '/financeiro', label: 'Financeiro', icon: DollarSign, page: 'financeiro' },
+  { to: '/financeiro/payouts', label: 'Payouts', icon: null, page: 'payouts', matchers: ['/financeiro/payouts'] },
+  { to: '/suporte', label: 'Suporte', icon: LifeBuoy, page: 'suporte' },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings, page: 'configuracoes' },
+  { to: '/integracoes', label: 'Integrações', icon: Link2, page: 'integracoes' },
+  { to: '/perfil', label: 'Meu Perfil', icon: UserCircle, page: null },
+];
+
 export function AdminLayout() {
-  const { logout, user } = useAuth();
+  const { logout, user, hasPermission, permissionsLoaded } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
   const normalizedPath = React.useMemo(() => {
     if (!pathname) return '/';
     const trimmed = pathname.replace(/\/+$/, '');
     return trimmed.length > 0 ? trimmed : '/';
   }, [pathname]);
 
-  const navLinks = [
-    { to: '/', label: 'Dashboard', icon: <Home className="mr-3 h-5 w-5" /> },
-    { to: '/usuarios', label: 'Usuários', icon: <Users className="mr-3 h-5 w-5" /> },
-    { to: '/restaurantes', label: 'Restaurantes', icon: <Store className="mr-3 h-5 w-5" /> },
-    { to: '/avaliacoes', label: 'Avaliações & Gamificação', icon: <Star className="mr-3 h-5 w-5" /> },
-    { to: '/banners', label: 'Banners', icon: <Image className="mr-3 h-5 w-5" /> },
-    { to: '/logs', label: 'Logs', icon: <FileText className="mr-3 h-5 w-5" /> },
-    {
-      to: '/admins',
-      label: 'Administradores',
-      icon: <Shield className="mr-3 h-5 w-5" />,
-      matchers: ['/admins', '/administradores'],
-    },
-    { to: '/relatorios', label: 'Relatórios', icon: <PieChart className="mr-3 h-5 w-5" /> },
+  const visibleLinks = React.useMemo(
+    () => NAV_LINKS.filter((link) => hasPermission(link.page)),
+    [hasPermission],
+  );
 
-    // --- Bloco Financeiro ---
-    { to: '/financeiro', label: 'Financeiro', icon: <DollarSign className="mr-3 h-5 w-5" /> },
-    { to: '/financeiro/payouts', label: 'Payouts', icon: <span className="mr-3">💸</span>, matchers: ['/financeiro/payouts'] },
-
-    { to: '/suporte', label: 'Suporte', icon: <LifeBuoy className="mr-3 h-5 w-5" /> },
-    { to: '/configuracoes', label: 'Configurações', icon: <Settings className="mr-3 h-5 w-5" /> },
-    { to: '/integracoes', label: 'Integrações', icon: <Link2 className="mr-3 h-5 w-5" /> },
-    { to: '/perfil', label: 'Meu Perfil', icon: <UserCircle className="mr-3 h-5 w-5" /> },
-  ];
+  useEffect(() => {
+    if (!permissionsLoaded) return;
+    const activeLink = NAV_LINKS.find((link) => {
+      if (!link.page) return false;
+      const matchers = link.matchers ?? [link.to];
+      return matchers.some((m) => {
+        const nm = m.replace(/\/+$/, '') || '/';
+        return normalizedPath === nm || normalizedPath.startsWith(`${nm}/`);
+      });
+    });
+    if (activeLink && !hasPermission(activeLink.page)) {
+      navigate('/', { replace: true });
+    }
+  }, [permissionsLoaded, normalizedPath, hasPermission, navigate]);
 
   const isLinkActive = (link) => {
     const baseMatchers = link.matchers ?? [link.to];
@@ -70,19 +84,26 @@ export function AdminLayout() {
         <div className="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
           Inksa Admin
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition ${
-                isLinkActive(link) ? 'bg-gray-700' : ''
-              }`}
-            >
-              {link.icon}
-              {link.label}
-            </Link>
-          ))}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          {visibleLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition ${
+                  isLinkActive(link) ? 'bg-gray-700' : ''
+                }`}
+              >
+                {Icon ? (
+                  <Icon className="mr-3 h-5 w-5" />
+                ) : (
+                  <span className="mr-3">💸</span>
+                )}
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
         {user && (
           <div className="px-4 py-3 border-t border-gray-700 bg-gray-900/40">

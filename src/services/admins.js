@@ -97,11 +97,24 @@ async function deleteAdmin(adminId) {
   });
 }
 
+async function getPermissions(userId) {
+  return request(`/api/admin/permissions/${userId}`);
+}
+
+async function updatePermissions(userId, { role, pages }) {
+  return request(`/api/admin/permissions/${userId}`, {
+    method: 'PUT',
+    body: { role, pages },
+  });
+}
+
 const adminsService = {
   listAdmins,
   createAdmin,
   updateAdmin,
   deleteAdmin,
+  getPermissions,
+  updatePermissions,
 };
 
 export default adminsService;

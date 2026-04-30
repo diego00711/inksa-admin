@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
+  KeyRound,
   Loader2,
   Mail,
   Plus,
@@ -9,25 +10,31 @@ import {
   ShieldCheck,
   Trash2,
   UserPlus,
+  X,
 } from 'lucide-react';
 import adminsService from '../services/admins';
 
 const ROLE_OPTIONS = [
-  {
-    value: 'super_admin',
-    label: 'Super Admin',
-    description: 'Acesso completo a todas as áreas e configurações.',
-  },
-  {
-    value: 'manager',
-    label: 'Gerente',
-    description: 'Gerencia operações diárias e equipes internas.',
-  },
-  {
-    value: 'support',
-    label: 'Suporte',
-    description: 'Visualiza dados e auxilia restaurantes e usuários.',
-  },
+  { value: 'super_admin', label: 'Super Admin', description: 'Acesso completo a todas as áreas e configurações.' },
+  { value: 'admin', label: 'Admin', description: 'Acesso amplo com permissões configuráveis.' },
+  { value: 'operator', label: 'Operador', description: 'Acesso operacional limitado às páginas permitidas.' },
+  { value: 'viewer', label: 'Visualizador', description: 'Somente leitura nas páginas permitidas.' },
+];
+
+const PAGE_OPTIONS = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'usuarios', label: 'Usuários' },
+  { key: 'restaurantes', label: 'Restaurantes' },
+  { key: 'avaliacoes', label: 'Avaliações & Gamificação' },
+  { key: 'banners', label: 'Banners' },
+  { key: 'logs', label: 'Logs' },
+  { key: 'administradores', label: 'Administradores' },
+  { key: 'relatorios', label: 'Relatórios' },
+  { key: 'financeiro', label: 'Financeiro' },
+  { key: 'payouts', label: 'Payouts' },
+  { key: 'suporte', label: 'Suporte' },
+  { key: 'configuracoes', label: 'Configurações' },
+  { key: 'integracoes', label: 'Integrações' },
 ];
 
 const STATUS_PRESETS = {
@@ -50,7 +57,7 @@ const FALLBACK_ADMINS = [
     id: 'fallback-1',
     name: 'Administrador de Exemplo',
     email: 'admin@inksa.com',
-    role: 'manager',
+    role: 'admin',
     status: 'ativo',
     lastLogin: new Date().toISOString(),
     isOffline: false,
@@ -95,7 +102,7 @@ function adaptDraftToAdmin(draft) {
     id: generatedId,
     name: draft.name || 'Convite sem nome',
     email: draft.email || '',
-    role: draft.role || 'manager',
+    role: draft.role || 'admin',
     status: 'pendente',
     lastLogin: null,
     isOffline: true,
@@ -128,10 +135,10 @@ function normalizeAdmin(raw) {
       'Administrador sem nome',
     ) || 'Administrador sem nome';
 
-  const roleValue = (raw.role ?? raw.permission ?? raw.access_level ?? 'manager').toString();
+  const roleValue = (raw.role ?? raw.permission ?? raw.access_level ?? 'admin').toString();
   const normalizedRole = ROLE_OPTIONS.find(({ value }) => value === roleValue)
     ? roleValue
-    : 'manager';
+    : 'admin';
 
   const statusCandidate = (raw.status ?? raw.state ?? raw.invite_status ?? (raw.is_active ? 'active' : 'pending')).toString().toLowerCase();
 
@@ -178,12 +185,14 @@ export function AdminsPage() {
   const [formValues, setFormValues] = useState({
     name: '',
     email: '',
-    role: ROLE_OPTIONS[1].value,
+    role: 'admin',
   });
+  const [formPages, setFormPages] = useState([]);
   const [formError, setFormError] = useState('');
   const [feedback, setFeedback] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [permModal, setPermModal] = useState(null);
 
   const getNormalizedDrafts = useCallback(() => {
     const drafts = readDraftInvites();
@@ -400,10 +409,16 @@ export function AdminsPage() {
             (admin) => admin.id !== normalized.id && admin.id !== FALLBACK_ADMINS[0].id
           ),
         ]);
+        if (normalized.id) {
+          adminsService
+            .updatePermissions(normalized.id, { role: payload.role, pages: formPages })
+            .catch(() => {});
+        }
       }
 
       setFeedback('Convite enviado com sucesso! O administrador receberá um email com as instruções.');
-      setFormValues({ name: '', email: '', role: formValues.role });
+      setFormValues({ name: '', email: '', role: 'admin' });
+      setFormPages([]);
     } catch (err) {
       console.error('Falha ao criar administrador', err);
       const offlineDraft = {
@@ -427,6 +442,7 @@ export function AdminsPage() {
           return adminEmail !== draftEmail && !isFallback;
         }),
       ]);
+      setFormPages([]);
 
       setFeedback(
         'Falha ao conectar com o servidor. O convite foi salvo localmente e pode ser reenviado quando a conexão for restabelecida.'
@@ -434,6 +450,39 @@ export function AdminsPage() {
       setFormError(err.message || 'Não foi possível enviar o convite agora.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openPermModal = async (admin) => {
+    if (admin.isOffline) return;
+    setPermModal({ admin, role: admin.role || 'admin', pages: [], loading: true, saving: false });
+    try {
+      const result = await adminsService.getPermissions(admin.id);
+      const data = result?.data ?? result ?? {};
+      setPermModal((prev) => prev && {
+        ...prev,
+        role: data.role || admin.role || 'admin',
+        pages: Array.isArray(data.pages) ? data.pages : [],
+        loading: false,
+      });
+    } catch {
+      setPermModal((prev) => prev && { ...prev, loading: false });
+    }
+  };
+
+  const savePermissions = async () => {
+    if (!permModal) return;
+    setPermModal((prev) => prev && { ...prev, saving: true });
+    try {
+      await adminsService.updatePermissions(permModal.admin.id, {
+        role: permModal.role,
+        pages: permModal.pages,
+      });
+      setPermModal(null);
+      setFeedback(`Permissões de ${permModal.admin.name} atualizadas com sucesso.`);
+    } catch (err) {
+      setPermModal((prev) => prev && { ...prev, saving: false });
+      setFeedback(`Falha ao salvar permissões: ${err.message}`);
     }
   };
 
@@ -628,6 +677,16 @@ export function AdminsPage() {
                             </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1.5">
+                              {!admin.isOffline && (
+                                <button
+                                  type="button"
+                                  onClick={() => openPermModal(admin)}
+                                  title="Permissões"
+                                  className="inline-flex items-center gap-1 rounded border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                                >
+                                  <KeyRound className="h-3.5 w-3.5" /> Permissões
+                                </button>
+                              )}
                               {admin.status === 'ativo' ? (
                                 <button
                                   type="button"
@@ -733,6 +792,31 @@ export function AdminsPage() {
                 </p>
               </div>
 
+              {formValues.role !== 'super_admin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Páginas com acesso
+                  </label>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {PAGE_OPTIONS.map((page) => (
+                      <label key={page.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formPages.includes(page.key)}
+                          onChange={(e) =>
+                            setFormPages((prev) =>
+                              e.target.checked ? [...prev, page.key] : prev.filter((p) => p !== page.key)
+                            )
+                          }
+                          className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        {page.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {formError && <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">{formError}</div>}
               {feedback && !formError && (
                 <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{feedback}</div>
@@ -772,6 +856,97 @@ export function AdminsPage() {
           </div>
         </div>
       </section>
+
+      {/* Permissions Modal */}
+      {permModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setPermModal(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPermModal(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Permissões</h2>
+            <p className="text-sm text-gray-500 mb-4 truncate">{permModal.admin.name}</p>
+
+            {permModal.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Função</label>
+                  <select
+                    value={permModal.role}
+                    onChange={(e) => setPermModal((prev) => prev && { ...prev, role: e.target.value })}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  >
+                    {ROLE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {permModal.role !== 'super_admin' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Páginas com acesso</label>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-48 overflow-y-auto">
+                      {PAGE_OPTIONS.map((page) => (
+                        <label key={page.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={permModal.pages.includes(page.key)}
+                            onChange={(e) =>
+                              setPermModal((prev) =>
+                                prev && {
+                                  ...prev,
+                                  pages: e.target.checked
+                                    ? [...prev.pages, page.key]
+                                    : prev.pages.filter((p) => p !== page.key),
+                                }
+                              )
+                            }
+                            className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          {page.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPermModal(null)}
+                    className="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={savePermissions}
+                    disabled={permModal.saving}
+                    className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {permModal.saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
