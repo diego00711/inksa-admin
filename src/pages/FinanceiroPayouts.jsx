@@ -1,5 +1,5 @@
 // src/pages/FinanceiroPayouts.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   listPayouts,
   processPayouts,
@@ -7,16 +7,110 @@ import {
   cancelPayout,
   getPayout,
 } from "../services/payouts";
+import { NotificationContext } from "../context/NotificationContext";
+import { Loader2 } from "lucide-react";
+import PayoutsProcessModal from "../components/PayoutsProcessModal";
+
+// Inline modal for marking a payout as paid
+function MarkPaidModal({ open, onClose, onConfirm, loading }) {
+  const [method, setMethod] = useState("pix");
+  const [ref, setRef] = useState("");
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-[380px] rounded-lg bg-white p-5 shadow-xl">
+        <h3 className="text-lg font-semibold mb-4">Marcar como pago</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Método de pagamento</label>
+            <input
+              type="text"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              placeholder='Ex: "pix", "transfer"'
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Referência externa (opcional)</label>
+            <input
+              type="text"
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder="ID de transação, etc."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm({ payment_method: method, payment_ref: ref })}
+            disabled={loading || !method.trim()}
+            className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Confirmar pagamento"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Inline modal to confirm cancellation
+function ConfirmCancelModal({ open, onClose, onConfirm, loading }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-[340px] rounded-lg bg-white p-5 shadow-xl">
+        <h3 className="text-lg font-semibold mb-2">Cancelar payout</h3>
+        <p className="text-sm text-gray-600 mb-5">Tem certeza que deseja cancelar este payout? Esta ação não pode ser desfeita.</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} disabled={loading} className="rounded-md border border-gray-300 px-4 py-2 text-sm">
+            Não
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Sim, cancelar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function FinanceiroPayouts() {
+  const { notify } = useContext(NotificationContext);
+
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [partnerType, setPartnerType] = useState(""); // "", "restaurant", "delivery"
-  const [status, setStatus] = useState(""); // "", "pending", "paid", "cancelled"
+  const [partnerType, setPartnerType] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const limit = 20;
+
+  // Modal states
+  const [processModalOpen, setProcessModalOpen] = useState(false);
+  const [processLoading, setProcessLoading] = useState(false);
+
+  const [markPaidTarget, setMarkPaidTarget] = useState(null); // payout id
+  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+
+  const [cancelTarget, setCancelTarget] = useState(null); // payout id
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   const params = useMemo(
     () => ({
@@ -28,7 +122,7 @@ export default function FinanceiroPayouts() {
     [partnerType, status, page]
   );
 
-  async function fetchPage() {
+  const fetchPage = useCallback(async () => {
     try {
       setLoading(true);
       const res = await listPayouts(params);
@@ -36,74 +130,74 @@ export default function FinanceiroPayouts() {
       setTotal(res.total || 0);
     } catch (e) {
       console.error(e);
-      alert(`Falha ao carregar payouts: ${e.message}`);
+      notify(`Falha ao carregar payouts: ${e.message}`, "error");
     } finally {
       setLoading(false);
     }
-  }
+  }, [params, notify]);
 
   useEffect(() => {
     fetchPage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partnerType, status, page]);
+  }, [fetchPage]);
 
   const páginas = Math.max(1, Math.ceil(total / limit));
 
-  async function onProcessClick() {
-    const partner_type = prompt('Digite o tipo de parceiro para gerar ("restaurant" ou "delivery")', "delivery");
-    if (!partner_type) return;
-    const cycle_type = prompt('Ciclo ("weekly", "bi-weekly" ou "monthly")', "weekly") || "weekly";
+  async function onProcessConfirm({ partner_type, cycle_type }) {
+    setProcessLoading(true);
     try {
-      setLoading(true);
       const res = await processPayouts({ partner_type, cycle_type });
-      alert(`Processados: ${res.generated_count} payouts.`);
+      notify(`Processados: ${res.generated_count ?? 0} payouts.`, "success");
+      setProcessModalOpen(false);
       setPage(0);
       await fetchPage();
     } catch (e) {
       console.error(e);
-      alert(`Erro ao processar: ${e.message}`);
+      notify(`Erro ao processar: ${e.message}`, "error");
     } finally {
-      setLoading(false);
+      setProcessLoading(false);
     }
   }
 
-  async function onMarkPaid(id) {
-    const method = prompt('Método (ex: "pix", "transfer")', "pix");
-    const ref = prompt("Ref. externa (opcional)", "");
+  async function onMarkPaidConfirm({ payment_method, payment_ref }) {
+    if (!markPaidTarget) return;
+    setMarkPaidLoading(true);
     try {
-      setLoading(true);
-      await markPayoutPaid(id, { payment_method: method, payment_ref: ref });
+      await markPayoutPaid(markPaidTarget, { payment_method, payment_ref });
+      notify("Payout marcado como pago!", "success");
+      setMarkPaidTarget(null);
       await fetchPage();
     } catch (e) {
       console.error(e);
-      alert(`Erro ao marcar pago: ${e.message}`);
+      notify(`Erro ao marcar pago: ${e.message}`, "error");
     } finally {
-      setLoading(false);
+      setMarkPaidLoading(false);
     }
   }
 
-  async function onCancel(id) {
-    if (!confirm("Confirmar cancelamento deste payout?")) return;
+  async function onCancelConfirm() {
+    if (!cancelTarget) return;
+    setCancelLoading(true);
     try {
-      setLoading(true);
-      await cancelPayout(id);
+      await cancelPayout(cancelTarget);
+      notify("Payout cancelado.", "success");
+      setCancelTarget(null);
       await fetchPage();
     } catch (e) {
       console.error(e);
-      alert(`Erro ao cancelar: ${e.message}`);
+      notify(`Erro ao cancelar: ${e.message}`, "error");
     } finally {
-      setLoading(false);
+      setCancelLoading(false);
     }
   }
 
   async function onView(id) {
     try {
       const res = await getPayout(id);
-      console.log(res);
-      alert(`Payout ${id}\nStatus: ${res?.payout?.status}\nNet: ${res?.payout?.total_net}`);
+      // Show details in a notification — replacing alert()
+      notify(`Payout ${id} | Status: ${res?.payout?.status ?? "—"} | Líquido: ${res?.payout?.total_net ?? "—"}`, "info", 6000);
     } catch (e) {
       console.error(e);
-      alert(`Erro ao carregar detalhes: ${e.message}`);
+      notify(`Erro ao carregar detalhes: ${e.message}`, "error");
     }
   }
 
@@ -135,7 +229,7 @@ export default function FinanceiroPayouts() {
 
           <button
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
-            onClick={onProcessClick}
+            onClick={() => setProcessModalOpen(true)}
             disabled={loading}
           >
             Nova solicitação
@@ -162,28 +256,43 @@ export default function FinanceiroPayouts() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="px-3 py-3" colSpan={11}>Carregando…</td></tr>
+              <tr>
+                <td className="px-3 py-6 text-center" colSpan={11}>
+                  <div className="flex items-center justify-center gap-2 text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando…
+                  </div>
+                </td>
+              </tr>
             ) : items.length === 0 ? (
-              <tr><td className="px-3 py-3" colSpan={11}>Nenhum registro.</td></tr>
+              <tr><td className="px-3 py-6 text-center text-gray-400" colSpan={11}>Nenhum registro encontrado.</td></tr>
             ) : (
               items.map((p) => (
-                <tr key={p.id} className="border-t">
+                <tr key={p.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2">{p.id}</td>
-                  <td className="px-3 py-2">{p.partner_type}</td>
+                  <td className="px-3 py-2 capitalize">{p.partner_type}</td>
                   <td className="px-3 py-2">{p.partner_id}</td>
                   <td className="px-3 py-2">{Number(p.total_gross || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                   <td className="px-3 py-2">{Number(p.commission_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                   <td className="px-3 py-2 font-semibold">{Number(p.total_net || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  <td className="px-3 py-2">{p.status}</td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      p.status === 'paid' ? 'bg-green-100 text-green-800' :
+                      p.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {p.status}
+                    </span>
+                  </td>
                   <td className="px-3 py-2">{p.payment_method || "-"}</td>
                   <td className="px-3 py-2">{p.payment_ref || "-"}</td>
-                  <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString() : "-"}</td>
+                  <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString('pt-BR') : "-"}</td>
                   <td className="px-3 py-2 space-x-2">
-                    <button className="text-indigo-600 hover:underline" onClick={() => onView(p.id)}>Ver</button>
+                    <button className="text-indigo-600 hover:underline text-xs" onClick={() => onView(p.id)}>Ver</button>
                     {p.status === "pending" && (
                       <>
-                        <button className="text-green-600 hover:underline" onClick={() => onMarkPaid(p.id)}>Marcar pago</button>
-                        <button className="text-red-600 hover:underline" onClick={() => onCancel(p.id)}>Cancelar</button>
+                        <button className="text-green-600 hover:underline text-xs" onClick={() => setMarkPaidTarget(p.id)}>Marcar pago</button>
+                        <button className="text-red-600 hover:underline text-xs" onClick={() => setCancelTarget(p.id)}>Cancelar</button>
                       </>
                     )}
                   </td>
@@ -194,9 +303,9 @@ export default function FinanceiroPayouts() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between text-sm text-gray-600">
         <div>Total: {total}</div>
-        <div className="space-x-2">
+        <div className="flex items-center gap-2">
           <button
             className="px-3 py-1 border rounded disabled:opacity-50"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -204,9 +313,7 @@ export default function FinanceiroPayouts() {
           >
             Anterior
           </button>
-        </div>
-        <div>Página {page + 1} / {páginas}</div>
-        <div className="space-x-2">
+          <span>Página {page + 1} / {páginas}</span>
           <button
             className="px-3 py-1 border rounded disabled:opacity-50"
             onClick={() => setPage((p) => Math.min(páginas - 1, p + 1))}
@@ -216,6 +323,28 @@ export default function FinanceiroPayouts() {
           </button>
         </div>
       </div>
+
+      {/* Modals */}
+      <PayoutsProcessModal
+        open={processModalOpen}
+        onClose={() => setProcessModalOpen(false)}
+        onConfirm={onProcessConfirm}
+        loading={processLoading}
+      />
+
+      <MarkPaidModal
+        open={!!markPaidTarget}
+        onClose={() => setMarkPaidTarget(null)}
+        onConfirm={onMarkPaidConfirm}
+        loading={markPaidLoading}
+      />
+
+      <ConfirmCancelModal
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={onCancelConfirm}
+        loading={cancelLoading}
+      />
     </div>
   );
 }

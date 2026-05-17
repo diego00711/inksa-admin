@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   KeyRound,
@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import adminsService from '../services/admins';
+import { NotificationContext } from '../context/NotificationContext';
 
 const ROLE_OPTIONS = [
   { value: 'super_admin', label: 'Super Admin', description: 'Acesso completo a todas as áreas e configurações.' },
@@ -177,6 +178,7 @@ function normalizeAdmin(raw) {
 }
 
 export function AdminsPage() {
+  const { notify } = useContext(NotificationContext);
   const [admins, setAdmins] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -241,9 +243,13 @@ export function AdminsPage() {
       setAdmins((prev) =>
         prev.map((a) => (a.id === admin.id ? { ...a, status: 'inativo' } : a))
       );
-      setFeedback(`${admin.name} foi desativado com sucesso.`);
+      const msg = `${admin.name} foi desativado com sucesso.`;
+      setFeedback(msg);
+      notify(msg, 'success');
     } catch (err) {
-      setFeedback(`Falha ao desativar: ${err.message}`);
+      const msg = `Falha ao desativar: ${err.message}`;
+      setFeedback(msg);
+      notify(msg, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -257,9 +263,13 @@ export function AdminsPage() {
       setAdmins((prev) =>
         prev.map((a) => (a.id === admin.id ? { ...a, status: 'ativo' } : a))
       );
-      setFeedback(`${admin.name} foi reativado com sucesso.`);
+      const msg = `${admin.name} foi reativado com sucesso.`;
+      setFeedback(msg);
+      notify(msg, 'success');
     } catch (err) {
-      setFeedback(`Falha ao reativar: ${err.message}`);
+      const msg = `Falha ao reativar: ${err.message}`;
+      setFeedback(msg);
+      notify(msg, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -276,9 +286,13 @@ export function AdminsPage() {
     try {
       await adminsService.deleteAdmin(admin.id);
       setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
-      setFeedback(`${admin.name} foi removido.`);
+      const msg = `${admin.name} foi removido.`;
+      setFeedback(msg);
+      notify(msg, 'success');
     } catch (err) {
-      setFeedback(`Falha ao remover: ${err.message}`);
+      const msg = `Falha ao remover: ${err.message}`;
+      setFeedback(msg);
+      notify(msg, 'error');
     } finally {
       setActionLoading(null);
       setConfirmDeleteId(null);
@@ -416,7 +430,9 @@ export function AdminsPage() {
         }
       }
 
-      setFeedback('Convite enviado com sucesso! O administrador receberá um email com as instruções.');
+      const successMsg = 'Convite enviado com sucesso! O administrador receberá um email com as instruções.';
+      setFeedback(successMsg);
+      notify(successMsg, 'success');
       setFormValues({ name: '', email: '', role: 'admin' });
       setFormPages([]);
     } catch (err) {
@@ -478,11 +494,15 @@ export function AdminsPage() {
         role: permModal.role,
         pages: permModal.pages,
       });
+      const msg = `Permissões de ${permModal.admin.name} atualizadas com sucesso.`;
       setPermModal(null);
-      setFeedback(`Permissões de ${permModal.admin.name} atualizadas com sucesso.`);
+      setFeedback(msg);
+      notify(msg, 'success');
     } catch (err) {
       setPermModal((prev) => prev && { ...prev, saving: false });
-      setFeedback(`Falha ao salvar permissões: ${err.message}`);
+      const msg = `Falha ao salvar permissões: ${err.message}`;
+      setFeedback(msg);
+      notify(msg, 'error');
     }
   };
 

@@ -1,10 +1,12 @@
 // Local: src/pages/RestaurantesPage.jsx
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import AuthService from '../services/authService';
 import { Loader2, Pencil, Star, Zap } from 'lucide-react';
+import { NotificationContext } from '../context/NotificationContext';
 
 export function RestaurantesPage() {
+  const { notify } = useContext(NotificationContext);
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,7 +14,6 @@ export function RestaurantesPage() {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState(null);
-  // NOVO: Estado para controlar o loading do botão de salvar
   const [isSaving, setIsSaving] = useState(false);
 
   const extractRatingInfo = (restaurant) => {
@@ -133,17 +134,17 @@ export function RestaurantesPage() {
       await AuthService.updateRestaurant(editingRestaurant.id, editingRestaurant);
   
       // 2. Atualiza a lista local para refletir a mudança instantaneamente na UI
-      setRestaurants(prevRestaurants => 
-        prevRestaurants.map(r => 
+      setRestaurants(prevRestaurants =>
+        prevRestaurants.map(r =>
           r.id === editingRestaurant.id ? editingRestaurant : r
         )
       );
-      
-      alert('Restaurante atualizado com sucesso!');
+
+      notify('Restaurante atualizado com sucesso!', 'success');
       handleCloseModal();
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert(`Erro ao salvar as alterações: ${error.message}`);
+      notify(`Erro ao salvar as alterações: ${error.message}`, 'error');
     } finally {
       setIsSaving(false);
     }

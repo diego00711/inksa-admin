@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Lock, Clock, CheckCircle, AlertCircle, Camera, User, Mail, Briefcase, Calendar } from 'lucide-react';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
+import { NotificationContext } from '../context/NotificationContext';
 
 function getDisplayName(profile, fallbackUser) {
   return (
@@ -36,6 +37,7 @@ function getRole(profile, fallbackUser) {
 
 export default function ProfilePage() {
   const { user: authUser, refreshUser } = useAuth();
+  const { notify } = useContext(NotificationContext);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -156,9 +158,12 @@ export default function ProfilePage() {
         const url = data.data?.avatar_url || data.avatar_url;
         if (url) setAvatarUrl(url);
         refreshUser();
+        notify('Foto de perfil atualizada com sucesso!', 'success');
+      } else {
+        notify('Falha ao fazer upload da imagem. A pré-visualização é temporária.', 'error');
       }
     } catch {
-      // preview permanece mesmo se o upload falhar
+      notify('Erro inesperado no upload da imagem.', 'error');
     } finally {
       setAvatarUploading(false);
     }

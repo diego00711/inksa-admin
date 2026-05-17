@@ -1,10 +1,13 @@
-// BannerManagementPage.jsx - VERSÃO COMPLETA E CORRIGIDA (Título Opcional)
+// BannerManagementPage.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
+import { NotificationContext } from '../context/NotificationContext';
+import { Loader2 } from 'lucide-react';
 
 const BannerManagementPage = () => {
+  const { notify } = useContext(NotificationContext);
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,6 +15,7 @@ const BannerManagementPage = () => {
   const [editingBanner, setEditingBanner] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const fileInputRef = useRef(null);
   
   const getInitialFormData = () => ({
@@ -141,11 +145,12 @@ const BannerManagementPage = () => {
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
-      alert(editingBanner ? 'Banner atualizado!' : 'Banner criado!');
+      notify(editingBanner ? 'Banner atualizado com sucesso!' : 'Banner criado com sucesso!', 'success');
       await loadBanners();
       resetForm();
     } catch (error) {
       setError('Erro ao salvar banner: ' + error.message);
+      notify('Erro ao salvar banner: ' + error.message, 'error');
     }
   };
 
@@ -164,13 +169,12 @@ const BannerManagementPage = () => {
     setError('');
   };
 
-  const handleDelete = async (banner) => {
-    if (!confirm(`Tem certeza que deseja deletar o banner "${banner.title || 'sem título'}"?`)) return;
-
+  const handleDeleteConfirmed = async (banner) => {
+    setConfirmDeleteId(null);
     try {
       setError('');
       const token = authService.getToken();
-      
+
       const response = await fetch(`${API_URL}/api/banners/${banner.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -181,10 +185,11 @@ const BannerManagementPage = () => {
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
-      alert('Banner deletado com sucesso!');
+      notify('Banner deletado com sucesso!', 'success');
       await loadBanners();
     } catch (error) {
       setError('Erro ao deletar banner: ' + error.message);
+      notify('Erro ao deletar banner: ' + error.message, 'error');
     }
   };
 
@@ -192,7 +197,7 @@ const BannerManagementPage = () => {
     try {
       setError('');
       const token = authService.getToken();
-      
+
       const response = await fetch(`${API_URL}/api/banners/${banner.id}/toggle-status`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -203,10 +208,11 @@ const BannerManagementPage = () => {
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
-      alert(`Banner ${banner.is_active ? 'desativado' : 'ativado'}!`);
+      notify(`Banner ${banner.is_active ? 'desativado' : 'ativado'} com sucesso!`, 'success');
       await loadBanners();
     } catch (error) {
       setError('Erro ao alterar status: ' + error.message);
+      notify('Erro ao alterar status: ' + error.message, 'error');
     }
   };
 
@@ -228,7 +234,12 @@ const BannerManagementPage = () => {
   };
 
   if (loading) {
-    return <div className="text-lg text-center py-10">Carregando banners...</div>;
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-500" />
+        <span className="ml-3 text-gray-500">Carregando banners...</span>
+      </div>
+    );
   }
 
   return (
@@ -354,10 +365,18 @@ const BannerManagementPage = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2">
                       <button onClick={() => handleEdit(banner)} className="text-indigo-600 hover:text-indigo-900">Editar</button>
                       <button onClick={() => handleToggleStatus(banner)} className={banner.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}>{banner.is_active ? 'Desativar' : 'Ativar'}</button>
-                      <button onClick={() => handleDelete(banner)} className="text-red-600 hover:text-red-900">Deletar</button>
+                      {confirmDeleteId === banner.id ? (
+                        <span className="flex items-center gap-1 text-xs">
+                          <span className="text-gray-600">Confirmar?</span>
+                          <button onClick={() => handleDeleteConfirmed(banner)} className="text-red-600 font-semibold hover:underline">Sim</button>
+                          <button onClick={() => setConfirmDeleteId(null)} className="text-gray-400 hover:underline">Não</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(banner.id)} className="text-red-600 hover:text-red-900">Deletar</button>
+                      )}
                     </div>
                   </td>
                 </tr>

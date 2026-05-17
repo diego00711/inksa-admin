@@ -4,7 +4,7 @@ import DateRangePicker from '../components/DateRangePicker';
 import KpiCard from '../components/KpiCard';
 import TransactionsTable from '../components/TransactionsTable';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, ShoppingCart, TicketPercent, Clock3, XCircle } from 'lucide-react';
+import { DollarSign, ShoppingCart, TicketPercent, Clock3, XCircle, Loader2, AlertCircle } from 'lucide-react';
 
 export default function FinanceDashboard() {
   const [range, setRange] = useState(() => {
@@ -16,6 +16,8 @@ export default function FinanceDashboard() {
   });
 
   const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState(null);
   const [series, setSeries] = useState([]);
   const [tx, setTx] = useState({ items: [], loading: true });
 
@@ -23,6 +25,8 @@ export default function FinanceDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    setMetricsLoading(true);
+    setMetricsError(null);
     (async () => {
       try {
         const [m, s] = await Promise.all([
@@ -38,7 +42,10 @@ export default function FinanceDashboard() {
         if (!cancelled) {
           setMetrics(null);
           setSeries([]);
+          setMetricsError(e?.message || 'Erro ao carregar métricas financeiras.');
         }
+      } finally {
+        if (!cancelled) setMetricsLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -63,30 +70,44 @@ export default function FinanceDashboard() {
         <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
       </div>
 
+      {metricsLoading && (
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando métricas…
+        </div>
+      )}
+
+      {metricsError && !metricsLoading && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {metricsError}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           title="Receita Total"
-          value={formatBRL(metrics?.total_revenue)}
+          value={metricsLoading ? '…' : formatBRL(metrics?.total_revenue)}
           icon={<DollarSign size={18} />}
         />
         <KpiCard
           title="Pedidos Hoje"
-          value={metrics?.orders_today ?? 0}
+          value={metricsLoading ? '…' : (metrics?.orders_today ?? 0)}
           icon={<ShoppingCart size={18} />}
         />
         <KpiCard
           title="Ticket Médio"
-          value={formatBRL(metrics?.avg_ticket)}
+          value={metricsLoading ? '…' : formatBRL(metrics?.avg_ticket)}
           icon={<TicketPercent size={18} />}
         />
         <KpiCard
           title="Pedidos em Andamento"
-          value={metrics?.orders_in_progress ?? 0}
+          value={metricsLoading ? '…' : (metrics?.orders_in_progress ?? 0)}
           icon={<Clock3 size={18} />}
         />
         <KpiCard
           title="Pedidos Cancelados"
-          value={metrics?.orders_canceled ?? 0}
+          value={metricsLoading ? '…' : (metrics?.orders_canceled ?? 0)}
           icon={<XCircle size={18} />}
         />
       </div>

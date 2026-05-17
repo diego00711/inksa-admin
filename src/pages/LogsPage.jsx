@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Search, RefreshCw, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
@@ -22,7 +22,7 @@ export default function LogsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchLogs = async (currentPage = 1) => {
+  const fetchLogs = useCallback(async (currentPage = 1) => {
     setLoading(true);
     setError(null);
     try {
@@ -62,15 +62,19 @@ export default function LogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actionFilter, search]);
 
+  // When filter changes, reset page and fetch
   useEffect(() => {
     setPage(1);
     fetchLogs(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFilter]);
 
+  // When page changes (and not triggered by actionFilter reset), fetch current page
   useEffect(() => {
     fetchLogs(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const filteredLogs = useMemo(() => {

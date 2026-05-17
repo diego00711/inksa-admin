@@ -13,7 +13,8 @@ import EvaluationsGamificationPage from './pages/EvaluationsGamificationPage';
 
 // Páginas premium
 import LogsPage from './pages/LogsPage';
-import AdminsPage, { AdminsPage as AdminsPageComponent } from './pages/AdminsPage';
+import AdminsPage from './pages/AdminsPage';
+const AdminsPageComponent = AdminsPage;
 import ReportsPage from './pages/ReportsPage';
 import FinanceDashboard from './pages/FinanceDashboard';
 import SupportPage from './pages/SupportPage';
