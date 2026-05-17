@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import authService from '../services/authService'; // Corrija o import para minúsculo
 import { Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+
+const PAGE_SIZE = 20;
 
 // Cores para o gráfico (personalizáveis para combinar com seu design)
 const COLORS = {
@@ -18,6 +20,10 @@ export function UsuariosPage() {
   const [error, setError] = useState(null); // Estado para armazenar erros
   const [activeTypeFilter, setActiveTypeFilter] = useState('todos'); // Filtro por tipo de usuário
   const [cityFilter, setCityFilter] = useState(''); // Novo estado para o filtro por cidade
+  const [currentPage, setCurrentPage] = useState(1); // Página atual para paginação client-side
+
+  // Ref para saber se os filtros mudaram e resetar a página
+  const prevFiltersRef = useRef({ activeTypeFilter, cityFilter });
 
   // Função para buscar usuários da API, memoizada com useCallback
   const fetchUsers = useCallback(async () => {
@@ -35,6 +41,15 @@ export function UsuariosPage() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  }, [activeTypeFilter, cityFilter]);
+
+  // Reseta página ao mudar filtros
+  useEffect(() => {
+    const prev = prevFiltersRef.current;
+    if (prev.activeTypeFilter !== activeTypeFilter || prev.cityFilter !== cityFilter) {
+      setCurrentPage(1);
+      prevFiltersRef.current = { activeTypeFilter, cityFilter };
     }
   }, [activeTypeFilter, cityFilter]);
 
@@ -61,6 +76,17 @@ export function UsuariosPage() {
     const cities = users.map(user => user.city).filter(Boolean);
     return [...new Set(cities)].sort();
   }, [users]);
+
+  // Paginação client-side
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return users.slice(start, start + PAGE_SIZE);
+  }, [users, currentPage]);
+
+  // Intervalo exibido no rodapé de paginação
+  const rangeStart = users.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, users.length);
 
   const filterOptions = ['todos', 'client', 'restaurant', 'delivery', 'admin'];
 
@@ -168,7 +194,7 @@ export function UsuariosPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
+                {paginatedUsers.map(user => (
                   <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                       {user.full_name || 'Não disponível'}
@@ -196,6 +222,34 @@ export function UsuariosPage() {
           )}
         </div>
       </div>
+
+      {/* Controles de paginação */}
+      {!isLoading && !error && users.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
+          <span className="text-sm text-gray-600">
+            Mostrando {rangeStart}–{rangeEnd} de {users.length} usuários
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Anterior
+            </button>
+            <span className="px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-800 text-white min-w-[2.5rem] text-center">
+              {currentPage}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Próximo →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
