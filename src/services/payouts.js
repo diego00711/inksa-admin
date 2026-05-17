@@ -1,5 +1,6 @@
 // src/services/payouts.js
 import { API_BASE_URL as API } from './api';
+import { apiFetch } from './apiClient';
 const ADMIN_PAYOUTS = `${API}/api/admin/payouts`;
 
 function authHeaders() {
@@ -20,7 +21,7 @@ export async function listPayouts(params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== "")
   ).toString();
-  const r = await fetch(`${ADMIN_PAYOUTS}${qs ? `?${qs}` : ""}`, {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}${qs ? `?${qs}` : ""}`, {
     headers: { ...authHeaders() },
     credentials: "include",
   });
@@ -29,7 +30,7 @@ export async function listPayouts(params = {}) {
 
 // Detalhe
 export async function getPayout(id) {
-  const r = await fetch(`${ADMIN_PAYOUTS}/${id}`, {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}`, {
     headers: { ...authHeaders() },
     credentials: "include",
   });
@@ -38,7 +39,7 @@ export async function getPayout(id) {
 
 // Processar/gerar payouts a partir de pedidos entregues
 export async function processPayouts({ partner_type, cycle_type = "weekly" }) {
-  const r = await fetch(`${ADMIN_PAYOUTS}/process`, {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     credentials: "include",
@@ -49,7 +50,7 @@ export async function processPayouts({ partner_type, cycle_type = "weekly" }) {
 
 // Marcar como pago
 export async function markPayoutPaid(id, { payment_method, payment_ref, paid_at } = {}) {
-  const r = await fetch(`${ADMIN_PAYOUTS}/${id}/mark-paid`, {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/mark-paid`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     credentials: "include",
@@ -60,7 +61,7 @@ export async function markPayoutPaid(id, { payment_method, payment_ref, paid_at 
 
 // Cancelar
 export async function cancelPayout(id) {
-  const r = await fetch(`${ADMIN_PAYOUTS}/${id}/cancel`, {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/cancel`, {
     method: "POST",
     headers: { ...authHeaders() },
     credentials: "include",

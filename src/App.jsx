@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { useContext, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { NotificationContext } from './context/NotificationContext';
 import { Notifications } from './components/Notifications';
 
 import { LoginPage } from './pages/LoginPage';
@@ -26,11 +28,32 @@ import BannerManagementPage from './pages/BannerManagementPage';
 import FinanceiroPayouts from './pages/FinanceiroPayouts';
 import ProfilePage from './pages/ProfilePage';
 
+// Componente interno: escuta o evento global 'auth:unauthorized',
+// exibe notificação e redireciona para /login.
+// Precisa estar dentro de BrowserRouter para usar useNavigate.
+function AuthUnauthorizedListener() {
+  const { notify } = useContext(NotificationContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      notify('Sessão expirada, faça login novamente', 'error', 6000);
+      navigate('/login', { replace: true });
+    }
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [notify, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
         <BrowserRouter>
+          <AuthUnauthorizedListener />
           <Notifications />
           <Routes>
             <Route path="/login" element={<LoginPage />} />

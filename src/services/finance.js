@@ -1,4 +1,5 @@
 import { API_BASE_URL as API_BASE } from './api';
+import { apiFetch } from './apiClient';
 
 function getAuthToken() {
   try {
@@ -20,7 +21,7 @@ async function request(path, { method = 'GET', params, body, responseType = 'jso
     });
   }
 
-  const res = await fetch(url.toString(), {
+  const res = await apiFetch(url.toString(), {
     method,
     headers: {
       'Content-Type': 'application/json',

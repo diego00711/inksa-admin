@@ -1,5 +1,6 @@
 // src/services/evaluations.js
 import { API_BASE_URL } from './api';
+import { apiFetch } from './apiClient';
 
 const AUTH_TOKEN_KEY = 'adminAuthToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';
@@ -24,7 +25,7 @@ function buildUrl(path, params = {}) {
 async function request(path, { method = 'GET', params, body } = {}) {
   const token = getToken();
   const url = buildUrl(path, params);
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method,
     headers: {
       Accept: 'application/json',

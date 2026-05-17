@@ -1,13 +1,14 @@
 // src/services/bannerService.js
 
 import { API_BASE_URL } from './api';
+import { apiFetch } from './apiClient';
 const API_URL = `${API_BASE_URL}/api`;
 
 class BannerService {
   // Método auxiliar para fazer requisições autenticadas
   async makeRequest(endpoint, options = {}) {
     const token = localStorage.getItem('adminAuthToken');
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await apiFetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
@@ -74,7 +75,7 @@ class BannerService {
     formData.append('image', file);
 
     const token = localStorage.getItem('adminAuthToken');
-    const response = await fetch(`${API_URL}/banners/upload`, {
+    const response = await apiFetch(`${API_URL}/banners/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

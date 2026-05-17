@@ -2,6 +2,7 @@
 // -> Versão sem axios, usando fetch e endpoints /api/admin/*
 
 import { API_BASE_URL } from './api';
+import { apiFetch } from './apiClient';
 
 const AUTH_TOKEN_KEY = 'adminAuthToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';
@@ -15,7 +16,7 @@ function authHeaders() {
 }
 
 async function getJson(pathWithQuery) {
-  const res = await fetch(`${API_BASE_URL}${pathWithQuery}`, {
+  const res = await apiFetch(`${API_BASE_URL}${pathWithQuery}`, {
     method: 'GET',
     headers: authHeaders(),
   });
