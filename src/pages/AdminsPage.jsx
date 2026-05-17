@@ -53,18 +53,6 @@ const STATUS_PRESETS = {
   },
 };
 
-const FALLBACK_ADMINS = [
-  {
-    id: 'fallback-1',
-    name: 'Administrador de Exemplo',
-    email: 'admin@inksa.com',
-    role: 'admin',
-    status: 'ativo',
-    lastLogin: new Date().toISOString(),
-    isOffline: false,
-  },
-];
-
 const LOCAL_DRAFTS_KEY = 'inksaAdminDraftInvites';
 
 function readDraftInvites() {
@@ -351,15 +339,14 @@ export function AdminsPage() {
         }),
       ];
 
-      setAdmins(merged.length > 0 ? merged : FALLBACK_ADMINS);
+      setAdmins(merged);
     } catch (err) {
       setError(err.message || 'Não foi possível carregar os administradores.');
       const draftFallback = getNormalizedDrafts();
 
       setAdmins((prev) => {
         if (prev.length > 0) return prev;
-        if (draftFallback.length > 0) return draftFallback;
-        return FALLBACK_ADMINS;
+        return draftFallback;
       });
     } finally {
       setIsLoading(false);
@@ -419,9 +406,7 @@ export function AdminsPage() {
         removeDraftByEmail(normalized.email);
         setAdmins((prev) => [
           normalized,
-          ...prev.filter(
-            (admin) => admin.id !== normalized.id && admin.id !== FALLBACK_ADMINS[0].id
-          ),
+          ...prev.filter((admin) => admin.id !== normalized.id),
         ]);
         if (normalized.id) {
           adminsService
@@ -454,8 +439,7 @@ export function AdminsPage() {
         ...prev.filter((admin) => {
           const adminEmail = admin.email ? admin.email.toLowerCase() : '';
           const draftEmail = adaptedDraft.email ? adaptedDraft.email.toLowerCase() : '';
-          const isFallback = admin.id === FALLBACK_ADMINS[0].id;
-          return adminEmail !== draftEmail && !isFallback;
+          return adminEmail !== draftEmail;
         }),
       ]);
       setFormPages([]);
