@@ -144,8 +144,8 @@ export default function SupportPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Suporte &amp; Atendimento</h1>
-        <p className="text-gray-600">Centralize chamados, acompanhe SLAs e mantenha o time informado.</p>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Suporte &amp; Atendimento</h1>
+        <p className="text-gray-600 text-sm sm:text-base">Centralize chamados, acompanhe SLAs e mantenha o time informado.</p>
       </div>
 
       {/* Canais de contato */}

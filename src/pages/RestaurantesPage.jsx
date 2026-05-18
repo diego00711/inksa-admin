@@ -172,9 +172,9 @@ export function RestaurantesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Gestão de Restaurantes</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800">Gestão de Restaurantes</h1>
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-        <input type="text" placeholder="Buscar por nome do restaurante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+        <input type="text" placeholder="Buscar por nome do restaurante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-1/3 px-3 py-2 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
         <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
           <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
           <button onClick={() => setStatusFilter('aberto')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'aberto' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Abertos</button>
@@ -256,7 +256,7 @@ export function RestaurantesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button onClick={() => handleEditClick(restaurant)} className="font-medium text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto" title="Editar Restaurante">
+                    <button onClick={() => handleEditClick(restaurant)} className="font-medium text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto min-h-[44px] min-w-[44px]" title="Editar Restaurante">
                       <Pencil className="w-4 h-4 mr-1" />
                       Editar
                     </button>
@@ -270,9 +270,9 @@ export function RestaurantesPage() {
       </div>
 
       {isModalOpen && editingRestaurant && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center">
-          <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-2xl z-50 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Editar Restaurante</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center px-4">
+          <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-8 w-full max-w-2xl z-50 max-h-[90vh] overflow-y-auto mx-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">Editar Restaurante</h2>
             <form className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div className="md:col-span-2">
                 <label htmlFor="restaurant_name" className="block text-sm font-medium text-gray-700">Nome do Restaurante</label>

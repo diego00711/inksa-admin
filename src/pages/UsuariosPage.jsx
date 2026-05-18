@@ -93,14 +93,14 @@ export function UsuariosPage() {
   return (
     <div>
       {/* Cabeçalho e Botões de Filtro por Tipo */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Gestão de Usuários</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Gestão de Usuários</h1>
+        <div className="flex flex-wrap items-center gap-2">
           {filterOptions.map(filter => (
             <button
               key={filter}
               onClick={() => setActiveTypeFilter(filter)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors min-h-[44px] ${
                 activeTypeFilter === filter
                   ? 'bg-gray-800 text-white shadow-md'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -113,13 +113,13 @@ export function UsuariosPage() {
       </div>
 
       {/* Novo Filtro de Cidade */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
         <label htmlFor="city-filter" className="text-gray-700 font-medium">Filtrar por Cidade:</label>
         <select
           id="city-filter"
           value={cityFilter}
           onChange={(e) => setCityFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+          className="px-3 py-2 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
         >
           <option value="">Todas as Cidades</option>
           {uniqueCities.map(city => (

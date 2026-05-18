@@ -538,7 +538,7 @@ export function AdminsPage() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Administradores</h1>
+          <h1 className="text-xl sm:text-3xl font-semibold text-gray-900">Administradores</h1>
           <p className="text-gray-500 mt-1">
             Convide novos membros da equipe e acompanhe os acessos ao painel administrativo.
           </p>
@@ -568,7 +568,7 @@ export function AdminsPage() {
         </div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {metrics.map(({ label, value, icon: Icon, description }) => (
           <div key={label} className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
@@ -686,7 +686,7 @@ export function AdminsPage() {
                                   type="button"
                                   onClick={() => openPermModal(admin)}
                                   title="Permissões"
-                                  className="inline-flex items-center gap-1 rounded border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                                  className="inline-flex items-center gap-1 rounded border border-indigo-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 min-h-[44px]"
                                 >
                                   <KeyRound className="h-3.5 w-3.5" /> Permissões
                                 </button>
@@ -696,7 +696,7 @@ export function AdminsPage() {
                                   type="button"
                                   onClick={() => handleDeactivate(admin)}
                                   title="Desativar"
-                                  className="inline-flex items-center gap-1 rounded border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                                  className="inline-flex items-center gap-1 rounded border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 min-h-[44px]"
                                 >
                                   <Ban className="h-3.5 w-3.5" /> Desativar
                                 </button>
@@ -705,7 +705,7 @@ export function AdminsPage() {
                                   type="button"
                                   onClick={() => handleReactivate(admin)}
                                   title="Reativar"
-                                  className="inline-flex items-center gap-1 rounded border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                                  className="inline-flex items-center gap-1 rounded border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 min-h-[44px]"
                                 >
                                   <RotateCcw className="h-3.5 w-3.5" /> Reativar
                                 </button>
@@ -714,7 +714,7 @@ export function AdminsPage() {
                                 type="button"
                                 onClick={() => setConfirmDeleteId(admin.id)}
                                 title="Excluir"
-                                className="inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                                className="inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 min-h-[44px]"
                               >
                                 <Trash2 className="h-3.5 w-3.5" /> Excluir
                               </button>
@@ -864,11 +864,11 @@ export function AdminsPage() {
       {/* Permissions Modal */}
       {permModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
           onClick={() => setPermModal(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative"
+            className="bg-white rounded-xl shadow-xl w-full max-w-md p-4 sm:p-6 relative mx-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button

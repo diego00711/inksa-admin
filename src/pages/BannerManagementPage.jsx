@@ -244,8 +244,8 @@ const BannerManagementPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gerenciar Banners</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl sm:text-3xl font-bold">Gerenciar Banners</h1>
         <button
           onClick={() => {
             setEditingBanner(null);
@@ -254,7 +254,7 @@ const BannerManagementPage = () => {
             if (fileInputRef.current) fileInputRef.current.value = '';
             setShowForm(true);
           }}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors min-h-[44px]"
         >
           Novo Banner
         </button>
@@ -268,8 +268,8 @@ const BannerManagementPage = () => {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto mx-4">
             <h2 className="text-xl font-bold mb-4">{editingBanner ? 'Editar Banner' : 'Novo Banner'}</h2>
             
             <form onSubmit={handleSubmit}>
@@ -337,7 +337,8 @@ const BannerManagementPage = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
         {banners.length === 0 ? (
           <div className="text-center py-8 text-gray-500">Nenhum banner encontrado.</div>
         ) : (
@@ -366,16 +367,16 @@ const BannerManagementPage = () => {
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button onClick={() => handleEdit(banner)} className="text-indigo-600 hover:text-indigo-900">Editar</button>
-                      <button onClick={() => handleToggleStatus(banner)} className={banner.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}>{banner.is_active ? 'Desativar' : 'Ativar'}</button>
+                      <button onClick={() => handleEdit(banner)} className="text-indigo-600 hover:text-indigo-900 min-h-[44px] inline-flex items-center">Editar</button>
+                      <button onClick={() => handleToggleStatus(banner)} className={`min-h-[44px] inline-flex items-center ${banner.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}>{banner.is_active ? 'Desativar' : 'Ativar'}</button>
                       {confirmDeleteId === banner.id ? (
                         <span className="flex items-center gap-1 text-xs">
                           <span className="text-gray-600">Confirmar?</span>
-                          <button onClick={() => handleDeleteConfirmed(banner)} className="text-red-600 font-semibold hover:underline">Sim</button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="text-gray-400 hover:underline">Não</button>
+                          <button onClick={() => handleDeleteConfirmed(banner)} className="text-red-600 font-semibold hover:underline min-h-[44px] inline-flex items-center">Sim</button>
+                          <button onClick={() => setConfirmDeleteId(null)} className="text-gray-400 hover:underline min-h-[44px] inline-flex items-center">Não</button>
                         </span>
                       ) : (
-                        <button onClick={() => setConfirmDeleteId(banner.id)} className="text-red-600 hover:text-red-900">Deletar</button>
+                        <button onClick={() => setConfirmDeleteId(banner.id)} className="text-red-600 hover:text-red-900 min-h-[44px] inline-flex items-center">Deletar</button>
                       )}
                     </div>
                   </td>
@@ -384,6 +385,7 @@ const BannerManagementPage = () => {
             </tbody>
           </table>
         )}
+        </div>
       </div>
     </div>
   );

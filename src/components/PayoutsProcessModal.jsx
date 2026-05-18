@@ -7,8 +7,8 @@ export default function PayoutsProcessModal({ open, onClose, onConfirm, loading 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[420px] rounded-lg bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold">Processar Payouts</h3>
 
         <div className="mt-4 grid gap-4">

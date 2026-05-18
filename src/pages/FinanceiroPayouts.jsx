@@ -19,8 +19,8 @@ function MarkPaidModal({ open, onClose, onConfirm, loading }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[380px] rounded-lg bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold mb-4">Marcar como pago</h3>
         <div className="space-y-3">
           <div>
@@ -69,8 +69,8 @@ function MarkPaidModal({ open, onClose, onConfirm, loading }) {
 function ConfirmCancelModal({ open, onClose, onConfirm, loading }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[340px] rounded-lg bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-xs rounded-lg bg-white p-5 shadow-xl mx-4">
         <h3 className="text-lg font-semibold mb-2">Cancelar payout</h3>
         <p className="text-sm text-gray-600 mb-5">Tem certeza que deseja cancelar este payout? Esta ação não pode ser desfeita.</p>
         <div className="flex justify-end gap-2">
@@ -203,11 +203,11 @@ export default function FinanceiroPayouts() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Payouts</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold">Payouts</h1>
+        <div className="flex flex-wrap items-center gap-2">
           <select
-            className="border rounded px-3 py-2"
+            className="border rounded px-3 py-2 text-base min-h-[44px]"
             value={partnerType}
             onChange={(e) => { setPage(0); setPartnerType(e.target.value); }}
           >
@@ -217,7 +217,7 @@ export default function FinanceiroPayouts() {
           </select>
 
           <select
-            className="border rounded px-3 py-2"
+            className="border rounded px-3 py-2 text-base min-h-[44px]"
             value={status}
             onChange={(e) => { setPage(0); setStatus(e.target.value); }}
           >
@@ -228,7 +228,7 @@ export default function FinanceiroPayouts() {
           </select>
 
           <button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded min-h-[44px]"
             onClick={() => setProcessModalOpen(true)}
             disabled={loading}
           >
@@ -237,7 +237,7 @@ export default function FinanceiroPayouts() {
         </div>
       </div>
 
-      <div className="border rounded overflow-hidden bg-white">
+      <div className="border rounded overflow-x-auto bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -287,12 +287,12 @@ export default function FinanceiroPayouts() {
                   <td className="px-3 py-2">{p.payment_method || "-"}</td>
                   <td className="px-3 py-2">{p.payment_ref || "-"}</td>
                   <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString('pt-BR') : "-"}</td>
-                  <td className="px-3 py-2 space-x-2">
-                    <button className="text-indigo-600 hover:underline text-xs" onClick={() => onView(p.id)}>Ver</button>
+                  <td className="px-3 py-2 space-x-2 whitespace-nowrap">
+                    <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p.id)}>Ver</button>
                     {p.status === "pending" && (
                       <>
-                        <button className="text-green-600 hover:underline text-xs" onClick={() => setMarkPaidTarget(p.id)}>Marcar pago</button>
-                        <button className="text-red-600 hover:underline text-xs" onClick={() => setCancelTarget(p.id)}>Cancelar</button>
+                        <button className="text-green-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setMarkPaidTarget(p.id)}>Marcar pago</button>
+                        <button className="text-red-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setCancelTarget(p.id)}>Cancelar</button>
                       </>
                     )}
                   </td>

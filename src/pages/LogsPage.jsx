@@ -97,7 +97,7 @@ export default function LogsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="w-6 h-6" />
             Logs & Auditoria
           </h1>
@@ -122,7 +122,7 @@ export default function LogsPage() {
             placeholder="Buscar por ação, admin ou detalhes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            className="w-full pl-9 pr-3 py-2 text-base border border-gray-300 rounded-md focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <select

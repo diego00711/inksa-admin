@@ -37,7 +37,7 @@ function Field({ label, hint, children }) {
 }
 
 const inputCls =
-  'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
+  'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base sm:text-sm';
 
 export default function SettingsPage() {
   const [fields, setFields] = useState(DEFAULTS);
@@ -82,8 +82,8 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Configurações</h1>
         <button
           onClick={handleSave}
           disabled={saving}

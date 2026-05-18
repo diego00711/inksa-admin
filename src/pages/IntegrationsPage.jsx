@@ -105,7 +105,7 @@ export default function IntegrationsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">Integrações</h1>
+          <h1 className="text-xl sm:text-3xl font-bold text-slate-800">Integrações</h1>
           <p className="text-slate-500 mt-1">
             Status em tempo real dos serviços e plataformas conectados ao Inksa.
           </p>

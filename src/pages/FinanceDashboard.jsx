@@ -65,8 +65,8 @@ export default function FinanceDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Financeiro</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold">Financeiro</h1>
         <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
       </div>
 

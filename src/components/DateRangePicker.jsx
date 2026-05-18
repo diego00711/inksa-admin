@@ -5,7 +5,7 @@ export default function DateRangePicker({ from, to, onChange }) {
         De:
         <input
           type="date"
-          className="ml-2 rounded border px-2 py-1"
+          className="ml-2 rounded border px-2 py-1 text-base min-h-[44px]"
           value={from || ''}
           onChange={(e) => onChange({ from: e.target.value, to })}
         />
@@ -14,7 +14,7 @@ export default function DateRangePicker({ from, to, onChange }) {
         Até:
         <input
           type="date"
-          className="ml-2 rounded border px-2 py-1"
+          className="ml-2 rounded border px-2 py-1 text-base min-h-[44px]"
           value={to || ''}
           onChange={(e) => onChange({ from, to: e.target.value })}
         />

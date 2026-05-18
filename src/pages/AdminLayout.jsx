@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -16,6 +16,8 @@ import {
   DollarSign,
   Star,
   UserCircle,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -39,6 +41,7 @@ export function AdminLayout() {
   const { logout, user, hasPermission, permissionsLoaded } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const normalizedPath = React.useMemo(() => {
     if (!pathname) return '/';
@@ -80,9 +83,29 @@ export function AdminLayout() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 flex-shrink-0 bg-gray-800 text-white flex flex-col">
-        <div className="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
-          Inksa Admin
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-gray-800 text-white flex flex-col transform transition-transform duration-200 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:relative lg:translate-x-0`}
+      >
+        <div className="h-16 flex items-center justify-between px-4 text-xl font-bold border-b border-gray-700">
+          <span>Inksa Admin</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 rounded hover:bg-gray-700"
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {visibleLinks.map((link) => {
@@ -91,23 +114,24 @@ export function AdminLayout() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition ${
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition min-h-[44px] ${
                   isLinkActive(link) ? 'bg-gray-700' : ''
                 }`}
               >
                 {Icon ? (
-                  <Icon className="mr-3 h-5 w-5" />
+                  <Icon className="mr-3 h-5 w-5 shrink-0" />
                 ) : (
                   <span className="mr-3">💸</span>
                 )}
-                {link.label}
+                <span className="truncate">{link.label}</span>
               </Link>
             );
           })}
         </nav>
         {user && (
           <div className="px-4 py-3 border-t border-gray-700 bg-gray-900/40">
-            <Link to="/perfil" className="flex items-center gap-3 rounded-md p-2 hover:bg-gray-700 transition">
+            <Link to="/perfil" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 rounded-md p-2 hover:bg-gray-700 transition">
               <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
                 <span className="text-white text-xs font-bold">
                   {(user.name || user.full_name || user.email || 'A')
@@ -132,16 +156,31 @@ export function AdminLayout() {
         <div className="px-4 py-4 border-t border-gray-700">
           <button
             onClick={logout}
-            className="w-full flex items-center px-4 py-2 rounded-md hover:bg-red-600"
+            className="w-full flex items-center px-4 py-2 rounded-md hover:bg-red-600 min-h-[44px]"
           >
             <LogOut className="mr-3 h-5 w-5" />Sair
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 p-8 overflow-y-auto">
-        <Outlet />
-      </main>
+      {/* Conteúdo principal */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Topbar mobile com botão hamburguer */}
+        <header className="lg:hidden flex items-center h-14 px-4 bg-gray-800 text-white shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded hover:bg-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="ml-3 text-lg font-bold">Inksa Admin</span>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

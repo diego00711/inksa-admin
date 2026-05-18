@@ -306,8 +306,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">{greeting}, {adminName}!</h1>
-        <p className="text-gray-600">Este é o resumo da sua plataforma em tempo real.</p>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800">{greeting}, {adminName}!</h1>
+        <p className="text-gray-600 text-sm sm:text-base">Este é o resumo da sua plataforma em tempo real.</p>
       </div>
 
       {isUsingFallback && (

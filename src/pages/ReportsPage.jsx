@@ -196,7 +196,7 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">Relatórios</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Relatórios</h1>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
           <button
@@ -210,7 +210,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm w-fit">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm w-full sm:w-fit">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
