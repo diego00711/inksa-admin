@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import AuthService from '../services/authService';
+import { requestNotificationPermission } from '../services/notificationService';
 
 const AuthContext = createContext(null);
 
@@ -58,6 +59,8 @@ export const AuthProvider = ({ children }) => {
       const currentUser = AuthService.getCurrentAdmin();
       setUser(currentUser);
       await loadPermissions(currentUser);
+      // Solicita permissão de notificação push de forma defensiva — nunca quebra o login
+      requestNotificationPermission().catch(() => {});
       return result;
     } catch (error) {
       setIsAuthenticated(false);
