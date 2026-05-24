@@ -31,6 +31,9 @@ import ProfilePage from './pages/ProfilePage';
 // Cupons
 import CouponsPage from './pages/CouponsPage';
 
+// Recompensas
+import RewardsManagementPage from './pages/RewardsManagementPage';
+
 // Componente interno: escuta o evento global 'auth:unauthorized',
 // exibe notificação e redireciona para /login.
 // Precisa estar dentro de BrowserRouter para usar useNavigate.
@@ -68,6 +71,7 @@ function App() {
                 <Route path="/avaliacoes" element={<EvaluationsGamificationPage />} />
                 <Route path="/banners" element={<BannerManagementPage />} />
                 <Route path="/cupons" element={<CouponsPage />} />
+                <Route path="/recompensas" element={<RewardsManagementPage />} />
 
                 {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
