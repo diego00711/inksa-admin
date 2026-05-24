@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   Gift, X, Loader2, RefreshCw, Plus, Edit2, Trash2,
-  CheckCircle, Package,
+  CheckCircle, Package, Upload,
 } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
 import authService from '../services/authService';
@@ -24,7 +24,7 @@ const EMPTY_FORM = {
   name: '', description: '', points_required: '',
   reward_type: 'gift', benefit_value: '',
   target_audience: ['client'],
-  stock: '', valid_until: '', icon: '🎁', is_active: true,
+  stock: '', valid_until: '', icon: '🎁', is_active: true, image_url: '',
 };
 
 function typeLabel(v) { return REWARD_TYPES.find(t => t.value === v)?.label ?? v; }
@@ -54,6 +54,10 @@ export default function RewardsManagementPage() {
   const [formData, setFormData]           = useState(EMPTY_FORM);
   const [saving, setSaving]               = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const [imageFile, setImageFile]             = useState(null);
+  const [imagePreview, setImagePreview]       = useState('');
+  const [uploadingImage, setUploadingImage]   = useState(false);
 
   const getHeaders = useCallback(() => ({
     Authorization: `Bearer ${authService.getToken()}`,
@@ -107,7 +111,13 @@ export default function RewardsManagementPage() {
   useEffect(() => { loadRewards(); loadSummary(); }, [loadRewards, loadSummary]);
   useEffect(() => { if (activeTab === 'redemptions') loadRedemptions(); }, [activeTab, loadRedemptions]);
 
-  function openCreate() { setEditingReward(null); setFormData(EMPTY_FORM); setShowModal(true); }
+  function openCreate() {
+    setEditingReward(null);
+    setFormData(EMPTY_FORM);
+    setImageFile(null);
+    setImagePreview('');
+    setShowModal(true);
+  }
   function openEdit(r) {
     setEditingReward(r);
     setFormData({
@@ -115,9 +125,26 @@ export default function RewardsManagementPage() {
       points_required: r.points_required ?? '', reward_type: r.reward_type ?? 'gift',
       benefit_value: r.benefit_value ?? '', target_audience: r.target_audience ?? ['client'],
       stock: r.stock ?? '', valid_until: r.valid_until ? r.valid_until.split('T')[0] : '',
-      icon: r.icon ?? '🎁', is_active: r.is_active ?? true,
+      icon: r.icon ?? '🎁', is_active: r.is_active ?? true, image_url: r.image_url ?? '',
     });
+    setImageFile(null);
+    setImagePreview('');
     setShowModal(true);
+  }
+
+  function handleImageChange(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+      notify('Formato inválido. Use JPG, PNG ou WebP', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      notify('Imagem muito grande. Máximo 2 MB', 'error');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   }
 
   function toggleAudience(val) {
@@ -137,8 +164,37 @@ export default function RewardsManagementPage() {
     if (!formData.target_audience.length) { notify('Selecione pelo menos um público', 'error'); return; }
 
     setSaving(true);
+    let uploadedImageUrl = formData.image_url;
+
+    if (imageFile) {
+      setUploadingImage(true);
+      try {
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const uploadRes = await fetch(`${API_BASE_URL}/api/gamification/rewards/upload-image`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authService.getToken()}` },
+          body: fd,
+        });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.message || 'Erro no upload da imagem');
+        }
+        const uploadData = await uploadRes.json();
+        uploadedImageUrl = uploadData.data?.url ?? uploadData.url ?? '';
+      } catch (e) {
+        notify(`Erro ao enviar imagem: ${e.message}`, 'error');
+        setSaving(false);
+        setUploadingImage(false);
+        return;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
     const body = {
       ...formData,
+      image_url:       uploadedImageUrl,
       points_required: parseInt(formData.points_required),
       benefit_value:   formData.benefit_value !== '' ? parseFloat(formData.benefit_value) : null,
       stock:           formData.stock !== '' ? parseInt(formData.stock) : null,
@@ -307,7 +363,12 @@ export default function RewardsManagementPage() {
                     <tr key={reward.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-xl">{reward.icon || '🎁'}</span>
+                          {reward.image_url ? (
+                            <img src={reward.image_url} alt={reward.name}
+                              className="w-8 h-8 object-cover rounded shrink-0" />
+                          ) : (
+                            <span className="text-xl shrink-0">{reward.icon || '🎁'}</span>
+                          )}
                           <div>
                             <p className="font-medium text-gray-900">{reward.name}</p>
                             {reward.description && (
@@ -493,9 +554,38 @@ export default function RewardsManagementPage() {
                     className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
 
-                {/* Ícone */}
+                {/* Imagem */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Imagem da recompensa</label>
+                  {(imagePreview || formData.image_url) ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={imagePreview || formData.image_url}
+                        alt="Preview"
+                        className="w-[200px] h-[200px] object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreview(''); setFormData(p => ({ ...p, image_url: '' })); }}
+                        className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow hover:bg-red-50 transition"
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+                      <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">Arrastar ou <span className="text-indigo-600">escolher foto</span></span>
+                      <span className="text-[10px] text-gray-400 mt-0.5">JPG, PNG ou WebP — máx. 2MB</span>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                        onChange={e => handleImageChange(e.target.files?.[0])} />
+                    </label>
+                  )}
+                </div>
+
+                {/* Ícone emoji (fallback) */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Ícone (emoji)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Ícone emoji (fallback)</label>
                   <input type="text" value={formData.icon}
                     onChange={e => setFormData(p => ({ ...p, icon: e.target.value }))}
                     placeholder="🎁"
@@ -572,10 +662,10 @@ export default function RewardsManagementPage() {
                 className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition">
                 Cancelar
               </button>
-              <button onClick={handleSave} disabled={saving}
+              <button onClick={handleSave} disabled={saving || uploadingImage}
                 className="flex-1 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editingReward ? 'Salvar alterações' : 'Criar recompensa'}
+                {(saving || uploadingImage) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {uploadingImage ? 'Enviando imagem…' : editingReward ? 'Salvar alterações' : 'Criar recompensa'}
               </button>
             </div>
           </div>
