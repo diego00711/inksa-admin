@@ -1,42 +1,40 @@
+import { lazy, Suspense, useState, useContext, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { useContext, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NotificationContext } from './context/NotificationContext';
 import { Notifications } from './components/Notifications';
+import WakingUpScreen from './components/WakingUpScreen';
 
-import { LoginPage } from './pages/LoginPage';
+// --- Components (NOT lazy) ---
 import { AdminLayout } from './pages/AdminLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { UsuariosPage } from './pages/UsuariosPage';
-import { RestaurantesPage } from './pages/RestaurantesPage';
-import { DashboardPage } from './pages/DashboardPage';
-import EvaluationsGamificationPage from './pages/EvaluationsGamificationPage';
 
-// Páginas premium
-import LogsPage from './pages/LogsPage';
-import AdminsPage from './pages/AdminsPage';
-const AdminsPageComponent = AdminsPage;
-import ReportsPage from './pages/ReportsPage';
-import FinanceDashboard from './pages/FinanceDashboard';
-import SupportPage from './pages/SupportPage';
-import SettingsPage from './pages/SettingsPage';
-import IntegrationsPage from './pages/IntegrationsPage';
+// --- Lazy-loaded pages ---
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const UsuariosPage = lazy(() => import('./pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
+const RestaurantesPage = lazy(() => import('./pages/RestaurantesPage').then(m => ({ default: m.RestaurantesPage })));
+const EvaluationsGamificationPage = lazy(() => import('./pages/EvaluationsGamificationPage'));
+const BannerManagementPage = lazy(() => import('./pages/BannerManagementPage'));
+const CouponsPage = lazy(() => import('./pages/CouponsPage'));
+const RewardsManagementPage = lazy(() => import('./pages/RewardsManagementPage'));
+const LogsPage = lazy(() => import('./pages/LogsPage'));
+const AdminsPage = lazy(() => import('./pages/AdminsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const FinanceDashboard = lazy(() => import('./pages/FinanceDashboard'));
+const SupportPage = lazy(() => import('./pages/SupportPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
+const FinanceiroPayouts = lazy(() => import('./pages/FinanceiroPayouts'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
-// Banner Manager e Payouts
-import BannerManagementPage from './pages/BannerManagementPage';
-import FinanceiroPayouts from './pages/FinanceiroPayouts';
-import ProfilePage from './pages/ProfilePage';
+const PageLoader = () => (
+  <div className="flex h-screen items-center justify-center bg-gray-50">
+    <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
+  </div>
+);
 
-// Cupons
-import CouponsPage from './pages/CouponsPage';
-
-// Recompensas
-import RewardsManagementPage from './pages/RewardsManagementPage';
-
-// Componente interno: escuta o evento global 'auth:unauthorized',
-// exibe notificação e redireciona para /login.
-// Precisa estar dentro de BrowserRouter para usar useNavigate.
 function AuthUnauthorizedListener() {
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
@@ -46,7 +44,6 @@ function AuthUnauthorizedListener() {
       notify('Sessão expirada, faça login novamente', 'error', 6000);
       navigate('/login', { replace: true });
     }
-
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, [notify, navigate]);
@@ -54,13 +51,16 @@ function AuthUnauthorizedListener() {
   return null;
 }
 
-function App() {
+function AdminApp() {
+  const [serverReady, setServerReady] = useState(false);
+
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter>
-          <AuthUnauthorizedListener />
-          <Notifications />
+    <>
+      <WakingUpScreen onReady={() => setServerReady(true)} />
+      <AuthUnauthorizedListener />
+      <Notifications />
+      {serverReady && (
+        <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
@@ -72,11 +72,9 @@ function App() {
                 <Route path="/banners" element={<BannerManagementPage />} />
                 <Route path="/cupons" element={<CouponsPage />} />
                 <Route path="/recompensas" element={<RewardsManagementPage />} />
-
-                {/* Rotas premium */}
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
-                <Route path="/administradores" element={<AdminsPageComponent />} />
+                <Route path="/administradores" element={<AdminsPage />} />
                 <Route path="/relatorios" element={<ReportsPage />} />
                 <Route path="/financeiro" element={<FinanceDashboard />} />
                 <Route path="/financeiro/payouts" element={<FinanceiroPayouts />} />
@@ -87,6 +85,18 @@ function App() {
               </Route>
             </Route>
           </Routes>
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <NotificationProvider>
+        <BrowserRouter>
+          <AdminApp />
         </BrowserRouter>
       </NotificationProvider>
     </AuthProvider>
