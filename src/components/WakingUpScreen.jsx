@@ -1,73 +1,55 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-const HEALTH_URL = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com'}/api/health`;
-const SLOW_MS = 3000;
-const SECONDARY_MS = 5000;
-const RETRY_MS = 60000;
+// Endpoint leve do backend (só confirma que o processo web está de pé — sem DB).
+const API = import.meta.env.VITE_API_URL || 'https://inksa-auth-flask-dev.onrender.com';
+const MAX_WAIT_MS = 60000; // não prende o usuário para sempre
 
 export default function WakingUpScreen({ onReady }) {
-  const [phase, setPhase] = useState('checking');
-  const [showSecondary, setShowSecondary] = useState(false);
-  const abortRef = useRef(null);
-
-  const doCheck = useCallback(() => {
-    if (abortRef.current) abortRef.current.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    setPhase('checking');
-    setShowSecondary(false);
-
-    const t1 = setTimeout(() => setPhase('slow'), SLOW_MS);
-    const t2 = setTimeout(() => setShowSecondary(true), SECONDARY_MS);
-    const t3 = setTimeout(() => setPhase('retry'), RETRY_MS);
-
-    fetch(HEALTH_URL, { signal: ctrl.signal, cache: 'no-store' })
-      .then(res => {
-        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-        if (res.ok) { onReady(); } else { setPhase('retry'); }
-      })
-      .catch(err => {
-        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-        if (!ctrl.signal.aborted) setPhase('retry');
-      });
-  }, [onReady]);
+  const [slow, setSlow] = useState(false);
+  const done = useRef(false);
 
   useEffect(() => {
-    // Fallback: após 8s chama onReady() independente do resultado do health check
-    const fallbackTimer = setTimeout(() => onReady(), 8000);
-    doCheck();
-    return () => {
-      abortRef.current?.abort();
-      clearTimeout(fallbackTimer);
-    };
-  }, [doCheck, onReady]);
+    let alive = true;
+    const start = Date.now();
 
-  if (phase === 'checking') return null;
+    const finish = () => {
+      if (done.current || !alive) return;
+      done.current = true;
+      onReady();
+    };
+
+    const ping = async () => {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        const r = await fetch(`${API}/healthz`, { signal: ctrl.signal, cache: 'no-store' });
+        clearTimeout(t);
+        if (r.ok) return finish();
+      } catch {
+        /* backend ainda acordando — tenta de novo */
+      }
+      if (!alive || done.current) return;
+      const elapsed = Date.now() - start;
+      if (elapsed > 4000) setSlow(true);
+      if (elapsed > MAX_WAIT_MS) return finish();
+      setTimeout(ping, 1500);
+    };
+
+    ping();
+    return () => { alive = false; };
+  }, [onReady]);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-50">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
       <div className="text-center max-w-xs px-6">
         <div className="text-6xl mb-4 animate-bounce select-none">☕</div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">
-          Nossos servidores estão acordando...
-        </h2>
-        <p className="text-gray-500 text-sm mb-6">Aguarde um momento.</p>
-        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
-          <div className="h-1.5 bg-blue-600 rounded-full waking-bar" />
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Carregando...</h2>
+        <p className="text-gray-500 text-sm mb-6">
+          {slow ? 'Iniciando o servidor, só um instante...' : 'Só um momento.'}
+        </p>
+        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div className="h-1.5 bg-orange-500 rounded-full waking-bar" />
         </div>
-        {showSecondary && (
-          <p className="text-gray-400 text-xs mb-4">
-            Pode demorar até 30 segundos na primeira vez.
-          </p>
-        )}
-        {phase === 'retry' && (
-          <button
-            onClick={doCheck}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            Tentar novamente
-          </button>
-        )}
       </div>
       <style>{`
         .waking-bar { animation: waking 1.5s ease-in-out infinite; width: 40%; }
