@@ -20,6 +20,7 @@ import {
   X,
   Tag,
   Gift,
+  AlertTriangle,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -35,6 +36,7 @@ const NAV_LINKS = [
   { to: '/relatorios', label: 'Relatórios', icon: PieChart, page: 'relatorios' },
   { to: '/financeiro', label: 'Financeiro', icon: DollarSign, page: 'financeiro' },
   { to: '/financeiro/payouts', label: 'Payouts', icon: null, page: 'payouts', matchers: ['/financeiro/payouts'] },
+  { to: '/ocorrencias', label: 'Ocorrências', icon: AlertTriangle, page: null },
   { to: '/suporte', label: 'Suporte', icon: LifeBuoy, page: 'suporte' },
   { to: '/configuracoes', label: 'Configurações', icon: Settings, page: 'configuracoes' },
   { to: '/integracoes', label: 'Integrações', icon: Link2, page: 'integracoes' },
