@@ -13,6 +13,12 @@ const REASON_LABELS = {
   payment_issue: 'Problema no pagamento',
 };
 
+const OUTCOME_LABELS = {
+  return_to_restaurant: '🔁 Devolver ao restaurante',
+  dispose: '🗑️ Descartar',
+  keep: 'Entregador ficou',
+};
+
 const RESOLUTIONS = [
   { value: 'returned', label: 'Retornado ao restaurante' },
   { value: 'refunded', label: 'Reembolsado ao cliente' },
@@ -56,6 +62,9 @@ function IncidentCard({ inc, onResolved }) {
             <p className="text-xs text-gray-400">
               Pedido #{(inc.order_id || '').slice(-6).toUpperCase()} · {inc.created_at ? new Date(inc.created_at).toLocaleString('pt-BR') : ''}
             </p>
+            {inc.outcome && (
+              <p className="text-xs text-gray-500 mt-0.5">Entregador: <b>{OUTCOME_LABELS[inc.outcome] || inc.outcome}</b></p>
+            )}
           </div>
         </div>
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${RESOLUTION_BADGE[inc.resolution] || 'bg-gray-100 text-gray-700'}`}>
