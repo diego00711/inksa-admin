@@ -122,6 +122,12 @@ function IncidentCard({ inc, onResolved }) {
         <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2 mb-3 whitespace-pre-line">{inc.notes}</p>
       )}
 
+      {inc.photo_url && (
+        <a href={inc.photo_url} target="_blank" rel="noreferrer" className="block mb-3" title="Abrir foto-comprovante">
+          <img src={inc.photo_url} alt="Foto-comprovante" className="w-full max-h-48 object-cover rounded-lg border border-gray-200" />
+        </a>
+      )}
+
       {Number(inc.refund_amount) > 0 && (
         <div className={`rounded-lg p-2.5 mb-3 text-sm flex items-center justify-between gap-2 ${inc.refund_status === 'done' ? 'bg-green-50' : 'bg-purple-50'}`}>
           <span className={inc.refund_status === 'done' ? 'text-green-700' : 'text-purple-700'}>
