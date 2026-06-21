@@ -1,7 +1,14 @@
 // src/pages/OcorrenciasPage.jsx — Ocorrências de entrega (falhas)
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Phone, CheckCircle2 } from 'lucide-react';
-import { listIncidents, resolveIncident } from '../services/incidents';
+import { listIncidents, resolveIncident, refundIncident } from '../services/incidents';
+
+const FAULT_LABELS = {
+  customer: 'Culpa do cliente',
+  restaurant: 'Culpa do restaurante',
+  courier: 'Culpa do entregador',
+  none: '—',
+};
 
 const REASON_LABELS = {
   customer_not_found: 'Cliente não localizado',
@@ -38,7 +45,9 @@ function IncidentCard({ inc, onResolved }) {
   const [resolution, setResolution] = useState('returned');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [refunding, setRefunding] = useState(false);
   const isPending = inc.resolution === 'pending';
+  const refundPending = inc.refund_status === 'pending' && Number(inc.refund_amount) > 0;
 
   const apply = async () => {
     setSaving(true);
@@ -49,6 +58,19 @@ function IncidentCard({ inc, onResolved }) {
       alert(e.message || 'Erro ao resolver ocorrência');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const doRefund = async () => {
+    if (!window.confirm(`Reembolsar R$ ${Number(inc.refund_amount || 0).toFixed(2)} ao cliente? Isso devolve o dinheiro de verdade pelo Mercado Pago e não pode ser desfeito.`)) return;
+    setRefunding(true);
+    try {
+      await refundIncident(inc.id);
+      onResolved();
+    } catch (e) {
+      alert(e.message || 'Erro ao processar reembolso');
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -64,6 +86,9 @@ function IncidentCard({ inc, onResolved }) {
             </p>
             {inc.outcome && (
               <p className="text-xs text-gray-500 mt-0.5">Entregador: <b>{OUTCOME_LABELS[inc.outcome] || inc.outcome}</b></p>
+            )}
+            {inc.fault && inc.fault !== 'none' && (
+              <p className="text-xs text-gray-500">Atribuição: <b>{FAULT_LABELS[inc.fault] || inc.fault}</b></p>
             )}
           </div>
         </div>
@@ -95,6 +120,20 @@ function IncidentCard({ inc, onResolved }) {
 
       {inc.notes && (
         <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2 mb-3 whitespace-pre-line">{inc.notes}</p>
+      )}
+
+      {Number(inc.refund_amount) > 0 && (
+        <div className={`rounded-lg p-2.5 mb-3 text-sm flex items-center justify-between gap-2 ${inc.refund_status === 'done' ? 'bg-green-50' : 'bg-purple-50'}`}>
+          <span className={inc.refund_status === 'done' ? 'text-green-700' : 'text-purple-700'}>
+            Reembolso ao cliente: <b>R$ {Number(inc.refund_amount).toFixed(2)}</b>
+            {inc.refund_status === 'done' ? ' — processado ✓' : ' — pendente'}
+          </span>
+          {refundPending && (
+            <button onClick={doRefund} disabled={refunding} className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg px-3 py-1.5 flex items-center gap-1 whitespace-nowrap">
+              {refunding && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Processar reembolso
+            </button>
+          )}
+        </div>
       )}
 
       {isPending ? (

@@ -38,3 +38,13 @@ export async function resolveIncident(id, resolution, note = '') {
   });
   return handle(r);
 }
+
+// Processa o reembolso ao cliente (Mercado Pago)
+export async function refundIncident(id) {
+  const r = await apiFetch(`${BASE}/${id}/refund`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    credentials: 'include',
+  });
+  return handle(r);
+}
