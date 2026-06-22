@@ -72,23 +72,23 @@ const COLORS = {
 };
 
 const KpiCard = ({ title, value, icon: Icon, color, tooltip }) => (
-  <div className={`p-6 rounded-lg shadow-lg text-white relative ${color}`}>
-    <div className="flex justify-between items-start">
-      <p className="text-lg font-semibold">{title}</p>
-      <Icon className="h-8 w-8 opacity-80" />
+  <div className={`p-4 sm:p-6 rounded-lg shadow-lg text-white relative ${color}`}>
+    <div className="flex justify-between items-start gap-2">
+      <p className="text-sm sm:text-lg font-semibold leading-tight">{title}</p>
+      <Icon className="h-6 w-6 sm:h-8 sm:w-8 opacity-80 shrink-0" />
     </div>
-    <p className="text-4xl font-bold mt-2">{value}</p>
+    <p className="text-2xl sm:text-4xl font-bold mt-2 break-words">{value}</p>
     {tooltip && (
       <div className="absolute top-2 right-2 group">
-        <span className="cursor-pointer text-white bg-black/20 px-2 rounded-full" title={tooltip}>?</span>
+        <span className="cursor-pointer text-white bg-black/20 px-2 rounded-full text-xs" title={tooltip}>?</span>
       </div>
     )}
   </div>
 );
 
 const RevenueChart = ({ data }) => (
-  <div className="bg-white p-6 rounded-lg shadow-lg h-full flex flex-col">
-    <h3 className="text-xl font-bold text-gray-800 mb-4">Faturamento (período)</h3>
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
+    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Faturamento (período)</h3>
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
@@ -121,8 +121,8 @@ const OrdersStatusPie = ({ data }) => {
   }));
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg h-full flex flex-col">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">Pedidos por Status</h3>
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
+      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Pedidos por Status</h3>
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie data={chartData} innerRadius={50} outerRadius={90} dataKey="value" nameKey="name" label>
@@ -137,8 +137,8 @@ const OrdersStatusPie = ({ data }) => {
 };
 
 const ClientsLineChart = ({ data }) => (
-  <div className="bg-white p-6 rounded-lg shadow-lg h-full flex flex-col">
-    <h3 className="text-xl font-bold text-gray-800 mb-4">Crescimento de Clientes</h3>
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
+    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Crescimento de Clientes</h3>
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
@@ -153,19 +153,19 @@ const ClientsLineChart = ({ data }) => (
 );
 
 const RecentOrdersList = ({ orders }) => (
-  <div className="bg-white p-6 rounded-lg shadow-lg h-full">
-    <h3 className="text-xl font-bold text-gray-800 mb-4">Pedidos Recentes</h3>
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full">
+    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Pedidos Recentes</h3>
     {orders?.length ? (
       <div className="space-y-4">
         {orders.map((o) => (
-          <div key={o.id} className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-gray-700">{o.client_name || '-'}</p>
-              <p className="text-sm text-gray-500">{o.restaurant_name || '-'}</p>
+          <div key={o.id} className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-700 truncate">{o.client_name || '-'}</p>
+              <p className="text-sm text-gray-500 truncate">{o.restaurant_name || '-'}</p>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-gray-800">R$ {Number(o.total_amount ?? o.amount ?? o.total ?? 0).toFixed(2)}</p>
-              <p className="text-sm text-gray-500 capitalize">{o.status || '-'}</p>
+            <div className="text-right shrink-0">
+              <p className="font-bold text-gray-800 text-sm sm:text-base">R$ {Number(o.total_amount ?? o.amount ?? o.total ?? 0).toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-500 capitalize">{o.status || '-'}</p>
             </div>
           </div>
         ))}
