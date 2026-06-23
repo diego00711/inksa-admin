@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2, Truck, Bike } from 'lucide-react';
 import authService from '../services/authService';
 
 const DEFAULTS = {
@@ -12,6 +12,14 @@ const DEFAULTS = {
   platform_name: 'Inksa Delivery',
   platform_max_delivery_radius: '15',
   platform_maintenance_mode: 'false',
+  // Taxas de entrega cobradas do cliente
+  commission_rate: '10',
+  fixed_delivery_fee: '3.00',
+  per_km_delivery_fee: '1.50',
+  free_delivery_threshold_km: '2.00',
+  // Repasse pago ao entregador (modelo: base + por km)
+  delivery_base_fee: '5.00',
+  delivery_per_km_fee: '1.00',
 };
 
 function SectionCard({ icon: Icon, title, children }) {
@@ -175,6 +183,81 @@ export default function SettingsPage() {
               className={inputCls}
             />
           </Field>
+        </div>
+      </SectionCard>
+
+      {/* Taxas de Entrega (cobradas do cliente) */}
+      <SectionCard icon={Truck} title="Taxas de Entrega (cobradas do cliente)">
+        <p className="text-xs text-gray-500 mb-4">
+          Valores usados no cálculo do frete que o cliente paga no checkout.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado do restaurante sobre o valor do pedido">
+            <input
+              type="number" min="0" max="99.99" step="0.1"
+              value={fields.commission_rate}
+              onChange={(e) => set('commission_rate', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Taxa fixa de entrega (R$)" hint="Valor base cobrado em toda entrega">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.fixed_delivery_fee}
+              onChange={(e) => set('fixed_delivery_fee', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Valor por km extra (R$)" hint="Adicional cobrado por km acima do limite grátis">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.per_km_delivery_fee}
+              onChange={(e) => set('per_km_delivery_fee', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Distância grátis (km)" hint="Até essa distância, cobra só a taxa fixa">
+            <input
+              type="number" min="0" step="0.1"
+              value={fields.free_delivery_threshold_km}
+              onChange={(e) => set('free_delivery_threshold_km', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+      </SectionCard>
+
+      {/* Repasse ao Entregador */}
+      <SectionCard icon={Bike} title="Repasse ao Entregador">
+        <p className="text-xs text-gray-500 mb-4">
+          Modelo: <strong>repasse = valor fixo por entrega + valor por km × distância</strong>.
+          Independente do que o cliente paga.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Valor fixo por entrega (R$)" hint="Pago em toda entrega, independente da distância">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.delivery_base_fee}
+              onChange={(e) => set('delivery_base_fee', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Valor por km rodado (R$)" hint="Adicional por cada km da entrega">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.delivery_per_km_fee}
+              onChange={(e) => set('delivery_per_km_fee', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+        <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-100 text-xs text-blue-800">
+          <strong>Exemplo:</strong> base R$ {fields.delivery_base_fee || '0'} + km R$ {fields.delivery_per_km_fee || '0'}
+          {' '}→ entrega de 4 km paga R${' '}
+          {(
+            (parseFloat(fields.delivery_base_fee) || 0) +
+            (parseFloat(fields.delivery_per_km_fee) || 0) * 4
+          ).toFixed(2)}.
         </div>
       </SectionCard>
 
