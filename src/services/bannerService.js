@@ -75,7 +75,7 @@ class BannerService {
     formData.append('image', file);
 
     const token = localStorage.getItem('adminAuthToken');
-    const response = await apiFetch(`${API_URL}/banners/upload`, {
+    const response = await apiFetch(`${API_URL}/upload/banner-image`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -84,11 +84,12 @@ class BannerService {
     });
 
     if (!response.ok) {
-      throw new Error('Erro ao fazer upload da imagem');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erro HTTP ${response.status} ao fazer upload da imagem`);
     }
 
     const result = await response.json();
-    return result.image_url;
+    return result.data?.url || result.url || result.image_url;
   }
 
   // Alternar status do banner
