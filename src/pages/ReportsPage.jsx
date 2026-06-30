@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DateRangePicker from '../components/DateRangePicker';
 import { financeApi } from '../services/finance';
 import { getMetrics, getRevenueSeries, getTransactions } from '../services/analytics';
 import { BarChart2, Download, Loader2, RefreshCcw, TrendingUp, List } from 'lucide-react';
+import { NotificationContext } from '../context/NotificationContext';
 
 const TABS = [
   { id: 'metricas', label: 'Métricas', icon: BarChart2 },
@@ -141,6 +142,7 @@ function TransactionsTable({ data }) {
 }
 
 export default function ReportsPage() {
+  const { notify } = useContext(NotificationContext);
   const [activeTab, setActiveTab] = useState('metricas');
   const [range, setRange] = useState(defaultRange);
   const [data, setData] = useState(null);
@@ -187,7 +189,7 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
     } catch (e) {
       console.error(e);
-      alert('Falha ao exportar CSV. Verifique se o endpoint /api/admin/reports/export está disponível.');
+      notify('Falha ao exportar CSV. Verifique o endpoint /api/admin/reports/export.', 'error');
     } finally {
       setDownloading(false);
     }

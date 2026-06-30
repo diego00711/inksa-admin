@@ -250,17 +250,21 @@ export function DashboardPage() {
       } catch (err) {
         console.error(err);
         setError(err?.message || 'Ocorreu um erro ao buscar os dados do dashboard.');
-        setIsUsingFallback(true);
-        setKpis(FALLBACK_DASHBOARD.kpis);
-        setChartData(FALLBACK_DASHBOARD.revenueSeries);
-        setClientsGrowth(
-          FALLBACK_DASHBOARD.revenueSeries.map((row) => ({
-            formatted_date: row.formatted_date,
-            total_clients: row.total_clients,
-          }))
-        );
-        setOrdersStatus(FALLBACK_DASHBOARD.ordersStatus);
-        setRecentOrders(FALLBACK_DASHBOARD.recentOrders);
+        // Sem dados fake — mostra estado vazio (zeros) pra nao confundir
+        setKpis({
+          totalRevenue: 0,
+          ordersToday: 0,
+          averageTicket: 0,
+          newClientsToday: 0,
+          ordersInProgress: 0,
+          ordersCanceled: 0,
+          restaurantsPending: 0,
+          activeDeliverymen: 0,
+        });
+        setChartData([]);
+        setClientsGrowth([]);
+        setOrdersStatus({ concluido: 0, pendente: 0, em_andamento: 0, cancelado: 0 });
+        setRecentOrders([]);
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -305,9 +309,9 @@ export function DashboardPage() {
         <p className="text-gray-600 text-sm sm:text-base">Este é o resumo da sua plataforma em tempo real.</p>
       </div>
 
-      {isUsingFallback && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          Não foi possível conectar à API ({error}). Mostrando dados simulados para que você continue acompanhando os indicadores.
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          ⚠️ Não foi possível conectar à API: {error}. Os números abaixo refletem o estado vazio até a conexão voltar.
         </div>
       )}
 

@@ -1,7 +1,8 @@
 // src/pages/OcorrenciasPage.jsx — Ocorrências de entrega (falhas)
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Phone, CheckCircle2 } from 'lucide-react';
 import { listIncidents, resolveIncident, refundIncident } from '../services/incidents';
+import { NotificationContext } from '../context/NotificationContext';
 
 const FAULT_LABELS = {
   customer: 'Culpa do cliente',
@@ -42,6 +43,7 @@ const RESOLUTION_BADGE = {
 };
 
 function IncidentCard({ inc, onResolved }) {
+  const { notify } = useContext(NotificationContext);
   const [resolution, setResolution] = useState('returned');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -53,22 +55,25 @@ function IncidentCard({ inc, onResolved }) {
     setSaving(true);
     try {
       await resolveIncident(inc.id, resolution, note.trim());
+      notify('Ocorrência resolvida com sucesso', 'success');
       onResolved();
     } catch (e) {
-      alert(e.message || 'Erro ao resolver ocorrência');
+      notify(e.message || 'Erro ao resolver ocorrência', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const doRefund = async () => {
+    // window.confirm aqui é proposital: reembolso é destrutivo e precisa confirmação explícita
     if (!window.confirm(`Reembolsar R$ ${Number(inc.refund_amount || 0).toFixed(2)} ao cliente? Isso devolve o dinheiro de verdade pelo Mercado Pago e não pode ser desfeito.`)) return;
     setRefunding(true);
     try {
       await refundIncident(inc.id);
+      notify('Reembolso processado com sucesso', 'success');
       onResolved();
     } catch (e) {
-      alert(e.message || 'Erro ao processar reembolso');
+      notify(e.message || 'Erro ao processar reembolso', 'error');
     } finally {
       setRefunding(false);
     }
