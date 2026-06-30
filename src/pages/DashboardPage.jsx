@@ -72,17 +72,12 @@ const COLORS = {
 };
 
 const KpiCard = ({ title, value, icon: Icon, color, tooltip }) => (
-  <div className={`p-4 sm:p-6 rounded-lg shadow-lg text-white relative ${color}`}>
+  <div className={`p-4 sm:p-6 rounded-lg shadow-lg text-white relative ${color}`} title={tooltip || undefined}>
     <div className="flex justify-between items-start gap-2">
       <p className="text-sm sm:text-lg font-semibold leading-tight">{title}</p>
       <Icon className="h-6 w-6 sm:h-8 sm:w-8 opacity-80 shrink-0" />
     </div>
     <p className="text-2xl sm:text-4xl font-bold mt-2 break-words">{value}</p>
-    {tooltip && (
-      <div className="absolute top-2 right-2 group">
-        <span className="cursor-pointer text-white bg-black/20 px-2 rounded-full text-xs" title={tooltip}>?</span>
-      </div>
-    )}
   </div>
 );
 
