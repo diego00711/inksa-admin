@@ -6,6 +6,7 @@ const DEFAULTS = {
   contact_email: '',
   contact_whatsapp: '',
   contact_phone: '',
+  support_hours: 'Seg a Sex, 8h às 18h',
   financial_platform_commission: '10',
   financial_delivery_commission: '8',
   financial_min_order_value: '15',
@@ -141,11 +142,23 @@ export default function SettingsPage() {
               type="text"
               value={fields.contact_phone}
               onChange={(e) => set('contact_phone', e.target.value)}
-              placeholder="+55 49 3333-3333"
+              placeholder="(49) 99999-9999"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Horário de atendimento">
+            <input
+              type="text"
+              value={fields.support_hours}
+              onChange={(e) => set('support_hours', e.target.value)}
+              placeholder="Seg a Sex, 8h às 18h"
               className={inputCls}
             />
           </Field>
         </div>
+        <p className="text-xs text-gray-500 mt-3">
+          💡 Esses dados aparecem no botão de Suporte nos 3 apps (Cliente, Restaurante, Entregador). Mudou aqui, muda lá em até 1 hora.
+        </p>
       </SectionCard>
 
       {/* Financeiro */}
