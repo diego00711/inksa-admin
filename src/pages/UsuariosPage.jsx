@@ -1,17 +1,30 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import authService from '../services/authService'; // Corrija o import para minúsculo
-import { Loader2 } from 'lucide-react';
+import authService from '../services/authService';
+import { Loader2, Users, ShoppingBag, Store, Truck, Shield } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const PAGE_SIZE = 20;
 
-// Cores para o gráfico (personalizáveis para combinar com seu design)
 const COLORS = {
-  admin: '#EF4444',     // Tailwind red-500
-  restaurant: '#3B82F6', // Tailwind blue-500
-  client: '#22C55E',    // Tailwind green-500
-  delivery: '#F59E0B',   // Tailwind yellow-500
-  default: '#6B7280'    // Tailwind gray-500
+  admin: '#EF4444',
+  restaurant: '#3B82F6',
+  client: '#22C55E',
+  delivery: '#F59E0B',
+  default: '#6B7280',
+};
+
+const TYPE_LABELS = {
+  client: 'Cliente',
+  restaurant: 'Restaurante',
+  delivery: 'Entregador',
+  admin: 'Administrador',
+};
+
+const TYPE_PILL = {
+  admin: 'bg-red-100 text-red-700',
+  restaurant: 'bg-blue-100 text-blue-700',
+  client: 'bg-green-100 text-green-700',
+  delivery: 'bg-amber-100 text-amber-700',
 };
 
 export function UsuariosPage() {
@@ -65,10 +78,24 @@ export function UsuariosPage() {
     }, {});
 
     return Object.keys(typeCounts).map(key => ({
-      name: key.charAt(0).toUpperCase() + key.slice(1),
+      name: TYPE_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1)),
       value: typeCounts[key],
       color: COLORS[key] || COLORS.default
     }));
+  }, [users]);
+
+  // Totais por tipo (sempre considera o universo retornado, nao o filtrado por cidade)
+  const totalsByType = useMemo(() => {
+    return users.reduce(
+      (acc, u) => {
+        if (u.user_type === 'client') acc.client++;
+        else if (u.user_type === 'restaurant') acc.restaurant++;
+        else if (u.user_type === 'delivery') acc.delivery++;
+        else if (u.user_type === 'admin') acc.admin++;
+        return acc;
+      },
+      { client: 0, restaurant: 0, delivery: 0, admin: 0 }
+    );
   }, [users]);
 
   // Extrai e ordena cidades únicas para o filtro dropdown
@@ -91,7 +118,7 @@ export function UsuariosPage() {
   const filterOptions = ['todos', 'client', 'restaurant', 'delivery', 'admin'];
 
   return (
-    <div>
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
       {/* Cabeçalho e Botões de Filtro por Tipo */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Gestão de Usuários</h1>
@@ -106,11 +133,45 @@ export function UsuariosPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              {filter === 'todos' ? 'Todos' : TYPE_LABELS[filter]}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Cards de totais por tipo */}
+      {!isLoading && !error && users.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="rounded-xl p-4 sm:p-5 text-white shadow-sm bg-green-600">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs sm:text-sm font-medium opacity-95">Clientes</p>
+              <ShoppingBag className="w-5 h-5 opacity-80" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold mt-2">{totalsByType.client}</p>
+          </div>
+          <div className="rounded-xl p-4 sm:p-5 text-white shadow-sm bg-blue-600">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs sm:text-sm font-medium opacity-95">Restaurantes</p>
+              <Store className="w-5 h-5 opacity-80" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold mt-2">{totalsByType.restaurant}</p>
+          </div>
+          <div className="rounded-xl p-4 sm:p-5 text-white shadow-sm bg-amber-500">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs sm:text-sm font-medium opacity-95">Entregadores</p>
+              <Truck className="w-5 h-5 opacity-80" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold mt-2">{totalsByType.delivery}</p>
+          </div>
+          <div className="rounded-xl p-4 sm:p-5 text-white shadow-sm bg-red-500">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs sm:text-sm font-medium opacity-95">Administradores</p>
+              <Shield className="w-5 h-5 opacity-80" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold mt-2">{totalsByType.admin}</p>
+          </div>
+        </div>
+      )}
 
       {/* Novo Filtro de Cidade */}
       <div className="mb-6 flex flex-wrap items-center gap-4">
@@ -201,14 +262,8 @@ export function UsuariosPage() {
                     </td>
                     <td className="px-6 py-4">{user.email}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
-                        user.user_type === 'restaurant' ? 'bg-blue-100 text-blue-800' :
-                        user.user_type === 'client' ? 'bg-green-100 text-green-800' :
-                        user.user_type === 'delivery' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.user_type}
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${TYPE_PILL[user.user_type] || 'bg-gray-100 text-gray-700'}`}>
+                        {TYPE_LABELS[user.user_type] || user.user_type}
                       </span>
                     </td>
                     <td className="px-6 py-4">{user.city || 'N/A'}</td>
