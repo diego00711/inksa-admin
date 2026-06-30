@@ -13,6 +13,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 // --- Lazy-loaded pages ---
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const UserMetricsPage = lazy(() => import('./pages/UserMetricsPage'));
 const UsuariosPage = lazy(() => import('./pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
 const RestaurantesPage = lazy(() => import('./pages/RestaurantesPage').then(m => ({ default: m.RestaurantesPage })));
 const EvaluationsGamificationPage = lazy(() => import('./pages/EvaluationsGamificationPage'));
@@ -67,6 +68,7 @@ function AdminApp() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/metricas" element={<UserMetricsPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
                 <Route path="/avaliacoes" element={<EvaluationsGamificationPage />} />

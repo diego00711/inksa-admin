@@ -21,10 +21,12 @@ import {
   Tag,
   Gift,
   AlertTriangle,
+  Activity,
 } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard', icon: Home, page: 'dashboard' },
+  { to: '/metricas', label: 'Métricas', icon: Activity, page: 'metricas' },
   { to: '/usuarios', label: 'Usuários', icon: Users, page: 'usuarios' },
   { to: '/restaurantes', label: 'Restaurantes', icon: Store, page: 'restaurantes' },
   { to: '/avaliacoes', label: 'Avaliações & Gamificação', icon: Star, page: 'avaliacoes' },
