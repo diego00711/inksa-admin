@@ -6,12 +6,21 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
-const CHANNELS = [
-  { icon: Mail,           label: 'E-mail',            description: 'suporte@inksa.app',                              sla: 'Resposta em até 4h úteis' },
-  { icon: MessageCircle,  label: 'WhatsApp',           description: '(11) 9 4002-8922',                               sla: 'Atendimento 08h–22h' },
-  { icon: Phone,          label: 'Telefone',           description: '0800 000 2024',                                  sla: 'Plantão 24/7 para incidentes críticos' },
-  { icon: Headset,        label: 'Central do Parceiro',description: 'Portal com base de conhecimento e chat ao vivo', sla: 'Chat disponível em horário comercial' },
-];
+const FALLBACK_SUPPORT = {
+  email: 'suporte@inksadelivery.com.br',
+  whatsapp: '5549999679697',
+  phone: '(49) 99967-9697',
+  hours: 'Seg a Sex, 8h às 18h',
+};
+
+function buildChannels(info) {
+  return [
+    { icon: Mail,          label: 'E-mail',     description: info.email || FALLBACK_SUPPORT.email,                 sla: info.hours ? `Atendimento ${info.hours}` : 'Resposta em até 24h úteis' },
+    { icon: MessageCircle, label: 'WhatsApp',   description: info.phone || FALLBACK_SUPPORT.phone,                 sla: info.hours || FALLBACK_SUPPORT.hours, href: `https://wa.me/${(info.whatsapp || FALLBACK_SUPPORT.whatsapp).replace(/\D/g, '')}` },
+    { icon: Phone,         label: 'Telefone',   description: info.phone || FALLBACK_SUPPORT.phone,                 sla: info.hours || FALLBACK_SUPPORT.hours },
+    { icon: Headset,       label: 'Painel admin', description: 'Configure os canais em Configurações → Contato',   sla: 'Editável aqui mesmo' },
+  ];
+}
 
 const FAQS = [
   { question: 'Como acompanho um chamado aberto?', answer: 'Consulte o status nesta tela ou clique no link enviado por e-mail no momento da abertura.' },
@@ -74,6 +83,17 @@ function useBackendHealth() {
 export default function SupportPage() {
   const [tickets, setTickets] = usePersistedTickets();
   const { health, checking, recheck } = useBackendHealth();
+
+  const [supportInfo, setSupportInfo] = useState(FALLBACK_SUPPORT);
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_BASE_URL}/api/public/support-info`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (alive && data) setSupportInfo({ ...FALLBACK_SUPPORT, ...data }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const CHANNELS = useMemo(() => buildChannels(supportInfo), [supportInfo]);
 
   const [statusFilter,   setStatusFilter]   = useState('todos');
   const [categoryFilter, setCategoryFilter] = useState('todas');
@@ -150,20 +170,28 @@ export default function SupportPage() {
 
       {/* Canais de contato */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {CHANNELS.map(({ icon: Icon, label, description, sla }) => (
-          <article key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="font-semibold text-slate-800">{label}</h3>
-                <p className="text-sm text-slate-500">{description}</p>
+        {CHANNELS.map(({ icon: Icon, label, description, sla, href }) => {
+          const Wrapper = href ? 'a' : 'article';
+          const wrapperProps = href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {};
+          return (
+            <Wrapper
+              key={label}
+              {...wrapperProps}
+              className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${href ? 'hover:border-blue-300 hover:shadow-md transition-all cursor-pointer' : ''}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-slate-800">{label}</h3>
+                  <p className="text-sm text-slate-500 truncate">{description}</p>
+                </div>
               </div>
-            </div>
-            <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">{sla}</p>
-          </article>
-        ))}
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">{sla}</p>
+            </Wrapper>
+          );
+        })}
       </section>
 
       {/* Lista + Formulário */}
