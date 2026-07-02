@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react';
 import authService from '../services/authService';
-import { Loader2, Users, ShoppingBag, Store, Truck, Shield } from 'lucide-react';
+import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { NotificationContext } from '../context/NotificationContext';
 
 const PAGE_SIZE = 20;
 
@@ -28,6 +29,7 @@ const TYPE_PILL = {
 };
 
 export function UsuariosPage() {
+  const { notify } = useContext(NotificationContext);
   const [users, setUsers] = useState([]); // Estado para armazenar os usuários
   const [isLoading, setIsLoading] = useState(true); // Estado para controlar o carregamento
   const [error, setError] = useState(null); // Estado para armazenar erros
@@ -35,8 +37,20 @@ export function UsuariosPage() {
   const [cityFilter, setCityFilter] = useState(''); // Novo estado para o filtro por cidade
   const [currentPage, setCurrentPage] = useState(1); // Página atual para paginação client-side
 
+  const [openMenuId, setOpenMenuId] = useState(null); // qual menu de ações está aberto
+  const [busyUserId, setBusyUserId] = useState(null); // ação em andamento
+  const [confirmDelete, setConfirmDelete] = useState(null); // usuário aguardando confirmação de exclusão
+
   // Ref para saber se os filtros mudaram e resetar a página
   const prevFiltersRef = useRef({ activeTypeFilter, cityFilter });
+
+  // Fecha o menu de ações ao clicar fora
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
 
   // Função para buscar usuários da API, memoizada com useCallback
   const fetchUsers = useCallback(async () => {
@@ -56,6 +70,50 @@ export function UsuariosPage() {
       setIsLoading(false);
     }
   }, [activeTypeFilter, cityFilter]);
+
+  // --- Ações de gestão de usuário ---
+  const handleResetPassword = useCallback(async (u) => {
+    setOpenMenuId(null);
+    setBusyUserId(u.id);
+    try {
+      const res = await authService.resetUserPassword(u.id);
+      notify(res?.message || `E-mail de redefinição enviado para ${u.email}.`, 'success');
+    } catch (err) {
+      notify(err.message || 'Falha ao enviar redefinição de senha.', 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  }, [notify]);
+
+  const handleToggleStatus = useCallback(async (u) => {
+    setOpenMenuId(null);
+    const currentlyActive = u.is_active !== false && u.status !== 'inactive';
+    const newStatus = currentlyActive ? 'inactive' : 'active';
+    setBusyUserId(u.id);
+    try {
+      await authService.setUserStatus(u.id, newStatus);
+      notify(`Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso.`, 'success');
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_active: newStatus === 'active' } : x)));
+    } catch (err) {
+      notify(err.message || 'Falha ao alterar status.', 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  }, [notify]);
+
+  const handleDelete = useCallback(async (u) => {
+    setConfirmDelete(null);
+    setBusyUserId(u.id);
+    try {
+      await authService.deleteUser(u.id);
+      notify(`Usuário ${u.email} excluído.`, 'success');
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+    } catch (err) {
+      notify(err.message || 'Falha ao excluir usuário.', 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  }, [notify]);
 
   // Reseta página ao mudar filtros
   useEffect(() => {
@@ -252,10 +310,15 @@ export function UsuariosPage() {
                   <th scope="col" className="px-6 py-3">Tipo</th>
                   <th scope="col" className="px-6 py-3">Cidade</th>
                   <th scope="col" className="px-6 py-3">Data de Criação</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map(user => (
+                {paginatedUsers.map(user => {
+                  const isActive = user.is_active !== false && user.status !== 'inactive';
+                  const isBusy = busyUserId === user.id;
+                  return (
                   <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                       {user.full_name || 'Não disponível'}
@@ -270,8 +333,56 @@ export function UsuariosPage() {
                     <td className="px-6 py-4">
                       {new Date(user.created_at).toLocaleDateString('pt-BR')}
                     </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                        {isActive ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right relative">
+                      {isBusy ? (
+                        <Loader2 className="animate-spin h-4 w-4 text-gray-400 inline" />
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === user.id ? null : user.id); }}
+                          className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
+                          title="Ações"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      )}
+                      {openMenuId === user.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-6 top-12 z-20 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-1 text-left"
+                        >
+                          <button
+                            onClick={() => handleResetPassword(user)}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50"
+                          >
+                            <KeyRound className="h-4 w-4 text-indigo-500" />
+                            Enviar redefinição de senha
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(user)}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50"
+                          >
+                            {isActive ? <Ban className="h-4 w-4 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                            {isActive ? 'Desativar acesso' : 'Ativar acesso'}
+                          </button>
+                          <div className="h-px bg-gray-100 my-1" />
+                          <button
+                            onClick={() => { setOpenMenuId(null); setConfirmDelete(user); }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir usuário
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -302,6 +413,40 @@ export function UsuariosPage() {
             >
               Próximo →
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação de exclusão */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Excluir usuário?</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Você vai excluir <strong>{confirmDelete.email}</strong> permanentemente.
+                  Todos os dados do perfil serão removidos. <strong>Esta ação não pode ser desfeita.</strong>
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg"
+              >
+                Sim, excluir
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -159,6 +159,28 @@ const authService = {
     });
   },
 
+  // Ativa/desativa o acesso do usuário (persiste em users.is_active)
+  async setUserStatus(userId, status) {
+    return authorizedRequest(`/api/users/${userId}`, {
+      method: 'PATCH',
+      body: { status }, // 'active' | 'inactive'
+    });
+  },
+
+  // Envia e-mail de redefinição de senha (o admin não vê a senha)
+  async resetUserPassword(userId) {
+    return authorizedRequest(`/api/users/${userId}/reset-password`, {
+      method: 'POST',
+    });
+  },
+
+  // Exclui permanentemente o usuário (ação irreversível — confirmar no front)
+  async deleteUser(userId) {
+    return authorizedRequest(`/api/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // -------- Restaurantes --------
 
   async getRestaurants(filters = {}) {
