@@ -22,6 +22,7 @@ import {
   Gift,
   AlertTriangle,
   Activity,
+  Trophy,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -29,7 +30,8 @@ const NAV_LINKS = [
   { to: '/metricas', label: 'Métricas', icon: Activity, page: 'metricas' },
   { to: '/usuarios', label: 'Usuários', icon: Users, page: 'usuarios' },
   { to: '/restaurantes', label: 'Restaurantes', icon: Store, page: 'restaurantes' },
-  { to: '/avaliacoes', label: 'Avaliações & Gamificação', icon: Star, page: 'avaliacoes' },
+  { to: '/avaliacoes', label: 'Avaliações', icon: Star, page: 'avaliacoes' },
+  { to: '/gamificacao', label: 'Gamificação', icon: Trophy, page: 'gamificacao' },
   { to: '/banners', label: 'Banners', icon: Image, page: 'banners' },
   { to: '/cupons', label: 'Cupons', icon: Tag, page: 'cupons' },
   { to: '/recompensas', label: 'Recompensas', icon: Gift, page: 'recompensas' },

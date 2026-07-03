@@ -16,7 +16,8 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ de
 const UserMetricsPage = lazy(() => import('./pages/UserMetricsPage'));
 const UsuariosPage = lazy(() => import('./pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
 const RestaurantesPage = lazy(() => import('./pages/RestaurantesPage').then(m => ({ default: m.RestaurantesPage })));
-const EvaluationsGamificationPage = lazy(() => import('./pages/EvaluationsGamificationPage'));
+const EvaluationsPage = lazy(() => import('./pages/EvaluationsPage'));
+const GamificationPage = lazy(() => import('./pages/GamificationPage'));
 const BannerManagementPage = lazy(() => import('./pages/BannerManagementPage'));
 const CouponsPage = lazy(() => import('./pages/CouponsPage'));
 const RewardsManagementPage = lazy(() => import('./pages/RewardsManagementPage'));
@@ -71,7 +72,8 @@ function AdminApp() {
                 <Route path="/metricas" element={<UserMetricsPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
-                <Route path="/avaliacoes" element={<EvaluationsGamificationPage />} />
+                <Route path="/avaliacoes" element={<EvaluationsPage />} />
+                <Route path="/gamificacao" element={<GamificationPage />} />
                 <Route path="/banners" element={<BannerManagementPage />} />
                 <Route path="/cupons" element={<CouponsPage />} />
                 <Route path="/recompensas" element={<RewardsManagementPage />} />
