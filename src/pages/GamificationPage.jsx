@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, RefreshCw, Trophy, Zap } from 'lucide-react';
-import { fetchGamificationLeaderboard, fetchGamificationOverview } from '../services/evaluations';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Loader2, RefreshCw, Save, Trophy, Zap } from 'lucide-react';
+import {
+  fetchGamificationLeaderboard,
+  fetchGamificationOverview,
+  fetchPointRules,
+  updatePointRule,
+} from '../services/evaluations';
 import {
   PERIOD_OPTIONS,
   SCOPE_OPTIONS,
@@ -168,6 +173,8 @@ export default function GamificationPage() {
         ))}
       </section>
 
+      <PointRulesSection />
+
       <GamificationSummary overview={overview} achievements={achievements} loading={isLoading} scopeLabel={scopeLabel} />
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -232,6 +239,207 @@ export default function GamificationPage() {
         )}
       </section>
     </div>
+  );
+}
+
+const APPLIES_TO_LABEL = {
+  client: 'Cliente',
+  delivery: 'Entregador',
+  restaurant: 'Restaurante',
+};
+
+const APPLIES_TO_ORDER = ['client', 'delivery', 'restaurant'];
+
+function groupByAppliesTo(rules) {
+  const groups = rules.reduce((acc, rule) => {
+    const key = rule.applies_to || 'outros';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(rule);
+    return acc;
+  }, {});
+
+  return Object.keys(groups)
+    .sort((a, b) => APPLIES_TO_ORDER.indexOf(a) - APPLIES_TO_ORDER.indexOf(b))
+    .map((key) => [key, groups[key]]);
+}
+
+function PointRulesSection() {
+  const [rules, setRules] = useState([]);
+  const [drafts, setDrafts] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [savingKey, setSavingKey] = useState(null);
+  const [savedKey, setSavedKey] = useState(null);
+
+  const loadRules = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetchPointRules();
+      const items = response?.items ?? [];
+      setRules(items);
+      setDrafts(
+        items.reduce((acc, rule) => {
+          acc[rule.action_key] = { points: rule.points, is_active: rule.is_active };
+          return acc;
+        }, {}),
+      );
+    } catch (err) {
+      console.error('Erro ao carregar regras de pontuação:', err);
+      setError(err?.message || 'Não foi possível carregar as regras de pontuação.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRules();
+  }, [loadRules]);
+
+  const isDirty = (rule) => {
+    const draft = drafts[rule.action_key];
+    if (!draft) return false;
+    return Number(draft.points) !== rule.points || draft.is_active !== rule.is_active;
+  };
+
+  const updateDraft = (actionKey, patch) => {
+    setDrafts((prev) => ({ ...prev, [actionKey]: { ...prev[actionKey], ...patch } }));
+  };
+
+  const handleSave = async (rule) => {
+    const draft = drafts[rule.action_key];
+    if (!draft) return;
+    setError(null);
+    setSavingKey(rule.action_key);
+    try {
+      await updatePointRule(rule.action_key, {
+        points: Number(draft.points),
+        is_active: draft.is_active,
+      });
+      setRules((prev) =>
+        prev.map((r) =>
+          r.action_key === rule.action_key ? { ...r, points: Number(draft.points), is_active: draft.is_active } : r,
+        ),
+      );
+      setSavedKey(rule.action_key);
+      setTimeout(() => setSavedKey((key) => (key === rule.action_key ? null : key)), 2000);
+    } catch (err) {
+      console.error('Erro ao salvar regra de pontuação:', err);
+      setError(err?.message || 'Não foi possível salvar a regra.');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const groupedRules = useMemo(() => groupByAppliesTo(rules), [rules]);
+
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800">Regras de pontuação</h2>
+          <p className="text-xs text-gray-500">
+            Defina quantos pontos cada ação vale para clientes, entregadores e restaurantes.
+          </p>
+        </div>
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+      </div>
+
+      {error && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {!loading && rules.length === 0 && !error ? (
+        <p className="text-sm text-gray-500">Nenhuma regra de pontuação cadastrada.</p>
+      ) : (
+        <div className="space-y-6">
+          {groupedRules.map(([group, groupRules]) => (
+            <div key={group}>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {APPLIES_TO_LABEL[group] ?? group}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Ação</th>
+                      <th className="px-3 py-2 text-left">Pontos</th>
+                      <th className="px-3 py-2 text-left">Ativa</th>
+                      <th className="px-3 py-2 text-right">​</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupRules.map((rule) => {
+                      const draft = drafts[rule.action_key] ?? { points: rule.points, is_active: rule.is_active };
+                      const dirty = isDirty(rule);
+                      const saving = savingKey === rule.action_key;
+                      return (
+                        <tr key={rule.action_key} className="border-t border-gray-100 align-top">
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-800">{rule.label}</span>
+                              {!rule.is_automatic && (
+                                <span
+                                  className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                                  title="Ainda não é concedida automaticamente pelo sistema"
+                                >
+                                  manual
+                                </span>
+                              )}
+                            </div>
+                            {rule.description && <p className="mt-1 max-w-md text-xs text-gray-500">{rule.description}</p>}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={draft.points}
+                                onChange={(event) => updateDraft(rule.action_key, { points: event.target.value })}
+                              />
+                              <span className="text-xs text-gray-400">pts</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-600">
+                              <input
+                                type="checkbox"
+                                checked={draft.is_active}
+                                onChange={(event) => updateDraft(rule.action_key, { is_active: event.target.checked })}
+                              />
+                              {draft.is_active ? 'Ativa' : 'Inativa'}
+                            </label>
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            {savedKey === rule.action_key ? (
+                              <span className="text-xs font-medium text-green-600">Salvo!</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!dirty || saving}
+                                onClick={() => handleSave(rule)}
+                                className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                Salvar
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

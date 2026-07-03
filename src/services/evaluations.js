@@ -119,3 +119,16 @@ export function triggerGamificationRecalculation(params = {}) {
     body: params,
   });
 }
+
+// GET /api/admin/gamification/point-rules
+export function fetchPointRules() {
+  return request('/api/admin/gamification/point-rules');
+}
+
+// PUT /api/admin/gamification/point-rules/<action_key>
+export function updatePointRule(actionKey, body) {
+  return request(`/api/admin/gamification/point-rules/${actionKey}`, {
+    method: 'PUT',
+    body,
+  });
+}
