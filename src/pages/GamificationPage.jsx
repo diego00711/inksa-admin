@@ -8,7 +8,7 @@ import {
 } from '../services/evaluations';
 import {
   PERIOD_OPTIONS,
-  SCOPE_OPTIONS,
+  GAMIFICATION_SCOPE_OPTIONS,
   buildRange,
   parseNumber,
   firstValue,
@@ -30,7 +30,7 @@ export default function GamificationPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
   const range = useMemo(() => buildRange(period), [period]);
-  const scopeLabel = SCOPE_OPTIONS.find((option) => option.value === scope)?.label ?? 'Escopo';
+  const scopeLabel = GAMIFICATION_SCOPE_OPTIONS.find((option) => option.value === scope)?.label ?? 'Escopo';
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +113,7 @@ export default function GamificationPage() {
               ))}
             </select>
             <div className="flex overflow-hidden rounded-md border border-gray-200 bg-white">
-              {SCOPE_OPTIONS.map((option) => {
+              {GAMIFICATION_SCOPE_OPTIONS.map((option) => {
                 const active = option.value === scope;
                 return (
                   <button
