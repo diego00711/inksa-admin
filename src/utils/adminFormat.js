@@ -8,17 +8,10 @@ export const PERIOD_OPTIONS = [
   { value: '90d', label: 'Últimos 90 dias' },
 ];
 
-// Avaliações: só restaurante/entregador têm avaliações de cliente no backend
-// (tabelas restaurant_reviews / delivery_reviews).
+// Usado em Avaliações (partner_type) e Gamificação (scope) -- em Avaliações,
+// "Clientes" mostra avaliações que restaurante/entregador dao SOBRE o cliente
+// (tabela client_reviews); em Gamificação, mostra o ranking/overview de clientes.
 export const SCOPE_OPTIONS = [
-  { value: 'restaurant', label: 'Restaurantes' },
-  { value: 'delivery', label: 'Entregadores' },
-];
-
-// Gamificação: backend também suporta scope=client (cp.id IS NOT NULL em
-// overview/leaderboard) -- cliente ganha pontos (primeiro pedido, avaliação
-// enviada, pedido entregue), então precisa aparecer aqui.
-export const GAMIFICATION_SCOPE_OPTIONS = [
   { value: 'client', label: 'Clientes' },
   { value: 'restaurant', label: 'Restaurantes' },
   { value: 'delivery', label: 'Entregadores' },
