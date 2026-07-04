@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useContext, useEffect } from 'react';
+import { lazy, Suspense, useState, useContext, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -56,10 +56,11 @@ function AuthUnauthorizedListener() {
 
 function AdminApp() {
   const [serverReady, setServerReady] = useState(false);
+  const handleServerReady = useCallback(() => setServerReady(true), []);
 
   return (
     <>
-      <WakingUpScreen onReady={() => setServerReady(true)} />
+      <WakingUpScreen onReady={handleServerReady} />
       <AuthUnauthorizedListener />
       <Notifications />
       {serverReady && (
