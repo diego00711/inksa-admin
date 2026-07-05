@@ -8,20 +8,86 @@ import {
   getPayout,
 } from "../services/payouts";
 import { NotificationContext } from "../context/NotificationContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy } from "lucide-react";
 import PayoutsProcessModal from "../components/PayoutsProcessModal";
 
-// Inline modal for marking a payout as paid
-function MarkPaidModal({ open, onClose, onConfirm, loading }) {
+const brl = (v) =>
+  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Copia texto pra área de transferência (com fallback pra navegadores antigos)
+async function copyText(text) {
+  if (!text) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(String(text));
+      return true;
+    }
+  } catch { /* cai no fallback abaixo */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = String(text);
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Modal assistido: mostra pra quem pagar, quanto e a chave PIX (com copiar),
+// e coleta o comprovante. O admin paga no banco/MP e confirma aqui.
+function MarkPaidModal({ open, payout, onClose, onConfirm, onCopy, loading }) {
   const [method, setMethod] = useState("pix");
   const [ref, setRef] = useState("");
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) { setMethod("pix"); setRef(""); }
+  }, [open, payout]);
+
+  if (!open || !payout) return null;
+
+  const pix = payout.pix_key;
+  const name = payout.partner_name || payout.partner_id;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">Marcar como pago</h3>
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-1">Repasse assistido</h3>
+        <p className="text-sm text-gray-500 mb-4">Pague no seu banco/Mercado Pago e confirme abaixo.</p>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3 mb-4">
+          <div className="flex justify-between gap-3">
+            <span className="text-sm text-gray-500">Parceiro</span>
+            <span className="text-sm font-medium text-gray-800 text-right break-words">{name}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-sm text-gray-500">Valor a pagar</span>
+            <span className="text-lg font-bold text-green-700">{brl(payout.total_net)}</span>
+          </div>
+          <div>
+            <span className="text-sm text-gray-500 block mb-1">Chave PIX</span>
+            {pix ? (
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm bg-white border border-gray-300 rounded px-2 py-1.5 break-all">{pix}</code>
+                <button
+                  type="button"
+                  onClick={() => onCopy(pix)}
+                  className="shrink-0 inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium hover:bg-gray-100"
+                  title="Copiar chave PIX"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copiar
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-red-600">Parceiro sem chave PIX cadastrada — pagar por outro meio.</p>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Método de pagamento</label>
@@ -34,12 +100,12 @@ function MarkPaidModal({ open, onClose, onConfirm, loading }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Referência externa (opcional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Comprovante / referência (opcional)</label>
             <input
               type="text"
               value={ref}
               onChange={(e) => setRef(e.target.value)}
-              placeholder="ID de transação, etc."
+              placeholder="ID da transação PIX, etc."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
@@ -106,8 +172,13 @@ export default function FinanceiroPayouts() {
   const [processModalOpen, setProcessModalOpen] = useState(false);
   const [processLoading, setProcessLoading] = useState(false);
 
-  const [markPaidTarget, setMarkPaidTarget] = useState(null); // payout id
+  const [markPaidTarget, setMarkPaidTarget] = useState(null); // payout object
   const [markPaidLoading, setMarkPaidLoading] = useState(false);
+
+  const handleCopyPix = useCallback(async (pix) => {
+    const ok = await copyText(pix);
+    notify(ok ? "Chave PIX copiada!" : "Não foi possível copiar.", ok ? "success" : "error");
+  }, [notify]);
 
   const [cancelTarget, setCancelTarget] = useState(null); // payout id
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -162,7 +233,7 @@ export default function FinanceiroPayouts() {
     if (!markPaidTarget) return;
     setMarkPaidLoading(true);
     try {
-      await markPayoutPaid(markPaidTarget, { payment_method, payment_ref });
+      await markPayoutPaid(markPaidTarget.id, { payment_method, payment_ref });
       notify("Payout marcado como pago!", "success");
       setMarkPaidTarget(null);
       await fetchPage();
@@ -222,7 +293,7 @@ export default function FinanceiroPayouts() {
             onChange={(e) => { setPage(0); setStatus(e.target.value); }}
           >
             <option value="">Todos</option>
-            <option value="pending">Pendentes</option>
+            <option value="pending_transfer">Pendentes</option>
             <option value="paid">Pagos</option>
             <option value="cancelled">Cancelados</option>
           </select>
@@ -241,11 +312,9 @@ export default function FinanceiroPayouts() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left">ID</th>
               <th className="px-3 py-2 text-left">Tipo</th>
               <th className="px-3 py-2 text-left">Parceiro</th>
-              <th className="px-3 py-2 text-left">Bruto</th>
-              <th className="px-3 py-2 text-left">Taxa</th>
+              <th className="px-3 py-2 text-left">Chave PIX</th>
               <th className="px-3 py-2 text-left">Líquido</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Método</th>
@@ -257,7 +326,7 @@ export default function FinanceiroPayouts() {
           <tbody>
             {loading ? (
               <tr>
-                <td className="px-3 py-6 text-center" colSpan={11}>
+                <td className="px-3 py-6 text-center" colSpan={9}>
                   <div className="flex items-center justify-center gap-2 text-gray-400">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Carregando…
@@ -265,23 +334,45 @@ export default function FinanceiroPayouts() {
                 </td>
               </tr>
             ) : items.length === 0 ? (
-              <tr><td className="px-3 py-6 text-center text-gray-400" colSpan={11}>Nenhum registro encontrado.</td></tr>
+              <tr><td className="px-3 py-6 text-center text-gray-400" colSpan={9}>Nenhum registro encontrado.</td></tr>
             ) : (
-              items.map((p) => (
+              items.map((p) => {
+                const isOpen = !["paid", "cancelled"].includes(p.status);
+                const statusLabel =
+                  p.status === "paid" ? "Pago" :
+                  p.status === "cancelled" ? "Cancelado" :
+                  "Pendente";
+                return (
                 <tr key={p.id} className="border-t hover:bg-gray-50">
-                  <td className="px-3 py-2">{p.id}</td>
-                  <td className="px-3 py-2 capitalize">{p.partner_type}</td>
-                  <td className="px-3 py-2">{p.partner_id}</td>
-                  <td className="px-3 py-2">{Number(p.total_gross || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  <td className="px-3 py-2">{Number(p.commission_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  <td className="px-3 py-2 font-semibold">{Number(p.total_net || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                  <td className="px-3 py-2 capitalize">{p.partner_type === "restaurant" ? "Restaurante" : "Entregador"}</td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-gray-800">{p.partner_name || "—"}</div>
+                    <div className="text-[11px] text-gray-400 font-mono">{p.partner_id}</div>
+                  </td>
+                  <td className="px-3 py-2">
+                    {p.pix_key ? (
+                      <div className="flex items-center gap-1.5">
+                        <code className="text-xs break-all max-w-[180px]">{p.pix_key}</code>
+                        <button
+                          className="shrink-0 text-gray-400 hover:text-indigo-600"
+                          title="Copiar chave PIX"
+                          onClick={() => handleCopyPix(p.pix_key)}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-red-500">sem PIX</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 font-semibold">{brl(p.total_net)}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
                       p.status === 'paid' ? 'bg-green-100 text-green-800' :
                       p.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                       'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {p.status}
+                      {statusLabel}
                     </span>
                   </td>
                   <td className="px-3 py-2">{p.payment_method || "-"}</td>
@@ -289,15 +380,16 @@ export default function FinanceiroPayouts() {
                   <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString('pt-BR') : "-"}</td>
                   <td className="px-3 py-2 space-x-2 whitespace-nowrap">
                     <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p.id)}>Ver</button>
-                    {p.status === "pending" && (
+                    {isOpen && (
                       <>
-                        <button className="text-green-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setMarkPaidTarget(p.id)}>Marcar pago</button>
+                        <button className="text-green-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setMarkPaidTarget(p)}>Pagar</button>
                         <button className="text-red-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setCancelTarget(p.id)}>Cancelar</button>
                       </>
                     )}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -334,8 +426,10 @@ export default function FinanceiroPayouts() {
 
       <MarkPaidModal
         open={!!markPaidTarget}
+        payout={markPaidTarget}
         onClose={() => setMarkPaidTarget(null)}
         onConfirm={onMarkPaidConfirm}
+        onCopy={handleCopyPix}
         loading={markPaidLoading}
       />
 
