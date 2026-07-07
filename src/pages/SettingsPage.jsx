@@ -9,14 +9,18 @@ function calcFreteCobrado(f, km) {
   const free = parseFloat(f.free_delivery_threshold_km) || 0;
   return km > free ? fixed + (km - free) * perKm : fixed;
 }
-// Repasse pago ao entregador: base + por km ACIMA da franquia (mesma
-// free_delivery_threshold_km do frete cobrado). Espelha calcFreteCobrado para
-// não gerar margem negativa em entregas curtas.
+// % de administração retida pela plataforma sobre o frete (campo editável no
+// admin, key financial_delivery_commission). Guardada como percentual humano
+// (ex.: 15 = 15%). Limitada a 0..100.
+function adminRate(f) {
+  const pct = parseFloat(f.financial_delivery_commission);
+  if (!isFinite(pct)) return 0;
+  return Math.min(Math.max(pct, 0), 100) / 100;
+}
+// Repasse ao entregador = frete integral menos a % de administração.
+// Nunca gera margem negativa (a margem é sempre uma fração positiva do frete).
 function calcRepasseEntregador(f, km) {
-  const base = parseFloat(f.delivery_base_fee) || 0;
-  const perKm = parseFloat(f.delivery_per_km_fee) || 0;
-  const free = parseFloat(f.free_delivery_threshold_km) || 0;
-  return km > free ? base + (km - free) * perKm : base;
+  return calcFreteCobrado(f, km) * (1 - adminRate(f));
 }
 
 const DEFAULTS = {
@@ -25,7 +29,6 @@ const DEFAULTS = {
   contact_phone: '',
   support_hours: 'Seg a Sex, 8h às 18h',
   financial_platform_commission: '10',
-  financial_delivery_commission: '8',
   financial_min_order_value: '15',
   platform_name: 'Inksa Delivery',
   platform_max_delivery_radius: '15',
@@ -35,9 +38,9 @@ const DEFAULTS = {
   fixed_delivery_fee: '3.00',
   per_km_delivery_fee: '1.50',
   free_delivery_threshold_km: '2.00',
-  // Repasse pago ao entregador (modelo: base + por km)
-  delivery_base_fee: '5.00',
-  delivery_per_km_fee: '1.00',
+  // Repasse ao entregador: recebe o frete integral menos esta % de administração.
+  // (key financial_delivery_commission, percentual humano — 15 = 15%)
+  financial_delivery_commission: '15',
 };
 
 function SectionCard({ icon: Icon, title, children }) {
@@ -181,8 +184,8 @@ export default function SettingsPage() {
 
       {/* Financeiro */}
       <SectionCard icon={DollarSign} title="Financeiro">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado sobre cada pedido">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Comissão informativa da plataforma (%)" hint="Apenas informativo neste painel. A comissão que o sistema aplica de fato é a da seção 'Taxas de Entrega' (commission_rate).">
             <input
               type="number"
               min="0"
@@ -190,17 +193,6 @@ export default function SettingsPage() {
               step="0.1"
               value={fields.financial_platform_commission}
               onChange={(e) => set('financial_platform_commission', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Comissão de entrega (%)" hint="Percentual retido sobre a taxa de entrega">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={fields.financial_delivery_commission}
-              onChange={(e) => set('financial_delivery_commission', e.target.value)}
               className={inputCls}
             />
           </Field>
@@ -261,32 +253,26 @@ export default function SettingsPage() {
       {/* Repasse ao Entregador */}
       <SectionCard icon={Bike} title="Repasse ao Entregador">
         <p className="text-xs text-gray-500 mb-4">
-          Modelo: <strong>repasse = valor fixo por entrega + valor por km × (distância − franquia)</strong>.
-          Usa a mesma franquia (distância grátis) do frete cobrado do cliente, para
-          a margem nunca ficar negativa em entregas curtas.
+          Modelo: <strong>o entregador recebe o frete integral menos a taxa de administração</strong> abaixo.
+          A margem da plataforma é sempre essa % do frete — nunca fica negativa, em qualquer distância.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Valor fixo por entrega (R$)" hint="Pago em toda entrega, independente da distância">
+          <Field
+            label="Taxa de administração sobre o frete (%)"
+            hint="Percentual do frete que a plataforma retém. O restante vai integral para o entregador."
+          >
             <input
-              type="number" min="0" step="0.01"
-              value={fields.delivery_base_fee}
-              onChange={(e) => set('delivery_base_fee', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Valor por km rodado (R$)" hint="Adicional por cada km da entrega">
-            <input
-              type="number" min="0" step="0.01"
-              value={fields.delivery_per_km_fee}
-              onChange={(e) => set('delivery_per_km_fee', e.target.value)}
+              type="number" min="0" max="100" step="0.1"
+              value={fields.financial_delivery_commission}
+              onChange={(e) => set('financial_delivery_commission', e.target.value)}
               className={inputCls}
             />
           </Field>
         </div>
         <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-100 text-xs text-blue-800">
-          <strong>Exemplo:</strong> base R$ {fields.delivery_base_fee || '0'} + km R$ {fields.delivery_per_km_fee || '0'}
-          {' '}acima de {fields.free_delivery_threshold_km || '0'} km
-          {' '}→ entrega de 4 km paga R$ {calcRepasseEntregador(fields, 4).toFixed(2)}.
+          <strong>Exemplo:</strong> administração de {fields.financial_delivery_commission || '0'}%
+          {' '}→ num frete de R$ 12,50, o entregador recebe R$ {(12.5 * (1 - adminRate(fields))).toFixed(2)}
+          {' '}e a plataforma retém R$ {(12.5 * adminRate(fields)).toFixed(2)}.
         </div>
       </SectionCard>
 
