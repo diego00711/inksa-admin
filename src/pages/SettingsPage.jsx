@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2, Truck, Bike } from 'lucide-react';
+import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2, Truck, Bike, Calculator } from 'lucide-react';
 import authService from '../services/authService';
+
+// Frete que o cliente paga (modelo 'platform'): taxa fixa + por km acima do limite grátis.
+function calcFreteCobrado(f, km) {
+  const fixed = parseFloat(f.fixed_delivery_fee) || 0;
+  const perKm = parseFloat(f.per_km_delivery_fee) || 0;
+  const free = parseFloat(f.free_delivery_threshold_km) || 0;
+  return km > free ? fixed + (km - free) * perKm : fixed;
+}
+// Repasse pago ao entregador: base + por km rodado. Independente do frete cobrado.
+function calcRepasseEntregador(f, km) {
+  const base = parseFloat(f.delivery_base_fee) || 0;
+  const perKm = parseFloat(f.delivery_per_km_fee) || 0;
+  return base + perKm * km;
+}
 
 const DEFAULTS = {
   contact_email: '',
@@ -53,6 +67,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [previewKm, setPreviewKm] = useState('4');
 
   useEffect(() => {
     authService
@@ -272,6 +287,60 @@ export default function SettingsPage() {
             (parseFloat(fields.delivery_per_km_fee) || 0) * 4
           ).toFixed(2)}.
         </div>
+      </SectionCard>
+
+      {/* Margem da Plataforma no Frete (simulador) */}
+      <SectionCard icon={Calculator} title="Margem da Plataforma no Frete">
+        <p className="text-xs text-gray-500 mb-4">
+          A margem é o que a Inksa <strong>retém do frete</strong> (frete cobrado do cliente − repasse ao entregador).
+          Ela varia com a distância. Simule abaixo o impacto da configuração atual antes de salvar.
+        </p>
+        <div className="flex items-center gap-3 mb-4">
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Distância (km)</label>
+          <input
+            type="number" min="0" step="0.5"
+            value={previewKm}
+            onChange={(e) => setPreviewKm(e.target.value)}
+            className="w-28 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+          />
+        </div>
+        {(() => {
+          const km = parseFloat(previewKm) || 0;
+          const cobrado = calcFreteCobrado(fields, km);
+          const repasse = calcRepasseEntregador(fields, km);
+          const margem = cobrado - repasse;
+          const negativa = margem < 0;
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
+                <p className="text-xs text-gray-500">Frete cobrado do cliente</p>
+                <p className="text-lg font-semibold text-gray-900">R$ {cobrado.toFixed(2)}</p>
+              </div>
+              <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
+                <p className="text-xs text-gray-500">Repasse ao entregador</p>
+                <p className="text-lg font-semibold text-gray-900">R$ {repasse.toFixed(2)}</p>
+              </div>
+              <div className={`p-3 rounded-md border ${negativa ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                <p className={`text-xs ${negativa ? 'text-red-600' : 'text-green-700'}`}>Margem da plataforma</p>
+                <p className={`text-lg font-bold ${negativa ? 'text-red-700' : 'text-green-700'}`}>R$ {margem.toFixed(2)}</p>
+              </div>
+            </div>
+          );
+        })()}
+        {(() => {
+          const km = parseFloat(previewKm) || 0;
+          const margem = calcFreteCobrado(fields, km) - calcRepasseEntregador(fields, km);
+          if (margem < 0) {
+            return (
+              <div className="mt-3 flex items-start gap-2 rounded-md bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                Nesta distância a plataforma <strong>subsidia</strong> o frete (paga mais ao entregador do que cobra do cliente).
+                Revise as taxas se não for intencional.
+              </div>
+            );
+          }
+          return null;
+        })()}
       </SectionCard>
 
       {/* Plataforma */}

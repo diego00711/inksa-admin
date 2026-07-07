@@ -34,7 +34,8 @@ export default function FinanceDashboard() {
           financeApi.getRevenueSeries(params),
         ]);
         if (!cancelled) {
-          setMetrics(m);
+          // O endpoint responde { status, data: { ...kpis } } em camelCase.
+          setMetrics(m?.data ?? m ?? null);
           setSeries(s?.data || []);
         }
       } catch (e) {
@@ -84,30 +85,59 @@ export default function FinanceDashboard() {
         </div>
       )}
 
+      {/* Receita REAL da plataforma = comissão + margem de frete, num único lugar */}
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Receita real da plataforma</p>
+            <p className="text-2xl font-bold text-emerald-800">
+              {metricsLoading ? '…' : formatBRL(metrics?.platformRevenue)}
+            </p>
+            <p className="text-xs text-emerald-700/80 mt-0.5">
+              Comissão + margem de frete sobre pedidos concluídos
+            </p>
+          </div>
+          <div className="flex gap-6">
+            <div>
+              <p className="text-xs text-emerald-700/80">Comissão</p>
+              <p className="text-lg font-semibold text-emerald-800">
+                {metricsLoading ? '…' : formatBRL(metrics?.platformCommission)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-emerald-700/80">Margem de frete</p>
+              <p className="text-lg font-semibold text-emerald-800">
+                {metricsLoading ? '…' : formatBRL(metrics?.deliveryMargin)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
-          title="Receita Total"
-          value={metricsLoading ? '…' : formatBRL(metrics?.total_revenue)}
+          title="Receita Total (GMV)"
+          value={metricsLoading ? '…' : formatBRL(metrics?.totalRevenue)}
           icon={<DollarSign size={18} />}
         />
         <KpiCard
           title="Pedidos Hoje"
-          value={metricsLoading ? '…' : (metrics?.orders_today ?? 0)}
+          value={metricsLoading ? '…' : (metrics?.ordersToday ?? 0)}
           icon={<ShoppingCart size={18} />}
         />
         <KpiCard
           title="Ticket Médio"
-          value={metricsLoading ? '…' : formatBRL(metrics?.avg_ticket)}
+          value={metricsLoading ? '…' : formatBRL(metrics?.averageTicket)}
           icon={<TicketPercent size={18} />}
         />
         <KpiCard
           title="Pedidos em Andamento"
-          value={metricsLoading ? '…' : (metrics?.orders_in_progress ?? 0)}
+          value={metricsLoading ? '…' : (metrics?.ordersInProgress ?? 0)}
           icon={<Clock3 size={18} />}
         />
         <KpiCard
           title="Pedidos Cancelados"
-          value={metricsLoading ? '…' : (metrics?.orders_canceled ?? 0)}
+          value={metricsLoading ? '…' : (metrics?.ordersCanceled ?? 0)}
           icon={<XCircle size={18} />}
         />
       </div>
