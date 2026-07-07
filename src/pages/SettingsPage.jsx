@@ -9,11 +9,14 @@ function calcFreteCobrado(f, km) {
   const free = parseFloat(f.free_delivery_threshold_km) || 0;
   return km > free ? fixed + (km - free) * perKm : fixed;
 }
-// Repasse pago ao entregador: base + por km rodado. Independente do frete cobrado.
+// Repasse pago ao entregador: base + por km ACIMA da franquia (mesma
+// free_delivery_threshold_km do frete cobrado). Espelha calcFreteCobrado para
+// não gerar margem negativa em entregas curtas.
 function calcRepasseEntregador(f, km) {
   const base = parseFloat(f.delivery_base_fee) || 0;
   const perKm = parseFloat(f.delivery_per_km_fee) || 0;
-  return base + perKm * km;
+  const free = parseFloat(f.free_delivery_threshold_km) || 0;
+  return km > free ? base + (km - free) * perKm : base;
 }
 
 const DEFAULTS = {
@@ -258,8 +261,9 @@ export default function SettingsPage() {
       {/* Repasse ao Entregador */}
       <SectionCard icon={Bike} title="Repasse ao Entregador">
         <p className="text-xs text-gray-500 mb-4">
-          Modelo: <strong>repasse = valor fixo por entrega + valor por km × distância</strong>.
-          Independente do que o cliente paga.
+          Modelo: <strong>repasse = valor fixo por entrega + valor por km × (distância − franquia)</strong>.
+          Usa a mesma franquia (distância grátis) do frete cobrado do cliente, para
+          a margem nunca ficar negativa em entregas curtas.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Valor fixo por entrega (R$)" hint="Pago em toda entrega, independente da distância">
@@ -281,11 +285,8 @@ export default function SettingsPage() {
         </div>
         <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-100 text-xs text-blue-800">
           <strong>Exemplo:</strong> base R$ {fields.delivery_base_fee || '0'} + km R$ {fields.delivery_per_km_fee || '0'}
-          {' '}→ entrega de 4 km paga R${' '}
-          {(
-            (parseFloat(fields.delivery_base_fee) || 0) +
-            (parseFloat(fields.delivery_per_km_fee) || 0) * 4
-          ).toFixed(2)}.
+          {' '}acima de {fields.free_delivery_threshold_km || '0'} km
+          {' '}→ entrega de 4 km paga R$ {calcRepasseEntregador(fields, 4).toFixed(2)}.
         </div>
       </SectionCard>
 
