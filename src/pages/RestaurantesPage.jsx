@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import AuthService from '../services/authService';
-import { Loader2, Pencil, Star, Zap } from 'lucide-react';
+import { Loader2, Pencil, Star, Zap, CheckCircle2, Ban } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
 
 export function RestaurantesPage() {
@@ -15,6 +15,7 @@ export function RestaurantesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
 
   const extractRatingInfo = (restaurant) => {
     if (!restaurant) return null;
@@ -150,6 +151,24 @@ export function RestaurantesPage() {
     }
   };
 
+  // Aprova/reprova um restaurante. Reprovar (approved=false) some ele do app
+  // do cliente. approved null/true = aprovado; só false é "pendente".
+  const handleToggleApproval = async (restaurant) => {
+    const newApproved = restaurant.approved === false; // se estava pendente, aprova
+    setApprovingId(restaurant.id);
+    try {
+      await AuthService.approveRestaurant(restaurant.id, newApproved);
+      setRestaurants(prev =>
+        prev.map(r => (r.id === restaurant.id ? { ...r, approved: newApproved } : r))
+      );
+      notify(newApproved ? 'Restaurante aprovado!' : 'Aprovação removida.', 'success');
+    } catch (err) {
+      notify(`Erro ao atualizar aprovação: ${err.message}`, 'error');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const filteredRestaurants = useMemo(() => {
     return restaurants.filter((restaurant) => {
       const name = restaurant.restaurant_name || '';
@@ -157,7 +176,8 @@ export function RestaurantesPage() {
       const statusMatch =
         statusFilter === 'todos' ||
         (statusFilter === 'aberto' && restaurant.is_open) ||
-        (statusFilter === 'fechado' && !restaurant.is_open);
+        (statusFilter === 'fechado' && !restaurant.is_open) ||
+        (statusFilter === 'pendentes' && restaurant.approved === false);
       return nameMatch && statusMatch;
     });
   }, [restaurants, searchTerm, statusFilter]);
@@ -179,6 +199,7 @@ export function RestaurantesPage() {
           <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
           <button onClick={() => setStatusFilter('aberto')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'aberto' ? 'bg-green-600 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Abertos</button>
           <button onClick={() => setStatusFilter('fechado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'fechado' ? 'bg-red-600 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Fechados</button>
+          <button onClick={() => setStatusFilter('pendentes')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'pendentes' ? 'bg-yellow-500 text-white shadow' : 'text-gray-600 hover:bg-gray-200'}`}>Pendentes</button>
         </div>
       </div>
       <div className="bg-white rounded-lg shadow-md">
@@ -251,15 +272,33 @@ export function RestaurantesPage() {
                     })()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.is_open ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }`}>
-                      {restaurant.is_open ? 'Aberto' : 'Fechado'}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.is_open ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }`}>
+                        {restaurant.is_open ? 'Aberto' : 'Fechado'}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.approved !== false ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }`} title={restaurant.approved !== false ? 'Visível para os clientes' : 'Aguardando aprovação — invisível para os clientes'}>
+                        {restaurant.approved !== false ? 'Aprovado' : 'Pendente'}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <button onClick={() => handleEditClick(restaurant)} className="font-medium text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto min-h-[44px] min-w-[44px]" title="Editar Restaurante">
-                      <Pencil className="w-4 h-4 mr-1" />
-                      Editar
-                    </button>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-3">
+                      <button onClick={() => handleEditClick(restaurant)} className="font-medium text-blue-600 hover:text-blue-800 flex items-center min-h-[44px]" title="Editar Restaurante">
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleToggleApproval(restaurant)}
+                        disabled={approvingId === restaurant.id}
+                        className={`font-medium flex items-center min-h-[44px] disabled:opacity-50 ${restaurant.approved !== false ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}
+                        title={restaurant.approved !== false ? 'Reprovar (esconde do cliente)' : 'Aprovar (mostra ao cliente)'}
+                      >
+                        {approvingId === restaurant.id
+                          ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          : (restaurant.approved !== false ? <Ban className="w-4 h-4 mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />)}
+                        {restaurant.approved !== false ? 'Reprovar' : 'Aprovar'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -206,9 +206,10 @@ const authService = {
     });
   },
 
-  async approveRestaurant(restaurantId) {
+  async approveRestaurant(restaurantId, approved = true) {
     return authorizedRequest(`/api/admin/restaurants/${restaurantId}/approve`, {
       method: 'POST',
+      body: { approved },
     });
   },
 
