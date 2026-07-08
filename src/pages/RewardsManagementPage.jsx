@@ -258,6 +258,19 @@ export default function RewardsManagementPage() {
     } catch { notify('Erro ao marcar como entregue', 'error'); }
   }
 
+  async function handleReject(redemptionId) {
+    if (!window.confirm('Recusar este resgate? Os pontos voltam para o usuário e o estoque é restaurado.')) return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/gamification/rewards/redemptions/${redemptionId}/reject`,
+        { method: 'PATCH', headers: getHeaders() },
+      );
+      if (!res.ok) throw new Error();
+      notify('Resgate recusado e pontos devolvidos', 'success');
+      loadRedemptions();
+    } catch { notify('Erro ao recusar o resgate', 'error'); }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -431,6 +444,7 @@ export default function RewardsManagementPage() {
               <option value="">Todos os status</option>
               <option value="pending">Pendente</option>
               <option value="delivered">Entregue</option>
+              <option value="rejected">Recusado</option>
             </select>
             <button onClick={loadRedemptions} className="p-1.5 text-gray-500 hover:text-gray-700 transition">
               <RefreshCw className="h-4 w-4" />
@@ -490,17 +504,25 @@ export default function RewardsManagementPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          r.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                          r.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                          r.status === 'rejected'  ? 'bg-red-100 text-red-700' :
+                                                     'bg-yellow-100 text-yellow-700'
                         }`}>
-                          {r.status === 'delivered' ? 'Entregue' : 'Pendente'}
+                          {r.status === 'delivered' ? 'Entregue' : r.status === 'rejected' ? 'Recusado' : 'Pendente'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         {r.status === 'pending' && (
-                          <button onClick={() => handleMarkDelivered(r.id)}
-                            className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
-                            Marcar entregue
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => handleMarkDelivered(r.id)}
+                              className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                              Marcar entregue
+                            </button>
+                            <button onClick={() => handleReject(r.id)}
+                              className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-md hover:bg-red-100 transition">
+                              Recusar
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
