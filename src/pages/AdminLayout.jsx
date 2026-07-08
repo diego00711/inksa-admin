@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Activity,
   Trophy,
+  Medal,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -35,6 +36,7 @@ const NAV_LINKS = [
   { to: '/banners', label: 'Banners', icon: Image, page: 'banners' },
   { to: '/cupons', label: 'Cupons', icon: Tag, page: 'cupons' },
   { to: '/recompensas', label: 'Recompensas', icon: Gift, page: 'recompensas' },
+  { to: '/clube', label: 'Clube Inksa', icon: Medal, page: 'clube' },
   { to: '/logs', label: 'Logs', icon: FileText, page: 'logs' },
   { to: '/admins', label: 'Administradores', icon: Shield, page: 'administradores', matchers: ['/admins', '/administradores'] },
   { to: '/relatorios', label: 'Relatórios', icon: PieChart, page: 'relatorios' },

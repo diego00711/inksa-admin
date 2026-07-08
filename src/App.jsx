@@ -30,6 +30,7 @@ const OcorrenciasPage = lazy(() => import('./pages/OcorrenciasPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 const FinanceiroPayouts = lazy(() => import('./pages/FinanceiroPayouts'));
+const ClubLevelsPage = lazy(() => import('./pages/ClubLevelsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 const PageLoader = () => (
@@ -78,6 +79,7 @@ function AdminApp() {
                 <Route path="/banners" element={<BannerManagementPage />} />
                 <Route path="/cupons" element={<CouponsPage />} />
                 <Route path="/recompensas" element={<RewardsManagementPage />} />
+                <Route path="/clube" element={<ClubLevelsPage />} />
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
                 <Route path="/administradores" element={<AdminsPage />} />

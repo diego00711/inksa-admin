@@ -213,6 +213,21 @@ const authService = {
     });
   },
 
+  // -------- Clube (níveis/benefícios) --------
+
+  async getClubLevels(audience) {
+    return authorizedRequest('/api/club/admin/levels', { params: { audience } });
+  },
+  async createClubLevel(body) {
+    return authorizedRequest('/api/club/admin/levels', { method: 'POST', body });
+  },
+  async updateClubLevel(id, body) {
+    return authorizedRequest(`/api/club/admin/levels/${id}`, { method: 'PUT', body });
+  },
+  async deleteClubLevel(id) {
+    return authorizedRequest(`/api/club/admin/levels/${id}`, { method: 'DELETE' });
+  },
+
   // -------- Pedidos --------
 
   async getOrders(filters = {}) {
