@@ -255,6 +255,14 @@ const authService = {
     });
   },
 
+  // -------- Inksa Social (Dia I) --------
+
+  // Endpoint público, mas com o token de admin devolve o status completo
+  // (valor arrecadado + breakdown) mesmo com a exibição nos apps desligada.
+  async getSocialDayStatus() {
+    return authorizedRequest('/api/public/social-day');
+  },
+
   // -------- Permissões --------
 
   async getPermissions(userId) {
