@@ -3,12 +3,95 @@ import authService from '../services/authService';
 import {
   HeartHandshake, Save, Loader2, RefreshCw, CalendarDays, Clock,
   Smartphone, CheckCircle2, Radio, Hourglass, Flag,
+  History, Trash2, Plus, ExternalLink,
 } from 'lucide-react';
 
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
 
 const money = (v) =>
   (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Linha editável do histórico (prestação de contas de um Dia I)
+function EventRow({ event, onSaved, onDeleted }) {
+  const [form, setForm] = useState({
+    destination: event.destination || '',
+    proof_url: event.proof_url || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await authService.updateSocialEvent(event.id, form);
+      onSaved(res?.data || { ...event, ...form });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      alert(e.message || 'Erro ao salvar evento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm('Remover este evento do histórico público?')) return;
+    try {
+      await authService.deleteSocialEvent(event.id);
+      onDeleted(event.id);
+    } catch (e) {
+      alert(e.message || 'Erro ao remover evento.');
+    }
+  };
+
+  const dateBr = event.date ? event.date.split('-').reverse().join('/') : '—';
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-gray-800">{dateBr}</span>
+          <span className="text-xs text-gray-500">{event.start_time || '—'} – {event.end_time || '—'}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-rose-600">{money(event.raised)}</span>
+          <span className="text-xs text-gray-500">{event.orders_count} pedido(s)</span>
+          <button onClick={remove} className="p-1.5 rounded hover:bg-red-50 text-red-500" title="Remover">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium text-gray-600">Destino da doação (aparece na página pública)</label>
+          <input
+            className={inputCls}
+            placeholder="Ex.: Cestas básicas — Lar São Vicente"
+            value={form.destination}
+            onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">Link de comprovante/postagem (opcional)</label>
+          <input
+            className={inputCls}
+            placeholder="https://..."
+            value={form.proof_url}
+            onChange={(e) => setForm((f) => ({ ...f, proof_url: e.target.value }))}
+          />
+        </div>
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5"
+      >
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+        {saved ? 'Salvo!' : 'Salvar prestação de contas'}
+      </button>
+    </div>
+  );
+}
 
 const PHASE_META = {
   scheduled: { label: 'Agendado', icon: Hourglass, cls: 'bg-blue-100 text-blue-700' },
@@ -26,6 +109,9 @@ export default function InksaSocialPage() {
   const [status, setStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const pollRef = useRef(null);
+
+  const [events, setEvents] = useState([]);
+  const [registering, setRegistering] = useState(false);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -58,10 +144,43 @@ export default function InksaSocialPage() {
     }
   }, []);
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await authService.getSocialDayHistory();
+      setEvents(res?.events || []);
+    } catch {
+      // histórico é secundário; não bloqueia a página
+    }
+  }, []);
+
   useEffect(() => {
     loadSettings();
     loadStatus();
-  }, [loadSettings, loadStatus]);
+    loadHistory();
+  }, [loadSettings, loadStatus, loadHistory]);
+
+  // Grava os números do painel ao vivo como um evento do histórico público
+  const registerCurrentEvent = async () => {
+    if (!status?.configured) return;
+    if (events.some((e) => e.date === status.date)) {
+      if (!window.confirm('Já existe um evento com essa data no histórico. Registrar mesmo assim?')) return;
+    }
+    setRegistering(true);
+    try {
+      const res = await authService.createSocialEvent({
+        date: status.date,
+        start_time: status.start_time,
+        end_time: status.end_time,
+        raised: status.raised,
+        orders_count: status.orders_count,
+      });
+      if (res?.data) setEvents((prev) => [res.data, ...prev]);
+    } catch (e) {
+      setError(e.message || 'Erro ao registrar evento.');
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   // Painel ao vivo: atualiza sozinho a cada 30s enquanto a página está aberta
   useEffect(() => {
@@ -259,6 +378,50 @@ export default function InksaSocialPage() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Histórico / prestação de contas */}
+      <div className="bg-white rounded-xl shadow p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+            <History className="w-5 h-5 text-rose-500" /> Prestação de contas (página pública /dia-i)
+          </h2>
+          <button
+            onClick={registerCurrentEvent}
+            disabled={registering || !status?.configured || status?.phase === 'scheduled'}
+            title={status?.phase === 'scheduled' ? 'Disponível quando o evento começar' : 'Grava os números do painel ao vivo no histórico'}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm font-semibold px-3 py-2"
+          >
+            {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Registrar evento atual
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">
+          Cada evento registrado aparece em <span className="font-mono">inksadelivery.com.br/dia-i</span> com o valor
+          arrecadado e o destino da doação. Preencha o destino (e um link de comprovante, se tiver) e salve.
+        </p>
+        {events.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-4">Nenhum Dia I registrado ainda.</p>
+        ) : (
+          <div className="space-y-3">
+            {events.map((ev) => (
+              <EventRow
+                key={ev.id}
+                event={ev}
+                onSaved={(updated) => setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))}
+                onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))}
+              />
+            ))}
+          </div>
+        )}
+        <a
+          href="https://inksadelivery.com.br/dia-i"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-rose-600 hover:underline"
+        >
+          Ver página pública <ExternalLink className="w-3.5 h-3.5" />
+        </a>
       </div>
 
       {/* Como funciona */}

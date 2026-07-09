@@ -263,6 +263,23 @@ const authService = {
     return authorizedRequest('/api/public/social-day');
   },
 
+  // Histórico/prestação de contas dos Dias I (alimenta a página pública /dia-i)
+  async getSocialDayHistory() {
+    return authorizedRequest('/api/public/social-day/history');
+  },
+
+  async createSocialEvent(event) {
+    return authorizedRequest('/api/admin/social/events', { method: 'POST', body: event });
+  },
+
+  async updateSocialEvent(id, event) {
+    return authorizedRequest(`/api/admin/social/events/${id}`, { method: 'PUT', body: event });
+  },
+
+  async deleteSocialEvent(id) {
+    return authorizedRequest(`/api/admin/social/events/${id}`, { method: 'DELETE' });
+  },
+
   // -------- Permissões --------
 
   async getPermissions(userId) {
