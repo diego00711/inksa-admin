@@ -138,8 +138,9 @@ function MarkPaidModal({ open, payout, onClose, onConfirm, onCopy, loading }) {
 function AutoPayModal({ open, payout, onClose, onConfirm, loading }) {
   const [keyType, setKeyType] = useState("");
 
+  // Pré-seleciona o tipo que o parceiro cadastrou (quando houver).
   useEffect(() => {
-    if (open) setKeyType("");
+    if (open) setKeyType(payout?.pix_key_type || "");
   }, [open, payout]);
 
   if (!open || !payout) return null;
