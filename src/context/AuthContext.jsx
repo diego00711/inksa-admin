@@ -28,6 +28,9 @@ export const AuthProvider = ({ children }) => {
       if (data.cargo) patch.cargo = data.cargo;
       if (data.phone) patch.phone = data.phone;
       if (data.avatar_url) patch.avatar_url = data.avatar_url;
+      // Corrige o user_type quando o login gravou 'unknown' (metadata sem tipo);
+      // GET /profile devolve o tipo autoritativo de public.users.
+      if (data.user_type && data.user_type !== 'unknown') patch.user_type = data.user_type;
       if (Object.keys(patch).length) {
         const merged = AuthService.updateStoredAdmin(patch);
         if (merged) setUser(merged);
