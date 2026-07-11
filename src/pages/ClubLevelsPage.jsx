@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import authService from '../services/authService';
+import { NotificationContext } from '../context/NotificationContext';
 import { Loader2, Save, Trophy, Bike, Store, User, CheckCircle2 } from 'lucide-react';
 
 const AUDIENCES = [
@@ -28,6 +29,7 @@ const BENEFIT_FIELDS = {
 };
 
 function LevelCard({ level, unit, benefitFields, onSaved }) {
+  const { notify } = useContext(NotificationContext);
   const [form, setForm] = useState(() => ({
     name: level.name || '',
     emoji: level.emoji || '🏅',
@@ -67,7 +69,7 @@ function LevelCard({ level, unit, benefitFields, onSaved }) {
       onSaved?.();
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      alert('Erro ao salvar: ' + (e?.message || e));
+      notify('Erro ao salvar: ' + (e?.message || e), 'error');
     } finally {
       setSaving(false);
     }

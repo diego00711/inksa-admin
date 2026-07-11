@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useContext } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Phone, CheckCircle2 } from 'lucide-react';
 import { listIncidents, resolveIncident, refundIncident } from '../services/incidents';
 import { NotificationContext } from '../context/NotificationContext';
+import { useConfirm } from '../components/ConfirmProvider.jsx';
 
 const FAULT_LABELS = {
   customer: 'Culpa do cliente',
@@ -44,6 +45,7 @@ const RESOLUTION_BADGE = {
 
 function IncidentCard({ inc, onResolved }) {
   const { notify } = useContext(NotificationContext);
+  const confirm = useConfirm();
   const [resolution, setResolution] = useState('returned');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -65,8 +67,13 @@ function IncidentCard({ inc, onResolved }) {
   };
 
   const doRefund = async () => {
-    // window.confirm aqui é proposital: reembolso é destrutivo e precisa confirmação explícita
-    if (!window.confirm(`Reembolsar R$ ${Number(inc.refund_amount || 0).toFixed(2)} ao cliente? Isso devolve o dinheiro de verdade pelo Mercado Pago e não pode ser desfeito.`)) return;
+    // Confirmação explícita: reembolso é destrutivo (move dinheiro de verdade).
+    if (!(await confirm({
+      title: 'Processar reembolso',
+      message: `Reembolsar R$ ${Number(inc.refund_amount || 0).toFixed(2)} ao cliente? Isso devolve o dinheiro de verdade e não pode ser desfeito.`,
+      confirmText: 'Reembolsar',
+      danger: true,
+    }))) return;
     setRefunding(true);
     try {
       await refundIncident(inc.id);

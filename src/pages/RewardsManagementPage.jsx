@@ -4,6 +4,7 @@ import {
   CheckCircle, Package, Upload,
 } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
+import { useConfirm } from '../components/ConfirmProvider.jsx';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
 
@@ -36,6 +37,7 @@ function audienceLabel(arr) {
 
 export default function RewardsManagementPage() {
   const { notify } = useContext(NotificationContext);
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('rewards');
 
   const [rewards, setRewards]         = useState([]);
@@ -259,7 +261,7 @@ export default function RewardsManagementPage() {
   }
 
   async function handleReject(redemptionId) {
-    if (!window.confirm('Recusar este resgate? Os pontos voltam para o usuário e o estoque é restaurado.')) return;
+    if (!(await confirm({ title: 'Recusar resgate', message: 'Recusar este resgate? Os pontos voltam para o usuário e o estoque é restaurado.', confirmText: 'Recusar', danger: true }))) return;
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/gamification/rewards/redemptions/${redemptionId}/reject`,

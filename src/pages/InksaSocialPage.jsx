@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import authService from '../services/authService';
+import { useConfirm } from '../components/ConfirmProvider.jsx';
+import { NotificationContext } from '../context/NotificationContext';
 import {
   HeartHandshake, Save, Loader2, RefreshCw, CalendarDays, Clock,
   Smartphone, CheckCircle2, Radio, Hourglass, Flag,
@@ -13,6 +15,8 @@ const money = (v) =>
 
 // Linha editável do histórico (prestação de contas de um Dia I)
 function EventRow({ event, onSaved, onDeleted }) {
+  const confirm = useConfirm();
+  const { notify } = useContext(NotificationContext);
   const [form, setForm] = useState({
     destination: event.destination || '',
     proof_url: event.proof_url || '',
@@ -28,19 +32,19 @@ function EventRow({ event, onSaved, onDeleted }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      alert(e.message || 'Erro ao salvar evento.');
+      notify(e.message || 'Erro ao salvar evento.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async () => {
-    if (!window.confirm('Remover este evento do histórico público?')) return;
+    if (!(await confirm({ title: 'Remover evento', message: 'Remover este evento do histórico público?', confirmText: 'Remover', danger: true }))) return;
     try {
       await authService.deleteSocialEvent(event.id);
       onDeleted(event.id);
     } catch (e) {
-      alert(e.message || 'Erro ao remover evento.');
+      notify(e.message || 'Erro ao remover evento.', 'error');
     }
   };
 
@@ -100,6 +104,7 @@ const PHASE_META = {
 };
 
 export default function InksaSocialPage() {
+  const confirm = useConfirm();
   const [form, setForm] = useState({ date: '', start: '', end: '', showInApps: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,7 +168,7 @@ export default function InksaSocialPage() {
   const registerCurrentEvent = async () => {
     if (!status?.configured) return;
     if (events.some((e) => e.date === status.date)) {
-      if (!window.confirm('Já existe um evento com essa data no histórico. Registrar mesmo assim?')) return;
+      if (!(await confirm({ title: 'Data duplicada', message: 'Já existe um evento com essa data no histórico. Registrar mesmo assim?', confirmText: 'Registrar' }))) return;
     }
     setRegistering(true);
     try {
