@@ -59,6 +59,29 @@ export async function markPayoutPaid(id, { payment_method, payment_ref, paid_at 
   return handle(r);
 }
 
+// Modo do provedor de repasse ({ mode, auto_pay_enabled }). O front usa pra
+// mostrar/ocultar o botão de pagamento automático.
+export async function getPayoutProvider() {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/provider`, {
+    headers: { ...authHeaders() },
+    credentials: "include",
+  });
+  return handle(r);
+}
+
+// Pagamento automático via PIX (dispara a transferência no provedor real).
+// pix_key_type é opcional (CPF|CNPJ|EMAIL|PHONE|EVP) — se omitido, o backend
+// infere pelo formato da chave.
+export async function autoPayPayout(id, { description, pix_key_type } = {}) {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/auto-pay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ description, pix_key_type }),
+  });
+  return handle(r);
+}
+
 // Cancelar
 export async function cancelPayout(id) {
   const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/cancel`, {

@@ -6,9 +6,11 @@ import {
   markPayoutPaid,
   cancelPayout,
   getPayout,
+  getPayoutProvider,
+  autoPayPayout,
 } from "../services/payouts";
 import { NotificationContext } from "../context/NotificationContext";
-import { Loader2, Copy } from "lucide-react";
+import { Loader2, Copy, Zap } from "lucide-react";
 import PayoutsProcessModal from "../components/PayoutsProcessModal";
 
 const brl = (v) =>
@@ -131,6 +133,85 @@ function MarkPaidModal({ open, payout, onClose, onConfirm, onCopy, loading }) {
   );
 }
 
+// Modal de pagamento AUTOMÁTICO: dispara o PIX de saída no provedor (Asaas).
+// Diferente do assistido — aqui o dinheiro sai de verdade ao confirmar.
+function AutoPayModal({ open, payout, onClose, onConfirm, loading }) {
+  const [keyType, setKeyType] = useState("");
+
+  useEffect(() => {
+    if (open) setKeyType("");
+  }, [open, payout]);
+
+  if (!open || !payout) return null;
+
+  const pix = payout.pix_key;
+  const name = payout.partner_name || payout.partner_id;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+          <Zap className="h-5 w-5 text-amber-500" /> Pagar via PIX (automático)
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Ao confirmar, o Inksa envia o PIX direto pela conta do provedor. O dinheiro sai na hora.
+        </p>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3 mb-4">
+          <div className="flex justify-between gap-3">
+            <span className="text-sm text-gray-500">Parceiro</span>
+            <span className="text-sm font-medium text-gray-800 text-right break-words">{name}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-sm text-gray-500">Valor</span>
+            <span className="text-lg font-bold text-green-700">{brl(payout.total_net)}</span>
+          </div>
+          <div>
+            <span className="text-sm text-gray-500 block mb-1">Chave PIX</span>
+            {pix ? (
+              <code className="block text-sm bg-white border border-gray-300 rounded px-2 py-1.5 break-all">{pix}</code>
+            ) : (
+              <p className="text-sm text-red-600">Parceiro sem chave PIX — não é possível pagar automático.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo da chave</label>
+          <select
+            value={keyType}
+            onChange={(e) => setKeyType(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">Detectar automaticamente</option>
+            <option value="CPF">CPF</option>
+            <option value="CNPJ">CNPJ</option>
+            <option value="EMAIL">E-mail</option>
+            <option value="PHONE">Telefone</option>
+            <option value="EVP">Aleatória</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Deixe em "Detectar" na dúvida. Só ajuste se a chave for telefone ou CPF (11 dígitos é ambíguo).
+          </p>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button onClick={onClose} disabled={loading} className="rounded-md border border-gray-300 px-4 py-2 text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm({ pix_key_type: keyType || undefined })}
+            disabled={loading || !pix}
+            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Enviar PIX agora"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Inline modal to confirm cancellation
 function ConfirmCancelModal({ open, onClose, onConfirm, loading }) {
   if (!open) return null;
@@ -175,6 +256,11 @@ export default function FinanceiroPayouts() {
   const [markPaidTarget, setMarkPaidTarget] = useState(null); // payout object
   const [markPaidLoading, setMarkPaidLoading] = useState(false);
 
+  // Provedor de repasse: só mostra o botão de PIX automático se estiver ligado
+  const [autoPayReady, setAutoPayReady] = useState(false);
+  const [autoPayTarget, setAutoPayTarget] = useState(null); // payout object
+  const [autoPayLoading, setAutoPayLoading] = useState(false);
+
   const handleCopyPix = useCallback(async (pix) => {
     const ok = await copyText(pix);
     notify(ok ? "Chave PIX copiada!" : "Não foi possível copiar.", ok ? "success" : "error");
@@ -211,6 +297,16 @@ export default function FinanceiroPayouts() {
     fetchPage();
   }, [fetchPage]);
 
+  // Descobre se o pagamento automático está ligado (provedor real configurado).
+  // Falha silenciosa: sem isso, só o fluxo manual assistido fica disponível.
+  useEffect(() => {
+    let alive = true;
+    getPayoutProvider()
+      .then((res) => { if (alive) setAutoPayReady(!!res?.auto_pay_enabled); })
+      .catch(() => { if (alive) setAutoPayReady(false); });
+    return () => { alive = false; };
+  }, []);
+
   const páginas = Math.max(1, Math.ceil(total / limit));
 
   async function onProcessConfirm({ partner_type, cycle_type }) {
@@ -242,6 +338,22 @@ export default function FinanceiroPayouts() {
       notify(`Erro ao marcar pago: ${e.message}`, "error");
     } finally {
       setMarkPaidLoading(false);
+    }
+  }
+
+  async function onAutoPayConfirm({ pix_key_type }) {
+    if (!autoPayTarget) return;
+    setAutoPayLoading(true);
+    try {
+      const res = await autoPayPayout(autoPayTarget.id, { pix_key_type });
+      notify(`PIX enviado! Ref: ${res?.provider_txid || "—"}`, "success");
+      setAutoPayTarget(null);
+      await fetchPage();
+    } catch (e) {
+      console.error(e);
+      notify(`Falha no PIX automático: ${e.message}`, "error");
+    } finally {
+      setAutoPayLoading(false);
     }
   }
 
@@ -382,6 +494,15 @@ export default function FinanceiroPayouts() {
                     <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p.id)}>Ver</button>
                     {isOpen && (
                       <>
+                        {autoPayReady && p.pix_key && (
+                          <button
+                            className="text-amber-600 hover:underline text-xs min-h-[44px] inline-flex items-center gap-1"
+                            onClick={() => setAutoPayTarget(p)}
+                            title="Enviar PIX automaticamente pelo provedor"
+                          >
+                            <Zap className="h-3.5 w-3.5" /> PIX auto
+                          </button>
+                        )}
                         <button className="text-green-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setMarkPaidTarget(p)}>Pagar</button>
                         <button className="text-red-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => setCancelTarget(p.id)}>Cancelar</button>
                       </>
@@ -431,6 +552,14 @@ export default function FinanceiroPayouts() {
         onConfirm={onMarkPaidConfirm}
         onCopy={handleCopyPix}
         loading={markPaidLoading}
+      />
+
+      <AutoPayModal
+        open={!!autoPayTarget}
+        payout={autoPayTarget}
+        onClose={() => setAutoPayTarget(null)}
+        onConfirm={onAutoPayConfirm}
+        loading={autoPayLoading}
       />
 
       <ConfirmCancelModal
