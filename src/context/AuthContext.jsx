@@ -16,6 +16,27 @@ export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
+  // Hidrata nome/cargo/telefone/avatar (que vivem em admin_profiles, não no
+  // objeto de login) pro sidebar mostrar o nome real em vez do prefixo do
+  // e-mail. Best-effort: nunca quebra a sessão.
+  const hydrateProfile = useCallback(async () => {
+    try {
+      const data = await AuthService.getMyProfile();
+      if (!data) return;
+      const patch = {};
+      if (data.name) patch.name = data.name;
+      if (data.cargo) patch.cargo = data.cargo;
+      if (data.phone) patch.phone = data.phone;
+      if (data.avatar_url) patch.avatar_url = data.avatar_url;
+      if (Object.keys(patch).length) {
+        const merged = AuthService.updateStoredAdmin(patch);
+        if (merged) setUser(merged);
+      }
+    } catch {
+      // hidratação de perfil é opcional
+    }
+  }, []);
+
   const loadPermissions = useCallback(async (currentUser) => {
     const userId = currentUser?.id ?? currentUser?.user_id ?? currentUser?.uuid;
     if (!userId) {
@@ -43,10 +64,11 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
     if (authenticated && currentUser) {
       await loadPermissions(currentUser);
+      hydrateProfile();
     } else {
       setPermissionsLoaded(true);
     }
-  }, [loadPermissions]);
+  }, [loadPermissions, hydrateProfile]);
 
   useEffect(() => {
     checkAuth();
@@ -59,6 +81,7 @@ export const AuthProvider = ({ children }) => {
       const currentUser = AuthService.getCurrentAdmin();
       setUser(currentUser);
       await loadPermissions(currentUser);
+      hydrateProfile();
       // Solicita permissão de notificação push de forma defensiva — nunca quebra o login
       requestNotificationPermission().catch(() => {});
       return result;

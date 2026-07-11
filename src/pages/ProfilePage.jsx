@@ -78,6 +78,14 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Erro ao salvar perfil');
       setProfile((p) => ({ ...(p || {}), ...editForm }));
+      // Reflete o nome novo na sidebar/menu na hora (senão só apareceria após
+      // relogar, pois o objeto de login não carrega admin_profiles).
+      authService.updateStoredAdmin({
+        name: editForm.name,
+        cargo: editForm.cargo,
+        phone: editForm.phone,
+      });
+      refreshUser();
       setIsEditing(false);
       notify('Perfil atualizado com sucesso!', 'success');
     } catch (err) {

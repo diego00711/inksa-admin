@@ -301,6 +301,28 @@ const authService = {
     }
   },
 
+  // Mescla campos no admin guardado (localStorage) — usado pra refletir o nome/
+  // avatar editados no perfil sem precisar deslogar. O login só grava
+  // id/email/user_type; nome e afins vivem em admin_profiles.
+  updateStoredAdmin(patch = {}) {
+    try {
+      const raw = localStorage.getItem(ADMIN_USER_DATA_KEY);
+      const current = raw ? JSON.parse(raw) : {};
+      const merged = { ...current, ...patch };
+      localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(merged));
+      return merged;
+    } catch {
+      return null;
+    }
+  },
+
+  // Perfil do próprio admin logado (nome, cargo, telefone, avatar) — vem de
+  // admin_profiles no backend.
+  async getMyProfile() {
+    const result = await authorizedRequest('/api/admin/profile');
+    return result?.data ?? result;
+  },
+
   isAuthenticated() {
     return !!getStoredToken();
   },
