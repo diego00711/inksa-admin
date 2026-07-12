@@ -478,7 +478,14 @@ export default function FinanceiroPayouts() {
                       <span className="text-xs text-red-500">sem PIX</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 font-semibold">{brl(p.total_net)}</td>
+                  <td className="px-3 py-2 font-semibold">
+                    {brl(p.total_net)}
+                    {Number(p.cash_debt_deducted) > 0 && (
+                      <div className="text-[11px] font-normal text-amber-600" title="Dívida em dinheiro abatida deste repasse">
+                        − {brl(p.cash_debt_deducted)} abatido (dinheiro)
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
                       p.status === 'paid' ? 'bg-green-100 text-green-800' :
