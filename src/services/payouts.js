@@ -82,6 +82,26 @@ export async function autoPayPayout(id, { description, pix_key_type } = {}) {
   return handle(r);
 }
 
+// Dívidas em dinheiro dos entregadores (cash_debt > 0)
+export async function listCashDebts() {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/cash-debts`, {
+    headers: { ...authHeaders() },
+    credentials: "include",
+  });
+  return handle(r);
+}
+
+// Registrar acerto (entregador quitou total/parcial a dívida em dinheiro)
+export async function settleCashDebt(deliveryId, { amount, note } = {}) {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/cash-debts/${deliveryId}/settle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ amount, note }),
+  });
+  return handle(r);
+}
+
 // Cancelar
 export async function cancelPayout(id) {
   const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/cancel`, {

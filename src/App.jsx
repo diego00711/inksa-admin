@@ -30,6 +30,7 @@ const OcorrenciasPage = lazy(() => import('./pages/OcorrenciasPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 const FinanceiroPayouts = lazy(() => import('./pages/FinanceiroPayouts'));
+const CashDebtsPage = lazy(() => import('./pages/CashDebtsPage'));
 const ClubLevelsPage = lazy(() => import('./pages/ClubLevelsPage'));
 const InksaSocialPage = lazy(() => import('./pages/InksaSocialPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -88,6 +89,7 @@ function AdminApp() {
                 <Route path="/relatorios" element={<ReportsPage />} />
                 <Route path="/financeiro" element={<FinanceDashboard />} />
                 <Route path="/financeiro/payouts" element={<FinanceiroPayouts />} />
+                <Route path="/financeiro/dividas" element={<CashDebtsPage />} />
                 <Route path="/ocorrencias" element={<OcorrenciasPage />} />
                 <Route path="/suporte" element={<SupportPage />} />
                 <Route path="/configuracoes" element={<SettingsPage />} />
