@@ -185,14 +185,11 @@ export default function SettingsPage() {
       {/* Financeiro */}
       <SectionCard icon={DollarSign} title="Financeiro">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Comissão informativa da plataforma (%)" hint="Apenas informativo neste painel. A comissão que o sistema aplica de fato é a da seção 'Taxas de Entrega' (commission_rate).">
+          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado do restaurante sobre o valor de cada pedido. É a comissão que o sistema aplica de fato.">
             <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={fields.financial_platform_commission}
-              onChange={(e) => set('financial_platform_commission', e.target.value)}
+              type="number" min="0" max="99.99" step="0.1"
+              value={fields.commission_rate}
+              onChange={(e) => set('commission_rate', e.target.value)}
               className={inputCls}
             />
           </Field>
@@ -215,14 +212,6 @@ export default function SettingsPage() {
           Valores usados no cálculo do frete que o cliente paga no checkout.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado do restaurante sobre o valor do pedido">
-            <input
-              type="number" min="0" max="99.99" step="0.1"
-              value={fields.commission_rate}
-              onChange={(e) => set('commission_rate', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
           <Field label="Taxa fixa de entrega (R$)" hint="Valor base cobrado em toda entrega">
             <input
               type="number" min="0" step="0.01"
