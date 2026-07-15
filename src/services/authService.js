@@ -4,11 +4,13 @@ import { API_BASE_URL } from './api';
 import { apiFetch } from './apiClient';
 
 const AUTH_TOKEN_KEY = 'adminAuthToken';
+const REFRESH_TOKEN_KEY = 'adminRefreshToken';
 const ADMIN_USER_DATA_KEY = 'adminUser';
 
 const processResponse = async (response) => {
   if (response.status === 401) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_DATA_KEY);
     window.location.href = '/login';
     return null;
@@ -87,6 +89,17 @@ const authService = {
 
       localStorage.setItem(AUTH_TOKEN_KEY, token);
 
+      // Sem guardar o refresh_token o apiClient não consegue renovar a sessão
+      // e o admin cai no login quando o access_token vence (~1h) — o que
+      // derrubaria o painel de TV (/tv), que fica aberto direto.
+      const refreshToken =
+        result.refresh_token ??
+        result.data?.refresh_token ??
+        null;
+      if (refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      }
+
       const user = result.data?.user ?? null;
       if (user) {
         localStorage.setItem(ADMIN_USER_DATA_KEY, JSON.stringify(user));
@@ -97,6 +110,11 @@ const authService = {
       console.error('Erro no login:', err);
       throw err;
     }
+  },
+
+  // Painel de TV do escritorio (rota /tv). Numeros agregados + feed ao vivo.
+  async getTvStats() {
+    return authorizedRequest('/api/admin/tv/stats');
   },
 
   async logout() {
@@ -113,6 +131,7 @@ const authService = {
       }
     } finally {
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(ADMIN_USER_DATA_KEY);
       window.location.href = '/login';
     }

@@ -34,6 +34,8 @@ const CashDebtsPage = lazy(() => import('./pages/CashDebtsPage'));
 const ClubLevelsPage = lazy(() => import('./pages/ClubLevelsPage'));
 const InksaSocialPage = lazy(() => import('./pages/InksaSocialPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+// Painel de parede do escritório: fica fora do AdminLayout (tela cheia, sem menu)
+const TvPage = lazy(() => import('./pages/TvPage'));
 
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -71,6 +73,7 @@ function AdminApp() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
+              <Route path="/tv" element={<TvPage />} />
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/metricas" element={<UserMetricsPage />} />
