@@ -314,7 +314,15 @@ export default function FinanceiroPayouts() {
     setProcessLoading(true);
     try {
       const res = await processPayouts({ partner_type, cycle_type });
-      notify(`Processados: ${res.generated_count ?? 0} payouts.`, "success");
+      // O backend retorna total_payouts (não generated_count). 0 significa
+      // "nenhum repasse pendente pra esse filtro" — não é erro.
+      const n = res.total_payouts ?? 0;
+      notify(
+        n > 0
+          ? `${n} repasse(s) gerado(s).`
+          : "Nenhum repasse pendente para gerar.",
+        n > 0 ? "success" : "info",
+      );
       setProcessModalOpen(false);
       setPage(0);
       await fetchPage();

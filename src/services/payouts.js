@@ -38,7 +38,9 @@ export async function getPayout(id) {
 }
 
 // Processar/gerar payouts a partir de pedidos entregues
-export async function processPayouts({ partner_type, cycle_type = "weekly" }) {
+// partner_type vazio/undefined = os dois tipos; cycle_type "all" = todos os
+// ciclos (cada parceiro é pago na frequência que ELE escolheu). Default "all".
+export async function processPayouts({ partner_type, cycle_type = "all" }) {
   const r = await apiFetch(`${ADMIN_PAYOUTS}/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
