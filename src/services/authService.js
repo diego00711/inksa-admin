@@ -138,21 +138,9 @@ const authService = {
   },
 
   // -------- Dashboard --------
-
-  async getKpiSummary() {
-    const result = await authorizedRequest('/api/admin/kpi-summary');
-    return result?.data ?? result;
-  },
-
-  async getRevenueChartData() {
-    const result = await authorizedRequest('/api/admin/stats/revenue-chart');
-    return result?.data ?? result;
-  },
-
-  async getRecentOrders() {
-    const result = await authorizedRequest('/api/admin/orders/recent');
-    return result?.data ?? result;
-  },
+  // (getKpiSummary / getRevenueChartData / getRecentOrders removidas: apontavam
+  // pra rotas que nao existem no backend e nenhuma tela as chamava — armadilhas
+  // que dariam 404 se alguem as ligasse. Pente fino de 2026-07-15.)
 
   async getDashboardStats() {
     return authorizedRequest('/api/admin/dashboard');
@@ -247,19 +235,8 @@ const authService = {
     return authorizedRequest(`/api/club/admin/levels/${id}`, { method: 'DELETE' });
   },
 
-  // -------- Pedidos --------
-
-  async getOrders(filters = {}) {
-    return authorizedRequest('/api/admin/orders', { params: filters });
-  },
-
-  // -------- Relatórios --------
-
-  async getReports(type, period) {
-    return authorizedRequest(`/api/admin/reports/${type}`, {
-      params: { period },
-    });
-  },
+  // (getOrders e getReports removidas pelo mesmo motivo: rotas inexistentes,
+  // zero chamadores. Relatorios reais vivem no financeApi de finance.js.)
 
   // -------- Configurações --------
 

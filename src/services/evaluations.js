@@ -113,12 +113,8 @@ export function fetchGamificationLeaderboard(params = {}) {
   });
 }
 
-export function triggerGamificationRecalculation(params = {}) {
-  return request('/api/gamification/recalculate', {
-    method: 'POST',
-    body: params,
-  });
-}
+// triggerGamificationRecalculation removida: POST /api/gamification/recalculate
+// nao existe no backend e nenhuma tela chamava (pente fino de 2026-07-15).
 
 // GET /api/admin/gamification/point-rules
 export function fetchPointRules() {
