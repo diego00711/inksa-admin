@@ -20,6 +20,8 @@ function EventRow({ event, onSaved, onDeleted }) {
   const [form, setForm] = useState({
     destination: event.destination || '',
     proof_url: event.proof_url || '',
+    raised: event.raised ?? 0,
+    orders_count: event.orders_count ?? 0,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -27,8 +29,15 @@ function EventRow({ event, onSaved, onDeleted }) {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await authService.updateSocialEvent(event.id, form);
-      onSaved(res?.data || { ...event, ...form });
+      // raised/orders_count vão como número; o backend valida e limita a >= 0
+      const payload = {
+        destination: form.destination,
+        proof_url: form.proof_url,
+        raised: parseFloat(form.raised) || 0,
+        orders_count: parseInt(form.orders_count, 10) || 0,
+      };
+      const res = await authService.updateSocialEvent(event.id, payload);
+      onSaved(res?.data || { ...event, ...payload });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -82,6 +91,25 @@ function EventRow({ event, onSaved, onDeleted }) {
             placeholder="https://..."
             value={form.proof_url}
             onChange={(e) => setForm((f) => ({ ...f, proof_url: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">Valor doado (R$)</label>
+          <input
+            type="number" step="0.01" min="0"
+            className={inputCls}
+            value={form.raised}
+            onChange={(e) => setForm((f) => ({ ...f, raised: e.target.value }))}
+          />
+          <p className="text-[11px] text-gray-400 mt-0.5">Ajuste se registrou antes das últimas entregas caírem.</p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">Nº de pedidos</label>
+          <input
+            type="number" step="1" min="0"
+            className={inputCls}
+            value={form.orders_count}
+            onChange={(e) => setForm((f) => ({ ...f, orders_count: e.target.value }))}
           />
         </div>
       </div>
