@@ -238,6 +238,130 @@ function ConfirmCancelModal({ open, onClose, onConfirm, loading }) {
   );
 }
 
+// Linha rótulo/valor do resumo
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-sm text-gray-500 shrink-0">{label}</span>
+      <span className="text-sm text-gray-800 text-right break-words min-w-0">{value}</span>
+    </div>
+  );
+}
+
+// Modal "Ver": detalhes do repasse + pedidos que o compõem
+function PayoutDetailsModal({ open, payout, detail, loading, onClose, onCopy }) {
+  if (!open || !payout) return null;
+  const head = detail?.payout || {};
+  const items = detail?.items || [];
+  const name = payout.partner_name || payout.partner_id;
+  const tipo = payout.partner_type === "restaurant" ? "Restaurante" : "Entregador";
+  const statusLabel =
+    payout.status === "paid" ? "Pago" :
+    payout.status === "cancelled" ? "Cancelado" : "Pendente";
+  const statusCls =
+    payout.status === "paid" ? "bg-green-100 text-green-800" :
+    payout.status === "cancelled" ? "bg-red-100 text-red-800" :
+    "bg-yellow-100 text-yellow-800";
+  const fmtDate = (d) => (d ? new Date(d).toLocaleString("pt-BR") : "—");
+  const fmtDay = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">Detalhes do repasse</h3>
+            <p className="text-[11px] text-gray-400 font-mono break-all">{payout.id}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none px-2" title="Fechar">✕</button>
+        </div>
+
+        {/* Resumo */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2.5 mb-4">
+          <Row label="Parceiro" value={<span className="font-medium">{name} <span className="text-gray-400">· {tipo}</span></span>} />
+          <Row label="Status" value={<span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${statusCls}`}>{statusLabel}</span>} />
+          <div className="flex justify-between gap-3">
+            <span className="text-sm text-gray-500 shrink-0">Chave PIX</span>
+            {payout.pix_key ? (
+              <span className="flex items-center gap-1.5 min-w-0">
+                <code className="text-xs break-all">{payout.pix_key}</code>
+                <button onClick={() => onCopy(payout.pix_key)} className="shrink-0 text-gray-400 hover:text-indigo-600" title="Copiar chave PIX">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-red-500">sem PIX</span>
+            )}
+          </div>
+          <Row label="Período" value={`${fmtDay(head.period_start)} — ${fmtDay(head.period_end)}`} />
+          <Row label="Método" value={payout.payment_method || head.payment_method || "—"} />
+          {(payout.payment_ref || head.payment_ref) && (
+            <Row label="Ref. externa" value={<span className="font-mono text-xs break-all">{payout.payment_ref || head.payment_ref}</span>} />
+          )}
+          <Row label="Criado em" value={fmtDate(head.created_at)} />
+          <Row label="Atualizado" value={fmtDate(payout.updated_at || head.updated_at)} />
+        </div>
+
+        {/* Valores */}
+        <div className="rounded-lg border border-gray-200 p-4 space-y-2 mb-4">
+          <Row label="Bruto" value={brl(head.total_gross)} />
+          <Row label="Comissão / taxa" value={<span className="text-gray-600">− {brl(head.commission_fee)}</span>} />
+          {Number(payout.cash_debt_deducted) > 0 && (
+            <Row label="Dívida em dinheiro abatida" value={<span className="text-amber-600">− {brl(payout.cash_debt_deducted)}</span>} />
+          )}
+          <div className="flex justify-between gap-3 border-t pt-2">
+            <span className="text-sm font-semibold text-gray-700">Líquido a pagar</span>
+            <span className="text-lg font-bold text-green-700">{brl(payout.total_net ?? head.total_net)}</span>
+          </div>
+        </div>
+
+        {/* Pedidos que compõem o repasse */}
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold text-gray-700 mb-2">
+            Pedidos neste repasse{!loading && items.length ? ` (${items.length})` : ""}
+          </h4>
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+            </div>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-gray-400 py-2">Nenhum pedido detalhado.</p>
+          ) : (
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100 text-xs text-gray-500 uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Pedido</th>
+                    <th className="px-3 py-2 text-right">Bruto</th>
+                    <th className="px-3 py-2 text-right">Taxa</th>
+                    <th className="px-3 py-2 text-right">Líquido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id} className="border-t">
+                      <td className="px-3 py-2 font-mono text-xs">#{String(it.order_id).slice(0, 8)}</td>
+                      <td className="px-3 py-2 text-right">{brl(it.gross_amount)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500">{brl(it.fee)}</td>
+                      <td className="px-3 py-2 text-right font-semibold">{brl(it.net_amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <button onClick={onClose} className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FinanceiroPayouts() {
   const { notify } = useContext(NotificationContext);
 
@@ -269,6 +393,11 @@ export default function FinanceiroPayouts() {
 
   const [cancelTarget, setCancelTarget] = useState(null); // payout id
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Modal "Ver" (detalhes do repasse)
+  const [viewTarget, setViewTarget] = useState(null);   // objeto da linha (p)
+  const [viewDetail, setViewDetail] = useState(null);   // { payout, items }
+  const [viewLoading, setViewLoading] = useState(false);
 
   const params = useMemo(
     () => ({
@@ -382,14 +511,19 @@ export default function FinanceiroPayouts() {
     }
   }
 
-  async function onView(id) {
+  async function onView(p) {
+    // abre o modal já com os dados da linha; busca os itens/período por baixo
+    setViewTarget(p);
+    setViewDetail(null);
+    setViewLoading(true);
     try {
-      const res = await getPayout(id);
-      // Show details in a notification — replacing alert()
-      notify(`Payout ${id} | Status: ${res?.payout?.status ?? "—"} | Líquido: ${res?.payout?.total_net ?? "—"}`, "info", 6000);
+      const res = await getPayout(p.id);
+      setViewDetail(res);
     } catch (e) {
       console.error(e);
       notify(`Erro ao carregar detalhes: ${e.message}`, "error");
+    } finally {
+      setViewLoading(false);
     }
   }
 
@@ -507,7 +641,7 @@ export default function FinanceiroPayouts() {
                   <td className="px-3 py-2">{p.payment_ref || "-"}</td>
                   <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString('pt-BR') : "-"}</td>
                   <td className="px-3 py-2 space-x-2 whitespace-nowrap">
-                    <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p.id)}>Ver</button>
+                    <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p)}>Ver</button>
                     {isOpen && (
                       <>
                         {autoPayReady && p.pix_key && (
@@ -583,6 +717,15 @@ export default function FinanceiroPayouts() {
         onClose={() => setCancelTarget(null)}
         onConfirm={onCancelConfirm}
         loading={cancelLoading}
+      />
+
+      <PayoutDetailsModal
+        open={!!viewTarget}
+        payout={viewTarget}
+        detail={viewDetail}
+        loading={viewLoading}
+        onClose={() => { setViewTarget(null); setViewDetail(null); }}
+        onCopy={handleCopyPix}
       />
     </div>
   );
