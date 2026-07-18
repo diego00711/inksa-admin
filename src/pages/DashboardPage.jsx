@@ -241,7 +241,7 @@ export function DashboardPage() {
             id: it.id,
             client_name: it.customer_name ?? it.client_name ?? '-',
             restaurant_name: it.restaurant_name ?? '-',
-            total_amount: Number(it.amount ?? it.total ?? 0),
+            total_amount: Number(it.total_amount ?? it.amount ?? it.total ?? 0),
             status: it.status ?? '-',
             created_at: it.created_at,
           }))
