@@ -174,6 +174,15 @@ const authService = {
     });
   },
 
+  // Marca/desmarca o restaurante como Parceiro Fundador (campanha: comissão
+  // pela metade até a data configurada). Persiste em restaurant_profiles.fundador.
+  async setUserFounding(userId, fundador) {
+    return authorizedRequest(`/api/users/${userId}`, {
+      method: 'PATCH',
+      body: { fundador: !!fundador },
+    });
+  },
+
   // Envia e-mail de redefinição de senha (o admin não vê a senha)
   async resetUserPassword(userId) {
     return authorizedRequest(`/api/users/${userId}/reset-password`, {

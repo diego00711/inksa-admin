@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react';
 import authService from '../services/authService';
-import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2, Star } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { NotificationContext } from '../context/NotificationContext';
 
@@ -96,6 +96,23 @@ export function UsuariosPage() {
       setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_active: newStatus === 'active' } : x)));
     } catch (err) {
       notify(err.message || 'Falha ao alterar status.', 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  }, [notify]);
+
+  const handleToggleFounding = useCallback(async (u) => {
+    setOpenMenuId(null);
+    const next = !u.fundador;
+    setBusyUserId(u.id);
+    try {
+      await authService.setUserFounding(u.id, next);
+      notify(next
+        ? `${u.full_name || u.email} agora é Parceiro Fundador (comissão pela metade).`
+        : `Selo de Fundador removido de ${u.full_name || u.email}.`, 'success');
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, fundador: next } : x)));
+    } catch (err) {
+      notify(err.message || 'Falha ao alterar o selo de Fundador.', 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -369,6 +386,15 @@ export function UsuariosPage() {
                             {isActive ? <Ban className="h-4 w-4 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
                             {isActive ? 'Desativar acesso' : 'Ativar acesso'}
                           </button>
+                          {user.user_type === 'restaurant' && (
+                            <button
+                              onClick={() => handleToggleFounding(user)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50"
+                            >
+                              <Star className={`h-4 w-4 ${user.fundador ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
+                              {user.fundador ? 'Remover Parceiro Fundador' : 'Tornar Parceiro Fundador'}
+                            </button>
+                          )}
                           <div className="h-px bg-gray-100 my-1" />
                           <button
                             onClick={() => { setOpenMenuId(null); setConfirmDelete(user); }}
