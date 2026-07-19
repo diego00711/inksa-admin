@@ -229,6 +229,14 @@ const authService = {
     });
   },
 
+  // Marca/desmarca o restaurante como Parceiro Fundador (comissão pela metade)
+  async setRestaurantFounding(restaurantId, fundador = true) {
+    return authorizedRequest(`/api/admin/restaurants/${restaurantId}/founding`, {
+      method: 'POST',
+      body: { fundador },
+    });
+  },
+
   // -------- Clube (níveis/benefícios) --------
 
   async getClubLevels(audience) {

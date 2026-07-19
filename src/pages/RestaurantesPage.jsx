@@ -16,6 +16,7 @@ export function RestaurantesPage() {
   const [editingRestaurant, setEditingRestaurant] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
+  const [foundingId, setFoundingId] = useState(null);
 
   const extractRatingInfo = (restaurant) => {
     if (!restaurant) return null;
@@ -169,6 +170,26 @@ export function RestaurantesPage() {
     }
   };
 
+  // Marca/desmarca o restaurante como Parceiro Fundador (comissão pela metade
+  // até a data da campanha). Só afeta pedidos NOVOS — marcar antes de vender.
+  const handleToggleFounding = async (restaurant) => {
+    const next = !restaurant.fundador;
+    setFoundingId(restaurant.id);
+    try {
+      await AuthService.setRestaurantFounding(restaurant.id, next);
+      setRestaurants(prev =>
+        prev.map(r => (r.id === restaurant.id ? { ...r, fundador: next } : r))
+      );
+      notify(next
+        ? 'Restaurante marcado como Parceiro Fundador (comissão pela metade).'
+        : 'Selo de Fundador removido.', 'success');
+    } catch (err) {
+      notify(`Erro ao atualizar Fundador: ${err.message}`, 'error');
+    } finally {
+      setFoundingId(null);
+    }
+  };
+
   const filteredRestaurants = useMemo(() => {
     return restaurants.filter((restaurant) => {
       const name = restaurant.restaurant_name || '';
@@ -279,6 +300,11 @@ export function RestaurantesPage() {
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.approved !== false ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }`} title={restaurant.approved !== false ? 'Visível para os clientes' : 'Aguardando aprovação — invisível para os clientes'}>
                         {restaurant.approved !== false ? 'Aprovado' : 'Pendente'}
                       </span>
+                      {restaurant.fundador && (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 inline-flex items-center gap-1" title="Parceiro Fundador — comissão pela metade até o fim da campanha">
+                          <Star className="w-3 h-3" fill="currentColor" /> Fundador
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -297,6 +323,17 @@ export function RestaurantesPage() {
                           ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
                           : (restaurant.approved !== false ? <Ban className="w-4 h-4 mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />)}
                         {restaurant.approved !== false ? 'Reprovar' : 'Aprovar'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleFounding(restaurant)}
+                        disabled={foundingId === restaurant.id}
+                        className={`font-medium flex items-center min-h-[44px] disabled:opacity-50 ${restaurant.fundador ? 'text-amber-600 hover:text-amber-800' : 'text-gray-500 hover:text-gray-700'}`}
+                        title={restaurant.fundador ? 'Remover selo de Parceiro Fundador' : 'Tornar Parceiro Fundador (comissão pela metade)'}
+                      >
+                        {foundingId === restaurant.id
+                          ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          : <Star className={`w-4 h-4 mr-1 ${restaurant.fundador ? 'fill-current' : ''}`} />}
+                        {restaurant.fundador ? 'Fundador ✓' : 'Fundador'}
                       </button>
                     </div>
                   </td>
