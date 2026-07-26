@@ -11,7 +11,10 @@ export default function FinanceDashboard() {
     const to = new Date();
     const from = new Date();
     from.setDate(to.getDate() - 7);
-    const fmt = (d) => d.toISOString().slice(0, 10);
+    // Data LOCAL (Brasil), não toISOString (UTC) — senão às 22h de SP o período
+    // pula pro dia seguinte e o financeiro fica deslocado.
+    const fmt = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return { from: fmt(from), to: fmt(to) };
   });
 

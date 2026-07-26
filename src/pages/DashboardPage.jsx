@@ -188,7 +188,10 @@ export function DashboardPage() {
     const start = new Date();
     if (p === 'month') start.setMonth(end.getMonth() - 1);
     else start.setDate(end.getDate() - 7);
-    const fmt = (d) => d.toISOString().slice(0, 10);
+    // Data LOCAL (Brasil), não toISOString (UTC): às 22h de SP o UTC já é o dia
+    // seguinte, e o período saía deslocado 1 dia (zerava/torçia o gráfico).
+    const fmt = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return { from: fmt(start), to: fmt(end) };
   };
 
