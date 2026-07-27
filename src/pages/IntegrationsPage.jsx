@@ -8,6 +8,7 @@ import {
   Loader2,
   RefreshCcw,
   Server,
+  Wallet,
   XCircle,
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
@@ -101,6 +102,25 @@ export default function IntegrationsPage() {
   const dbOk = health ? health.database === 'connected' : null;
   const mpOk = health ? health.mercado_pago === 'configured' : null;
 
+  // Provider ATIVO de pagamento/repasse (Asaas é o atual; MP virou legado).
+  const paymentProvider = health?.payment_provider ?? null; // 'asaas' | 'mercadopago'
+  const payoutProvider = health?.payout_provider ?? null;   // 'asaas' | 'mercadopago' | 'mock'
+  const asaasOk = health ? health.asaas === 'configured' : null;
+  const asaasEnv = health?.asaas_env ?? null;                // 'sandbox' | 'production'
+  const usingAsaas = paymentProvider === 'asaas';
+  const payLabel = usingAsaas ? 'Asaas' : 'Mercado Pago';
+  const payOk = usingAsaas ? asaasOk : mpOk;
+  const payoutLabel =
+    payoutProvider === 'asaas' ? 'Asaas (PIX)'
+    : payoutProvider === 'mercadopago' ? 'Mercado Pago'
+    : 'Simulado (teste)';
+  // mock "funciona" (repasse manual/assistido), então não marca como desconectado.
+  const payoutOk =
+    payoutProvider === 'asaas' ? asaasOk
+    : payoutProvider === 'mercadopago' ? mpOk
+    : payoutProvider === 'mock' ? true
+    : null;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -174,19 +194,43 @@ export default function IntegrationsPage() {
         <IntegrationCard
           icon={CreditCard}
           iconColor="bg-sky-500"
-          title="Mercado Pago"
-          description="Gateway de pagamentos para pedidos e repasses."
-          statusOk={mpOk}
+          title={`Pagamentos — ${payLabel}`}
+          description="Gateway que processa PIX e cartão dos pedidos."
+          statusOk={payOk}
           loading={loading}
           detail={
             health
-              ? health.mercado_pago === 'configured'
-                ? 'SDK inicializado com access token configurado.'
-                : 'Access token não configurado no servidor.'
+              ? usingAsaas
+                ? `Provider ativo: Asaas (${asaasEnv || 'sandbox'}). ${
+                    payOk ? 'Chave de API configurada.' : 'ASAAS_API_KEY ausente no servidor.'
+                  }`
+                : `Provider ativo: Mercado Pago. ${
+                    payOk ? 'SDK inicializado.' : 'Access token não configurado.'
+                  }`
               : loading
-              ? 'Verificando SDK do Mercado Pago…'
+              ? 'Verificando provider de pagamento…'
               : error
-              ? 'Não foi possível verificar o Mercado Pago.'
+              ? 'Não foi possível verificar o pagamento.'
+              : null
+          }
+        />
+
+        <IntegrationCard
+          icon={Wallet}
+          iconColor="bg-amber-500"
+          title={`Repasses — ${payoutLabel}`}
+          description="Provider que envia os repasses (PIX) a restaurantes e entregadores."
+          statusOk={payoutOk}
+          loading={loading}
+          detail={
+            health
+              ? payoutProvider === 'asaas'
+                ? `PIX automático via Asaas. ${asaasOk ? 'Pronto para transferir.' : 'ASAAS_API_KEY ausente.'}`
+                : payoutProvider === 'mercadopago'
+                ? 'Repasse via Mercado Pago.'
+                : 'Modo simulado (mock) — repasse feito de forma manual/assistida no admin.'
+              : loading
+              ? 'Verificando provider de repasse…'
               : null
           }
         />
@@ -223,9 +267,16 @@ export default function IntegrationsPage() {
                   <td className="py-3 text-slate-500">{health?.database ?? '—'}</td>
                 </tr>
                 <tr>
-                  <td className="py-3 pr-6 font-medium text-slate-700">Mercado Pago</td>
-                  <td className="py-3 pr-6"><StatusBadge ok={mpOk} /></td>
-                  <td className="py-3 text-slate-500">{health?.mercado_pago ?? '—'}</td>
+                  <td className="py-3 pr-6 font-medium text-slate-700">Pagamentos ({payLabel})</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={payOk} /></td>
+                  <td className="py-3 text-slate-500">
+                    {paymentProvider ?? '—'}{usingAsaas && asaasEnv ? ` · ${asaasEnv}` : ''}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-6 font-medium text-slate-700">Repasses (PIX-out)</td>
+                  <td className="py-3 pr-6"><StatusBadge ok={payoutOk} /></td>
+                  <td className="py-3 text-slate-500">{payoutProvider ?? '—'}</td>
                 </tr>
                 <tr>
                   <td className="py-3 pr-6 font-medium text-slate-700">CORS habilitado</td>
