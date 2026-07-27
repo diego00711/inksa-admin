@@ -331,7 +331,10 @@ export default function SettingsPage() {
               className={inputCls}
             />
           </Field>
-          <Field label="Raio máximo de entrega (km)">
+          <Field
+            label="Raio máximo de entrega (km)"
+            hint="Separa as regiões: o cliente só vê restaurantes dentro deste raio dele, e o entregador só vê pedidos cujo restaurante está dentro deste raio dele. Aumente para atender um raio maior (cidades vizinhas)."
+          >
             <input
               type="number"
               min="1"
