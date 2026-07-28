@@ -47,6 +47,80 @@ const RESOLUTION_BADGE = {
   closed: 'bg-green-100 text-green-800',
 };
 
+// Planilha de referência: espelha EXATAMENTE a DELIVERY_INCIDENT_POLICY do
+// backend (orders.py). Serve pro admin saber, de bate-pronto, quem tem culpa e
+// quem recebe/é reembolsado em cada motivo. Se a policy mudar no backend, mude
+// aqui também. refund/rest/ent: true = recebe/reembolsa; false = não.
+const POLICY_TABLE = [
+  { reason: 'customer_not_found', fault: 'customer',   refund: false, rest: true,  courier: true  },
+  { reason: 'customer_absent',    fault: 'customer',   refund: false, rest: true,  courier: true  },
+  { reason: 'wrong_address',      fault: 'customer',   refund: false, rest: true,  courier: true  },
+  { reason: 'customer_refused',   fault: 'customer',   refund: false, rest: true,  courier: true  },
+  { reason: 'wrong_order',        fault: 'restaurant', refund: true,  rest: false, courier: true  },
+  { reason: 'courier_issue',      fault: 'courier',    refund: true,  rest: true,  courier: false },
+  { reason: 'courier_damaged',    fault: 'courier',    refund: true,  rest: true,  courier: false },
+  { reason: 'payment_issue',      fault: 'none',       refund: false, rest: false, courier: false },
+];
+
+const FAULT_CHIP = {
+  customer: 'bg-blue-100 text-blue-700',
+  restaurant: 'bg-orange-100 text-orange-700',
+  courier: 'bg-red-100 text-red-700',
+  none: 'bg-gray-100 text-gray-500',
+};
+
+// ✓ verde = recebe/reembolsa; ✗ vermelho = não
+const YesNo = ({ v }) => (
+  <span className={v ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>{v ? '✓' : '✗'}</span>
+);
+
+function PolicyReferenceTable() {
+  return (
+    <details className="mb-5 rounded-xl border border-gray-200 bg-white">
+      <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-gray-800 flex items-center gap-2">
+        📋 Planilha de responsabilidades e descontos
+        <span className="text-xs font-normal text-gray-400">(quem tem culpa, quem recebe, quem é reembolsado)</span>
+      </summary>
+      <div className="px-4 pb-4">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3 font-semibold">Motivo</th>
+                <th className="py-2 px-3 font-semibold">Culpa</th>
+                <th className="py-2 px-3 font-semibold text-center">Cliente reembolsado</th>
+                <th className="py-2 px-3 font-semibold text-center">Restaurante recebe</th>
+                <th className="py-2 pl-3 font-semibold text-center">Entregador recebe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {POLICY_TABLE.map((row) => (
+                <tr key={row.reason} className="border-b last:border-0">
+                  <td className="py-2 pr-3 text-gray-800">{REASON_LABELS[row.reason] || row.reason}</td>
+                  <td className="py-2 px-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${FAULT_CHIP[row.fault]}`}>
+                      {FAULT_LABELS[row.fault]}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-center"><YesNo v={row.refund} /></td>
+                  <td className="py-2 px-3 text-center"><YesNo v={row.rest} /></td>
+                  <td className="py-2 pl-3 text-center"><YesNo v={row.courier} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 space-y-1.5 text-xs text-gray-500">
+          <p>• <b>Reembolso ao cliente é automático</b> em pedido online quando a culpa não é dele. Em dinheiro nada foi cobrado, então não há estorno.</p>
+          <p>• <b>Descontar o entregador</b> pelo prejuízo (culpa dele) é decisão sua, caso a caso — use o botão <b>“Descontar do entregador”</b> no card da ocorrência. Não é automático.</p>
+          <p>• O <b>bot</b> decide o destino do pedido: danificado ou restaurante fechado → <b>descartar</b>; senão pergunta ao restaurante se quer a <b>devolução</b> (confirmada com código).</p>
+          <p>• Na <b>devolução confirmada</b> sem culpa do entregador, ele ganha a <b>taxa de retorno</b> (frete cheio) pelo deslocamento de volta.</p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function IncidentCard({ inc, onResolved }) {
   const { notify } = useContext(NotificationContext);
   const confirm = useConfirm();
@@ -295,6 +369,8 @@ export default function OcorrenciasPage() {
           <button onClick={load} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50" title="Atualizar"><RefreshCw className="w-4 h-4 text-gray-600" /></button>
         </div>
       </div>
+
+      <PolicyReferenceTable />
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
