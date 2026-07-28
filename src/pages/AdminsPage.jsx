@@ -22,18 +22,27 @@ const ROLE_OPTIONS = [
   { value: 'viewer', label: 'Visualizador', description: 'Somente leitura nas páginas permitidas.' },
 ];
 
+// Tem que bater EXATAMENTE com as chaves `page` do NAV_LINKS (AdminLayout.jsx) e
+// com a VALID_PAGES do backend (admin_permissions.py). Ordem = igual ao menu.
 const PAGE_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'metricas', label: 'Métricas' },
   { key: 'usuarios', label: 'Usuários' },
   { key: 'restaurantes', label: 'Restaurantes' },
   { key: 'avaliacoes', label: 'Avaliações' },
   { key: 'gamificacao', label: 'Gamificação' },
   { key: 'banners', label: 'Banners' },
+  { key: 'cupons', label: 'Cupons' },
+  { key: 'recompensas', label: 'Recompensas' },
+  { key: 'clube', label: 'Clube Inksa' },
+  { key: 'social', label: 'Inksa Social' },
   { key: 'logs', label: 'Logs' },
   { key: 'administradores', label: 'Administradores' },
   { key: 'relatorios', label: 'Relatórios' },
   { key: 'financeiro', label: 'Financeiro' },
   { key: 'payouts', label: 'Payouts' },
+  { key: 'dividas', label: 'Dívidas em dinheiro' },
+  { key: 'ocorrencias', label: 'Ocorrências' },
   { key: 'suporte', label: 'Suporte' },
   { key: 'configuracoes', label: 'Configurações' },
   { key: 'integracoes', label: 'Integrações' },
