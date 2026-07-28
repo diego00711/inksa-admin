@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAdminAlerts } from '../hooks/useAdminAlerts';
+import { NotificationContext } from '../context/NotificationContext';
 import {
+  Bell,
   Home,
   Users,
   LogOut,
@@ -58,6 +61,25 @@ export function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Avisos (sino + badges): tickets de suporte abertos, ocorrências pendentes e
+  // restaurantes aguardando aprovação. Quando chega algo novo, toca um toast.
+  const notifCtx = React.useContext(NotificationContext);
+  const alerts = useAdminAlerts({
+    onNew: (_delta, a) => {
+      const parts = [];
+      if (a.tickets_open) parts.push(`${a.tickets_open} de suporte`);
+      if (a.incidents_pending) parts.push(`${a.incidents_pending} ocorrência${a.incidents_pending > 1 ? 's' : ''}`);
+      if (a.restaurants_pending) parts.push(`${a.restaurants_pending} restaurante${a.restaurants_pending > 1 ? 's' : ''} p/ aprovar`);
+      notifCtx?.notify?.(`🔔 Novo aviso — ${parts.join(' · ')}`, 'info', 7000);
+    },
+  });
+  const badgeFor = React.useCallback((to) => {
+    if (to === '/suporte') return alerts.tickets_open;
+    if (to === '/ocorrencias') return alerts.incidents_pending;
+    if (to === '/restaurantes') return alerts.restaurants_pending;
+    return 0;
+  }, [alerts]);
 
   const normalizedPath = React.useMemo(() => {
     if (!pathname) return '/';
@@ -123,6 +145,63 @@ export function AdminLayout() {
             <X className="h-5 w-5" />
           </button>
         </div>
+        {/* Painel de AVISOS — só aparece quando há pendências. Cada linha leva
+            direto pra tela que resolve. */}
+        {alerts.total > 0 && (
+          <div className="mx-4 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <div className="flex items-center gap-2 text-amber-300 font-semibold text-sm mb-2">
+              <Bell className="h-4 w-4" />
+              {alerts.total} aviso{alerts.total > 1 ? 's' : ''}
+            </div>
+            <ul className="space-y-1.5 text-sm">
+              {alerts.tickets_open > 0 && (
+                <li>
+                  <Link
+                    to="/suporte"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between gap-2 text-gray-300 hover:text-white"
+                  >
+                    <span className="truncate">
+                      Suporte{alerts.tickets_waiting > 0 ? ` · ${alerts.tickets_waiting} aguardando` : ''}
+                    </span>
+                    <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                      {alerts.tickets_open}
+                    </span>
+                  </Link>
+                </li>
+              )}
+              {alerts.incidents_pending > 0 && (
+                <li>
+                  <Link
+                    to="/ocorrencias"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between gap-2 text-gray-300 hover:text-white"
+                  >
+                    <span className="truncate">Ocorrências pendentes</span>
+                    <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                      {alerts.incidents_pending}
+                    </span>
+                  </Link>
+                </li>
+              )}
+              {alerts.restaurants_pending > 0 && (
+                <li>
+                  <Link
+                    to="/restaurantes"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between gap-2 text-gray-300 hover:text-white"
+                  >
+                    <span className="truncate">Restaurantes p/ aprovar</span>
+                    <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                      {alerts.restaurants_pending}
+                    </span>
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {visibleLinks.map((link) => {
             const Icon = link.icon;
@@ -141,6 +220,11 @@ export function AdminLayout() {
                   <span className="mr-3">💸</span>
                 )}
                 <span className="truncate">{link.label}</span>
+                {badgeFor(link.to) > 0 && (
+                  <span className="ml-auto shrink-0 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                    {badgeFor(link.to) > 99 ? '99+' : badgeFor(link.to)}
+                  </span>
+                )}
               </Link>
             );
           })}
