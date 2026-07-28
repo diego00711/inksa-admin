@@ -1,7 +1,7 @@
 // src/pages/OcorrenciasPage.jsx — Ocorrências de entrega (falhas)
 import { useState, useEffect, useCallback, useContext } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Phone, CheckCircle2 } from 'lucide-react';
-import { listIncidents, resolveIncident, refundIncident } from '../services/incidents';
+import { listIncidents, resolveIncident, refundIncident, chargeIncidentCourier, confirmIncidentReturn } from '../services/incidents';
 import { NotificationContext } from '../context/NotificationContext';
 import { useConfirm } from '../components/ConfirmProvider.jsx';
 
@@ -18,6 +18,7 @@ const REASON_LABELS = {
   customer_refused: 'Cliente recusou o pedido',
   customer_absent: 'Ninguém para receber',
   courier_issue: 'Problema do entregador',
+  courier_damaged: 'Entregador derrubou/danificou',
   wrong_order: 'Pedido errado/incompleto',
   payment_issue: 'Problema no pagamento',
 };
@@ -25,11 +26,13 @@ const REASON_LABELS = {
 const OUTCOME_LABELS = {
   return_to_restaurant: '🔁 Devolver ao restaurante',
   dispose: '🗑️ Descartar',
+  awaiting_restaurant: '⏳ Aguardando o restaurante decidir',
   keep: 'Entregador ficou',
 };
 
 const RESOLUTIONS = [
   { value: 'returned', label: 'Retornado ao restaurante' },
+  { value: 'discarded', label: 'Descartado' },
   { value: 'refunded', label: 'Reembolsado ao cliente' },
   { value: 'retry', label: 'Reenviar entrega' },
   { value: 'closed', label: 'Encerrado' },
@@ -38,6 +41,7 @@ const RESOLUTIONS = [
 const RESOLUTION_BADGE = {
   pending: 'bg-amber-100 text-amber-800',
   returned: 'bg-blue-100 text-blue-800',
+  discarded: 'bg-gray-200 text-gray-700',
   refunded: 'bg-purple-100 text-purple-800',
   retry: 'bg-indigo-100 text-indigo-800',
   closed: 'bg-green-100 text-green-800',
@@ -50,8 +54,47 @@ function IncidentCard({ inc, onResolved }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [charging, setCharging] = useState(false);
+  const [confirmingReturn, setConfirmingReturn] = useState(false);
   const isPending = inc.resolution === 'pending';
   const refundPending = inc.refund_status === 'pending' && Number(inc.refund_amount) > 0;
+  const alreadyCharged = Number(inc.courier_charge) > 0;
+  const returnPending = inc.outcome === 'return_to_restaurant' && !inc.return_confirmed_at;
+
+  const doCharge = async () => {
+    const amt = Number(String(chargeAmount).replace(',', '.'));
+    if (!(amt > 0)) { notify('Informe um valor maior que zero', 'error'); return; }
+    if (!(await confirm({
+      title: 'Descontar do entregador',
+      message: `Lançar R$ ${amt.toFixed(2)} como dívida do entregador ${inc.courier_name || ''}? Será abatido do próximo repasse.`,
+      confirmText: 'Descontar', danger: true,
+    }))) return;
+    setCharging(true);
+    try {
+      await chargeIncidentCourier(inc.id, amt);
+      notify('Desconto lançado na dívida do entregador', 'success');
+      onResolved();
+    } catch (e) {
+      notify(e.message || 'Erro ao descontar do entregador', 'error');
+    } finally { setCharging(false); }
+  };
+
+  const doConfirmReturn = async () => {
+    if (!(await confirm({
+      title: 'Confirmar devolução',
+      message: 'Confirmar que o pedido voltou ao restaurante? (use quando o restaurante não confirmou pelo app). Se não for culpa do entregador, a taxa de retorno é creditada a ele.',
+      confirmText: 'Confirmar devolução',
+    }))) return;
+    setConfirmingReturn(true);
+    try {
+      await confirmIncidentReturn(inc.order_id);
+      notify('Devolução confirmada', 'success');
+      onResolved();
+    } catch (e) {
+      notify(e.message || 'Erro ao confirmar devolução', 'error');
+    } finally { setConfirmingReturn(false); }
+  };
 
   const apply = async () => {
     setSaving(true);
@@ -152,6 +195,49 @@ function IncidentCard({ inc, onResolved }) {
             </button>
           )}
         </div>
+      )}
+
+      {/* Devolução: código + status. Admin pode confirmar como fallback. */}
+      {(inc.outcome === 'return_to_restaurant' || inc.outcome === 'awaiting_restaurant') && (
+        <div className="rounded-lg p-2.5 mb-3 text-sm bg-blue-50 flex items-center justify-between gap-2">
+          <span className="text-blue-800">
+            {inc.outcome === 'awaiting_restaurant'
+              ? 'Aguardando o restaurante decidir a devolução'
+              : inc.return_confirmed_at
+                ? <>Devolução confirmada ✓ {inc.return_code ? <>(cód. <b>{inc.return_code}</b>)</> : null}</>
+                : <>Devolução pendente {inc.return_code ? <>— código <b>{inc.return_code}</b></> : null}</>}
+          </span>
+          {returnPending && (
+            <button onClick={doConfirmReturn} disabled={confirmingReturn} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg px-3 py-1.5 flex items-center gap-1 whitespace-nowrap">
+              {confirmingReturn && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Confirmar devolução
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Descontar do entregador (vira dívida). Só quando há entregador e ainda
+          não foi descontado. */}
+      {inc.delivery_id && (
+        alreadyCharged ? (
+          <div className="rounded-lg p-2.5 mb-3 text-sm bg-orange-50 text-orange-800">
+            Descontado do entregador: <b>R$ {Number(inc.courier_charge).toFixed(2)}</b> (lançado na dívida)
+          </div>
+        ) : (
+          <div className="rounded-lg p-2.5 mb-3 bg-gray-50 border border-gray-200 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-gray-500">Descontar do entregador (R$)</label>
+              <input
+                type="number" min="0" step="0.01" inputMode="decimal"
+                value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)}
+                placeholder="ex.: 20.00"
+                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm mt-0.5"
+              />
+            </div>
+            <button onClick={doCharge} disabled={charging} className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg px-3 py-2 flex items-center gap-1 whitespace-nowrap">
+              {charging && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Descontar
+            </button>
+          </div>
+        )
       )}
 
       {isPending ? (

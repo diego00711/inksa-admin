@@ -48,3 +48,25 @@ export async function refundIncident(id) {
   });
   return handle(r);
 }
+
+// Desconta um valor do entregador (culpa dele) — vira dívida (cash_debt).
+export async function chargeIncidentCourier(id, amount, note = '') {
+  const r = await apiFetch(`${BASE}/${id}/charge-courier`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    credentials: 'include',
+    body: JSON.stringify({ amount, note }),
+  });
+  return handle(r);
+}
+
+// Admin confirma a devolução no lugar do restaurante (fallback, sem código).
+export async function confirmIncidentReturn(orderId) {
+  const r = await apiFetch(`${API}/api/orders/${orderId}/incident/confirm-return`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    credentials: 'include',
+    body: JSON.stringify({}),
+  });
+  return handle(r);
+}
