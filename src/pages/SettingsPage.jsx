@@ -32,6 +32,9 @@ const DEFAULTS = {
   financial_min_order_value: '15',
   platform_name: 'Inksa Delivery',
   platform_max_delivery_radius: '15',
+  delivery_radius_bike_km: '2',
+  delivery_radius_moto_km: '8',
+  delivery_radius_carro_km: '10',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
   commission_rate: '10',
@@ -343,6 +346,28 @@ export default function SettingsPage() {
               onChange={(e) => set('platform_max_delivery_radius', e.target.value)}
               className={inputCls}
             />
+          </Field>
+          <Field
+            label="Raio por veículo (km)"
+            hint="Alcance de cada tipo de veículo para receber pedidos. A bike costuma ter raio menor que moto/carro. Deixe 0 para usar o raio máximo acima."
+          >
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🚲 Bike</label>
+                <input type="number" min="0" step="1" value={fields.delivery_radius_bike_km}
+                  onChange={(e) => set('delivery_radius_bike_km', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🏍️ Moto</label>
+                <input type="number" min="0" step="1" value={fields.delivery_radius_moto_km}
+                  onChange={(e) => set('delivery_radius_moto_km', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🚗 Carro</label>
+                <input type="number" min="0" step="1" value={fields.delivery_radius_carro_km}
+                  onChange={(e) => set('delivery_radius_carro_km', e.target.value)} className={inputCls} />
+              </div>
+            </div>
           </Field>
           <div className="sm:col-span-2">
             <label className="flex items-center justify-between cursor-pointer">
