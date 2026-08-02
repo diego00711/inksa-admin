@@ -54,7 +54,8 @@ const BannerManagementPage = () => {
     is_active: true,
     text_position: 'center',
     starts_at: '', // horário local no input; vira ISO no submit
-    ends_at: ''
+    ends_at: '',
+    duration_seconds: '' // segundos na tela (vazio = padrão do app)
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -172,6 +173,7 @@ const BannerManagementPage = () => {
         ...formData,
         starts_at: localInputToIso(formData.starts_at),
         ends_at: localInputToIso(formData.ends_at),
+        duration_seconds: formData.duration_seconds === '' ? null : Number(formData.duration_seconds),
       };
 
       const response = await fetch(url, {
@@ -207,7 +209,8 @@ const BannerManagementPage = () => {
       is_active: banner.is_active !== undefined ? banner.is_active : true,
       text_position: banner.text_position || 'center',
       starts_at: isoToLocalInput(banner.starts_at),
-      ends_at: isoToLocalInput(banner.ends_at)
+      ends_at: isoToLocalInput(banner.ends_at),
+      duration_seconds: banner.duration_seconds ?? ''
     });
     setImagePreview(banner.image_url || '');
     setShowForm(true);
@@ -394,6 +397,20 @@ const BannerManagementPage = () => {
                 <p className="text-xs text-gray-400 mt-1">Deixe em branco para exibir sem limite de tempo. Fora da janela, o banner some sozinho dos apps.</p>
               </div>
 
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Tempo de exposição <span className="text-gray-400 font-normal">(segundos na tela)</span></label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={formData.duration_seconds}
+                  onChange={(e) => setFormData({ ...formData, duration_seconds: e.target.value })}
+                  placeholder="Padrão (ex.: 5)"
+                  className="w-full sm:w-40 border border-gray-300 rounded px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-1">Quanto tempo este banner fica na tela antes de girar. Quem paga mais fica mais tempo (ex.: 30). Em branco = padrão.</p>
+              </div>
+
               <div className="mb-6">
                 <label className="flex items-center"><input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="mr-2" />Banner ativo</label>
               </div>
@@ -441,6 +458,9 @@ const BannerManagementPage = () => {
                     ) : (
                       <span className="text-xs text-gray-400">Sem limite</span>
                     )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      ⏱ {banner.duration_seconds ? `${banner.duration_seconds}s` : 'padrão'}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     {(() => {
