@@ -213,7 +213,7 @@ export function RestaurantesPage() {
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800">Gestão de Restaurantes</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800">Gestão de Parceiros</h1>
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
         <input type="text" placeholder="Buscar por nome do restaurante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-1/3 px-3 py-2 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
         <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">

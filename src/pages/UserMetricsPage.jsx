@@ -139,7 +139,7 @@ export default function UserMetricsPage() {
         <h2 className="text-base font-semibold text-gray-700 mb-3">Por tipo</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <Card title="Clientes" value={t.clientes ?? 0} icon={ShoppingBag} color={TYPE_COLOR.client} />
-          <Card title="Restaurantes" value={t.restaurantes ?? 0} icon={Store} color={TYPE_COLOR.restaurant} />
+          <Card title="Parceiros" value={t.restaurantes ?? 0} icon={Store} color={TYPE_COLOR.restaurant} />
           <Card title="Entregadores" value={t.entregadores ?? 0} icon={Truck} color={TYPE_COLOR.delivery} />
           <Card title="Administradores" value={t.admins ?? 0} icon={Shield} color={TYPE_COLOR.admin} />
         </div>

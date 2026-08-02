@@ -16,7 +16,7 @@ const COLORS = {
 
 const TYPE_LABELS = {
   client: 'Cliente',
-  restaurant: 'Restaurante',
+  restaurant: 'Parceiro',
   delivery: 'Entregador',
   admin: 'Administrador',
 };
@@ -357,7 +357,7 @@ export function UsuariosPage() {
           </div>
           <div className="rounded-xl p-4 sm:p-5 text-white shadow-sm bg-blue-600">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-xs sm:text-sm font-medium opacity-95">Restaurantes</p>
+              <p className="text-xs sm:text-sm font-medium opacity-95">Parceiros</p>
               <Store className="w-5 h-5 opacity-80" />
             </div>
             <p className="text-2xl sm:text-3xl font-bold mt-2">{totalsByType.restaurant}</p>
