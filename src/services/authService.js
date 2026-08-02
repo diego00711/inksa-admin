@@ -152,6 +152,19 @@ const authService = {
     return authorizedRequest('/api/admin/users', { params: filters });
   },
 
+  // Detalhe completo de um usuário (perfil por tipo) — alimenta o modal de edição.
+  async getUserDetail(userId) {
+    return authorizedRequest(`/api/users/${userId}`);
+  },
+
+  // Salva os campos de perfil editados no modal (PATCH parcial).
+  async updateUserProfile(userId, fields) {
+    return authorizedRequest(`/api/users/${userId}`, {
+      method: 'PATCH',
+      body: fields,
+    });
+  },
+
   async updateUser(userId, userData) {
     return authorizedRequest(`/api/admin/users/${userId}`, {
       method: 'PUT',

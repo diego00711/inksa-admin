@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useContext } from 'react';
 import authService from '../services/authService';
-import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2, Star } from 'lucide-react';
+import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2, Star, Pencil, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { NotificationContext } from '../context/NotificationContext';
 
@@ -28,6 +28,86 @@ const TYPE_PILL = {
   delivery: 'bg-amber-100 text-amber-700',
 };
 
+// Campos editáveis no modal, por tipo de usuário. As `key` batem com o whitelist
+// do backend (PATCH /api/users/:id). E-mail NÃO entra aqui (é o login, read-only).
+const EDIT_FIELDS = {
+  client: [
+    { key: 'first_name', label: 'Nome', half: true },
+    { key: 'last_name', label: 'Sobrenome', half: true },
+    { key: 'phone', label: 'Telefone', half: true },
+    { key: 'cpf', label: 'CPF', half: true },
+    { key: 'address_zipcode', label: 'CEP', half: true },
+    { key: 'address_street', label: 'Rua' },
+    { key: 'address_number', label: 'Número', half: true },
+    { key: 'address_neighborhood', label: 'Bairro', half: true },
+    { key: 'address_city', label: 'Cidade', half: true },
+    { key: 'address_state', label: 'UF', half: true },
+  ],
+  restaurant: [
+    { key: 'restaurant_name', label: 'Nome do restaurante' },
+    { key: 'business_name', label: 'Razão social', half: true },
+    { key: 'cnpj', label: 'CNPJ', half: true },
+    { key: 'phone', label: 'Telefone', half: true },
+    { key: 'address_zipcode', label: 'CEP', half: true },
+    { key: 'address_street', label: 'Rua' },
+    { key: 'address_number', label: 'Número', half: true },
+    { key: 'address_neighborhood', label: 'Bairro', half: true },
+    { key: 'address_city', label: 'Cidade', half: true },
+    { key: 'address_state', label: 'UF', half: true },
+  ],
+  delivery: [
+    { key: 'first_name', label: 'Nome', half: true },
+    { key: 'last_name', label: 'Sobrenome', half: true },
+    { key: 'phone', label: 'Telefone', half: true },
+    { key: 'cpf', label: 'CPF', half: true },
+    { key: 'vehicle_type', label: 'Tipo de veículo' },
+  ],
+};
+
+// O detalhe do backend usa aliases diferentes por tipo — normaliza pras `key`
+// acima (que são as que o PATCH espera de volta).
+function detailToForm(detail) {
+  const t = detail?.user_type;
+  if (t === 'client') {
+    return {
+      first_name: detail.first_name || '',
+      last_name: detail.last_name || '',
+      phone: detail.phone || '',
+      cpf: detail.cpf || '',
+      address_street: detail.address_street || '',
+      address_number: detail.address_number || '',
+      address_neighborhood: detail.address_neighborhood || '',
+      address_city: detail.client_city || detail.city || '',
+      address_state: detail.address_state || '',
+      address_zipcode: detail.address_zipcode || '',
+    };
+  }
+  if (t === 'restaurant') {
+    return {
+      restaurant_name: detail.restaurant_name || '',
+      business_name: detail.business_name || '',
+      phone: detail.phone || '',
+      cnpj: detail.cnpj || '',
+      address_street: detail.rest_address_street || '',
+      address_number: detail.rest_address_number || '',
+      address_neighborhood: detail.rest_address_neighborhood || '',
+      address_city: detail.rest_address_city || '',
+      address_state: detail.rest_address_state || '',
+      address_zipcode: detail.rest_address_zipcode || '',
+    };
+  }
+  if (t === 'delivery') {
+    return {
+      first_name: detail.delivery_first_name || '',
+      last_name: detail.delivery_last_name || '',
+      phone: detail.phone || '',
+      cpf: detail.delivery_cpf || '',
+      vehicle_type: detail.vehicle_type || '',
+    };
+  }
+  return {};
+}
+
 export function UsuariosPage() {
   const { notify } = useContext(NotificationContext);
   const [users, setUsers] = useState([]); // Estado para armazenar os usuários
@@ -40,6 +120,12 @@ export function UsuariosPage() {
   const [openMenuId, setOpenMenuId] = useState(null); // qual menu de ações está aberto
   const [busyUserId, setBusyUserId] = useState(null); // ação em andamento
   const [confirmDelete, setConfirmDelete] = useState(null); // usuário aguardando confirmação de exclusão
+
+  // Modal de edição de dados do usuário
+  const [editUser, setEditUser] = useState(null);      // usuário sendo editado
+  const [editForm, setEditForm] = useState({});        // valores dos campos
+  const [editLoading, setEditLoading] = useState(false); // buscando detalhe
+  const [editSaving, setEditSaving] = useState(false);   // salvando
 
   // Ref para saber se os filtros mudaram e resetar a página
   const prevFiltersRef = useRef({ activeTypeFilter, cityFilter });
@@ -131,6 +217,51 @@ export function UsuariosPage() {
       setBusyUserId(null);
     }
   }, [notify]);
+
+  // Abre o modal e busca o detalhe completo do usuário pra preencher o form.
+  const openEdit = useCallback(async (u) => {
+    setOpenMenuId(null);
+    setEditUser(u);
+    setEditForm({});
+    setEditLoading(true);
+    try {
+      const resp = await authService.getUserDetail(u.id);
+      const detail = resp?.data ?? resp;
+      setEditForm(detailToForm(detail));
+    } catch (err) {
+      notify(err.message || 'Falha ao carregar dados do usuário.', 'error');
+      setEditUser(null);
+    } finally {
+      setEditLoading(false);
+    }
+  }, [notify]);
+
+  const saveEdit = useCallback(async () => {
+    if (!editUser) return;
+    setEditSaving(true);
+    try {
+      await authService.updateUserProfile(editUser.id, editForm);
+      notify('Dados atualizados com sucesso.', 'success');
+      // Reflete na tabela sem precisar recarregar tudo.
+      setUsers((prev) => prev.map((x) => {
+        if (x.id !== editUser.id) return x;
+        const full_name = editUser.user_type === 'restaurant'
+          ? (editForm.restaurant_name || x.full_name)
+          : (`${editForm.first_name || ''} ${editForm.last_name || ''}`.trim() || x.full_name);
+        return {
+          ...x,
+          full_name,
+          city: editForm.address_city ?? x.city,
+          phone: editForm.phone ?? x.phone,
+        };
+      }));
+      setEditUser(null);
+    } catch (err) {
+      notify(err.message || 'Falha ao salvar as alterações.', 'error');
+    } finally {
+      setEditSaving(false);
+    }
+  }, [editUser, editForm, notify]);
 
   // Reseta página ao mudar filtros
   useEffect(() => {
@@ -372,6 +503,15 @@ export function UsuariosPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="absolute right-6 top-12 z-20 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-1 text-left"
                         >
+                          {user.user_type !== 'admin' && (
+                            <button
+                              onClick={() => openEdit(user)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              <Pencil className="h-4 w-4 text-gray-500" />
+                              Editar dados
+                            </button>
+                          )}
                           <button
                             onClick={() => handleResetPassword(user)}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50"
@@ -439,6 +579,80 @@ export function UsuariosPage() {
             >
               Próximo →
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edição de dados do usuário */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !editSaving && setEditUser(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-xl">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Editar dados</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_PILL[editUser.user_type] || 'bg-gray-100 text-gray-700'}`}>
+                    {TYPE_LABELS[editUser.user_type] || editUser.user_type}
+                  </span>
+                </p>
+              </div>
+              <button onClick={() => !editSaving && setEditUser(null)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              {/* E-mail (login) — somente leitura */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-500 mb-1">E-mail (login)</label>
+                <input
+                  type="text"
+                  value={editUser.email || ''}
+                  readOnly
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Não editável aqui — use "Enviar redefinição de senha".</p>
+              </div>
+
+              {editLoading ? (
+                <div className="flex justify-center items-center py-10">
+                  <Loader2 className="animate-spin h-6 w-6 text-gray-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {(EDIT_FIELDS[editUser.user_type] || []).map((f) => (
+                    <div key={f.key} className={f.half ? 'col-span-1' : 'col-span-2'}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
+                      <input
+                        type="text"
+                        value={editForm[f.key] ?? ''}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        maxLength={f.key === 'address_state' ? 2 : undefined}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 sticky bottom-0 bg-white rounded-b-xl">
+              <button
+                onClick={() => setEditUser(null)}
+                disabled={editSaving}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving || editLoading}
+                className="px-4 py-2 text-sm font-bold text-white bg-gray-800 hover:bg-gray-900 rounded-lg disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {editSaving && <Loader2 className="animate-spin h-4 w-4" />}
+                Salvar alterações
+              </button>
+            </div>
           </div>
         </div>
       )}

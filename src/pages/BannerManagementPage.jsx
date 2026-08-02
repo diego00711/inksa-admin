@@ -6,6 +6,34 @@ import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
 import { Loader2 } from 'lucide-react';
 
+// --- Helpers de agendamento (datetime-local <-> ISO) ---
+// datetime-local trabalha em horário LOCAL; o backend guarda timestamptz (UTC).
+function isoToLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
+}
+function localInputToIso(val) {
+  if (!val) return null;
+  const d = new Date(val); // interpreta como horário local
+  return isNaN(d) ? null : d.toISOString();
+}
+function fmtDateTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d) ? null : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+// Status efetivo do banner combinando ativo + janela de tempo.
+function bannerStatus(b) {
+  if (!b.is_active) return { label: 'Inativo', cls: 'bg-gray-200 text-gray-600' };
+  const now = Date.now();
+  if (b.starts_at && new Date(b.starts_at).getTime() > now) return { label: 'Agendado', cls: 'bg-blue-100 text-blue-800' };
+  if (b.ends_at && new Date(b.ends_at).getTime() < now) return { label: 'Expirado', cls: 'bg-orange-100 text-orange-800' };
+  return { label: 'No ar', cls: 'bg-green-100 text-green-800' };
+}
+
 const BannerManagementPage = () => {
   const { notify } = useContext(NotificationContext);
   const [banners, setBanners] = useState([]);
@@ -24,7 +52,9 @@ const BannerManagementPage = () => {
     image_url: '',
     link_url: '',
     is_active: true,
-    text_position: 'center'
+    text_position: 'center',
+    starts_at: '', // horário local no input; vira ISO no submit
+    ends_at: ''
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -121,15 +151,28 @@ const BannerManagementPage = () => {
       return;
     }
 
+    // Janela de agendamento coerente: fim depois do início.
+    if (formData.starts_at && formData.ends_at && new Date(formData.ends_at) <= new Date(formData.starts_at)) {
+      setError('A data de fim deve ser depois da data de início.');
+      return;
+    }
+
     try {
       setError('');
       const token = authService.getToken();
-      
-      const url = editingBanner 
+
+      const url = editingBanner
         ? `${API_URL}/api/banners/${editingBanner.id}`
         : `${API_URL}/api/banners`;
-      
+
       const method = editingBanner ? 'PUT' : 'POST';
+
+      // Converte os horários locais dos inputs para ISO (UTC) ou null.
+      const payload = {
+        ...formData,
+        starts_at: localInputToIso(formData.starts_at),
+        ends_at: localInputToIso(formData.ends_at),
+      };
 
       const response = await fetch(url, {
         method,
@@ -137,7 +180,7 @@ const BannerManagementPage = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -162,7 +205,9 @@ const BannerManagementPage = () => {
       image_url: banner.image_url || '',
       link_url: banner.link_url || '',
       is_active: banner.is_active !== undefined ? banner.is_active : true,
-      text_position: banner.text_position || 'center'
+      text_position: banner.text_position || 'center',
+      starts_at: isoToLocalInput(banner.starts_at),
+      ends_at: isoToLocalInput(banner.ends_at)
     });
     setImagePreview(banner.image_url || '');
     setShowForm(true);
@@ -323,6 +368,32 @@ const BannerManagementPage = () => {
                 </select>
               </div>
 
+              {/* Agendamento (opcional) — permite alugar o espaço por um período */}
+              <div className="mb-4 border-t pt-4">
+                <label className="block text-sm font-medium mb-2">Programação <span className="text-gray-400 font-normal">(opcional — vira renda de espaço alugado)</span></label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Início</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.starts_at}
+                      onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Fim</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.ends_at}
+                      onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Deixe em branco para exibir sem limite de tempo. Fora da janela, o banner some sozinho dos apps.</p>
+              </div>
+
               <div className="mb-6">
                 <label className="flex items-center"><input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="mr-2" />Banner ativo</label>
               </div>
@@ -348,6 +419,7 @@ const BannerManagementPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preview</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Posição Texto</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Programação</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
               </tr>
@@ -361,9 +433,24 @@ const BannerManagementPage = () => {
                     <span className="text-sm capitalize text-gray-700">{banner.text_position || 'Centro'}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${banner.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {banner.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
+                    {banner.starts_at || banner.ends_at ? (
+                      <div className="text-xs text-gray-600 leading-tight">
+                        <div>{fmtDateTime(banner.starts_at) ? `De ${fmtDateTime(banner.starts_at)}` : 'Desde já'}</div>
+                        <div>{fmtDateTime(banner.ends_at) ? `Até ${fmtDateTime(banner.ends_at)}` : 'Sem fim'}</div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Sem limite</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const st = bannerStatus(banner);
+                      return (
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${st.cls}`}>
+                          {st.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center space-x-2">
