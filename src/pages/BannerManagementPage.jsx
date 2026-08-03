@@ -55,7 +55,10 @@ const BannerManagementPage = () => {
     text_position: 'center',
     starts_at: '', // horário local no input; vira ISO no submit
     ends_at: '',
-    duration_seconds: '' // segundos na tela (vazio = padrão do app)
+    duration_seconds: '', // segundos na tela (vazio = padrão do app)
+    audience: 'cliente', // app-alvo: cliente / parceiro / entregador
+    is_sponsored: false, // mostra o selo "Patrocinado"
+    sponsor_name: '' // nome do anunciante (quando patrocinado)
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -210,7 +213,10 @@ const BannerManagementPage = () => {
       text_position: banner.text_position || 'center',
       starts_at: isoToLocalInput(banner.starts_at),
       ends_at: isoToLocalInput(banner.ends_at),
-      duration_seconds: banner.duration_seconds ?? ''
+      duration_seconds: banner.duration_seconds ?? '',
+      audience: banner.audience || 'cliente',
+      is_sponsored: !!banner.is_sponsored,
+      sponsor_name: banner.sponsor_name || ''
     });
     setImagePreview(banner.image_url || '');
     setShowForm(true);
@@ -358,6 +364,38 @@ const BannerManagementPage = () => {
                 <input type="text" value={formData.link_url} onChange={(e) => setFormData({...formData, link_url: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" placeholder="/recompensas ou https://..." />
               </div>
 
+              {/* Onde o banner aparece (app-alvo) + patrocínio */}
+              <div className="mb-4 border-t pt-4">
+                <label className="block text-sm font-medium mb-2">Onde aparece <span className="text-gray-400 font-normal">(app)</span></label>
+                <select
+                  value={formData.audience}
+                  onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="cliente">App do Cliente (carrossel na home)</option>
+                  <option value="parceiro">App do Parceiro (faixa no painel)</option>
+                  <option value="entregador">App do Entregador (faixa no painel)</option>
+                </select>
+                <label className="flex items-center mt-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_sponsored}
+                    onChange={(e) => setFormData({ ...formData, is_sponsored: e.target.checked })}
+                    className="mr-2"
+                  />
+                  Patrocinado <span className="text-gray-400 text-xs ml-1">(mostra o selo “Patrocinado”)</span>
+                </label>
+                {formData.is_sponsored && (
+                  <input
+                    type="text"
+                    value={formData.sponsor_name}
+                    onChange={(e) => setFormData({ ...formData, sponsor_name: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 mt-2 text-sm"
+                    placeholder="Nome do anunciante (ex.: Embalagens Sul)"
+                  />
+                )}
+              </div>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Posição do Texto</label>
                 <select
@@ -435,6 +473,7 @@ const BannerManagementPage = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preview</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">App</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Posição Texto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Programação</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -446,6 +485,16 @@ const BannerManagementPage = () => {
                 <tr key={banner.id}>
                   <td className="px-6 py-4"><img src={banner.image_url} alt={banner.title || 'Banner'} className="w-16 h-10 object-cover rounded border" /></td>
                   <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{banner.title || <span className="text-gray-400 italic">Sem título</span>}</div></td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 capitalize">
+                      {banner.audience === 'parceiro' ? 'Parceiro' : banner.audience === 'entregador' ? 'Entregador' : 'Cliente'}
+                    </span>
+                    {banner.is_sponsored && (
+                      <div className="mt-1 text-[10px] uppercase tracking-wide text-amber-600 font-semibold" title={banner.sponsor_name || ''}>
+                        🏷️ Patrocinado
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <span className="text-sm capitalize text-gray-700">{banner.text_position || 'Centro'}</span>
                   </td>
