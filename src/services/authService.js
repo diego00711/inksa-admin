@@ -187,6 +187,15 @@ const authService = {
     });
   },
 
+  // Aprova/reprova um ENTREGADOR (delivery_profiles.approved). Não aprovado
+  // não recebe pedidos (gate no backend). Chaveado por user_id.
+  async approveCourier(userId, approved = true) {
+    return authorizedRequest(`/api/admin/couriers/${userId}/approve`, {
+      method: 'POST',
+      body: { approved: !!approved },
+    });
+  },
+
   // Marca/desmarca o restaurante como Parceiro Fundador (campanha: comissão
   // pela metade até a data configurada). Persiste em restaurant_profiles.fundador.
   async setUserFounding(userId, fundador) {

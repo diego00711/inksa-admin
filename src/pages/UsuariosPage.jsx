@@ -204,6 +204,23 @@ export function UsuariosPage() {
     }
   }, [notify]);
 
+  const handleToggleCourierApproval = useCallback(async (u) => {
+    setOpenMenuId(null);
+    const next = !u.courier_approved;
+    setBusyUserId(u.id);
+    try {
+      await authService.approveCourier(u.id, next);
+      notify(next
+        ? `${u.full_name || u.email} aprovado — já pode receber pedidos.`
+        : `Aprovação de ${u.full_name || u.email} removida.`, 'success');
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, courier_approved: next } : x)));
+    } catch (err) {
+      notify(err.message || 'Falha ao alterar a aprovação do entregador.', 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  }, [notify]);
+
   const handleDelete = useCallback(async (u) => {
     setConfirmDelete(null);
     setBusyUserId(u.id);
@@ -485,6 +502,11 @@ export function UsuariosPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                         {isActive ? 'Ativo' : 'Inativo'}
                       </span>
+                      {user.user_type === 'delivery' && !user.courier_approved && (
+                        <span className="block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 w-fit" title="Não recebe pedidos até o admin aprovar">
+                          Aguardando aprovação
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right relative">
                       {isBusy ? (
@@ -533,6 +555,17 @@ export function UsuariosPage() {
                             >
                               <Star className={`h-4 w-4 ${user.fundador ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
                               {user.fundador ? 'Remover Parceiro Fundador' : 'Tornar Parceiro Fundador'}
+                            </button>
+                          )}
+                          {user.user_type === 'delivery' && (
+                            <button
+                              onClick={() => handleToggleCourierApproval(user)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50"
+                            >
+                              {user.courier_approved
+                                ? <Ban className="h-4 w-4 text-amber-600" />
+                                : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                              {user.courier_approved ? 'Remover aprovação' : 'Aprovar entregador'}
                             </button>
                           )}
                           <div className="h-px bg-gray-100 my-1" />

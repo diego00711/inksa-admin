@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inksa-admin-v8';
+const CACHE_NAME = 'inksa-admin-v9';
 const BACKEND_HEALTH = 'https://inksa-auth-flask-dev.onrender.com/api/health';
 
 self.addEventListener('install', () => self.skipWaiting());
