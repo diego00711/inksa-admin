@@ -28,7 +28,7 @@ const PAGE_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'metricas', label: 'Métricas' },
   { key: 'usuarios', label: 'Usuários' },
-  { key: 'restaurantes', label: 'Restaurantes' },
+  { key: 'restaurantes', label: 'Parceiros' },
   { key: 'avaliacoes', label: 'Avaliações' },
   { key: 'gamificacao', label: 'Gamificação' },
   { key: 'banners', label: 'Banners' },

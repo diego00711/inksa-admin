@@ -89,7 +89,7 @@ export default function EvaluationsPage() {
           <div>
             <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Avaliações</h1>
             <p className="text-sm text-gray-600">
-              Acompanhe a satisfação dos clientes com restaurantes e entregadores da plataforma.
+              Acompanhe a satisfação dos clientes com parceiros e entregadores da plataforma.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

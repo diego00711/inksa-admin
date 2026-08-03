@@ -245,7 +245,7 @@ export default function GamificationPage() {
 const APPLIES_TO_LABEL = {
   client: 'Cliente',
   delivery: 'Entregador',
-  restaurant: 'Restaurante',
+  restaurant: 'Parceiro',
 };
 
 const APPLIES_TO_ORDER = ['client', 'delivery', 'restaurant'];
@@ -339,7 +339,7 @@ function PointRulesSection() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800">Regras de pontuação</h2>
           <p className="text-xs text-gray-500">
-            Defina quantos pontos cada ação vale para clientes, entregadores e restaurantes.
+            Defina quantos pontos cada ação vale para clientes, entregadores e parceiros.
           </p>
         </div>
         {loading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}

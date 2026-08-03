@@ -287,7 +287,7 @@ export function DashboardPage() {
   const extraKpis = [
     { title: "Pedidos em Andamento", value: kpis.ordersInProgress ?? '-', icon: Clock, color: "bg-purple-600", tooltip: "Pedidos em andamento" },
     { title: "Pedidos Cancelados", value: kpis.ordersCanceled ?? '-', icon: XOctagon, color: "bg-red-500", tooltip: "Pedidos cancelados no período" },
-    { title: "Restaurantes Pendentes", value: kpis.restaurantsPending ?? '-', icon: Store, color: "bg-yellow-500", tooltip: "Restaurantes aguardando aprovação" },
+    { title: "Parceiros Pendentes", value: kpis.restaurantsPending ?? '-', icon: Store, color: "bg-yellow-500", tooltip: "Parceiros aguardando aprovação" },
     { title: "Entregadores Ativos", value: kpis.activeDeliverymen ?? '-', icon: Truck, color: "bg-green-700", tooltip: "Entregadores ativos" },
   ];
 

@@ -29,7 +29,7 @@ export default function PayoutsProcessModal({ open, onClose, onConfirm, loading 
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos</option>
-              <option value="restaurant">Restaurante</option>
+              <option value="restaurant">Parceiro</option>
               <option value="delivery">Entregador</option>
             </select>
           </label>

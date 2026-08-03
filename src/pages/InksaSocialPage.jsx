@@ -328,7 +328,7 @@ export default function InksaSocialPage() {
                     <Smartphone className="w-4 h-4 text-rose-500" /> Mostrar contador nos apps
                   </span>
                   <span className="text-gray-500">
-                    Exibe o banner do Dia I com o valor arrecadado ao vivo nos apps Cliente, Restaurante e Entregador.
+                    Exibe o banner do Dia I com o valor arrecadado ao vivo nos apps Cliente, Parceiro e Entregador.
                   </span>
                 </span>
               </label>
@@ -404,7 +404,7 @@ export default function InksaSocialPage() {
 
               <p className="text-xs text-gray-400">
                 {status.show_in_apps
-                  ? 'Contador visível nos apps Cliente, Restaurante e Entregador.'
+                  ? 'Contador visível nos apps Cliente, Parceiro e Entregador.'
                   : 'Contador oculto nos apps (só você vê este painel).'}{' '}
                 Atualiza sozinho a cada 30s.
               </p>

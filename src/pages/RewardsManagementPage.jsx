@@ -18,7 +18,7 @@ const REWARD_TYPES = [
 const AUDIENCE_OPTIONS = [
   { value: 'client',     label: 'Clientes' },
   { value: 'delivery',   label: 'Entregadores' },
-  { value: 'restaurant', label: 'Restaurantes' },
+  { value: 'restaurant', label: 'Parceiros' },
 ];
 
 const EMPTY_FORM = {

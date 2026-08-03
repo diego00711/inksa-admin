@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../services/api';
 
 const TYPE_LABEL = {
   client: 'Cliente',
-  restaurant: 'Restaurante',
+  restaurant: 'Parceiro',
   delivery: 'Entregador',
   admin: 'Administrador',
 };

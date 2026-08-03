@@ -15,7 +15,7 @@ export function GlobalSearch({ onSearch }) {
     <form onSubmit={handleSubmit} className="flex items-center w-full max-w-lg mx-auto">
       <input
         className="flex-1 px-4 py-2 rounded-l bg-white border border-gray-300 focus:outline-none"
-        placeholder="Buscar por usuário, pedido, restaurante..."
+        placeholder="Buscar por usuário, pedido, parceiro..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

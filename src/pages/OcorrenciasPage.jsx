@@ -7,7 +7,7 @@ import { useConfirm } from '../components/ConfirmProvider.jsx';
 
 const FAULT_LABELS = {
   customer: 'Culpa do cliente',
-  restaurant: 'Culpa do restaurante',
+  restaurant: 'Culpa do parceiro',
   courier: 'Culpa do entregador',
   none: '—',
 };
@@ -24,14 +24,14 @@ const REASON_LABELS = {
 };
 
 const OUTCOME_LABELS = {
-  return_to_restaurant: '🔁 Devolver ao restaurante',
+  return_to_restaurant: '🔁 Devolver ao parceiro',
   dispose: '🗑️ Descartar',
-  awaiting_restaurant: '⏳ Aguardando o restaurante decidir',
+  awaiting_restaurant: '⏳ Aguardando o parceiro decidir',
   keep: 'Entregador ficou',
 };
 
 const RESOLUTIONS = [
-  { value: 'returned', label: 'Retornado ao restaurante' },
+  { value: 'returned', label: 'Retornado ao parceiro' },
   { value: 'discarded', label: 'Descartado' },
   { value: 'refunded', label: 'Reembolsado ao cliente' },
   { value: 'retry', label: 'Reenviar entrega' },
@@ -89,7 +89,7 @@ function PolicyReferenceTable() {
                 <th className="py-2 pr-3 font-semibold">Motivo</th>
                 <th className="py-2 px-3 font-semibold">Culpa</th>
                 <th className="py-2 px-3 font-semibold text-center">Cliente reembolsado</th>
-                <th className="py-2 px-3 font-semibold text-center">Restaurante recebe</th>
+                <th className="py-2 px-3 font-semibold text-center">Parceiro recebe</th>
                 <th className="py-2 pl-3 font-semibold text-center">Entregador recebe</th>
               </tr>
             </thead>
@@ -113,7 +113,7 @@ function PolicyReferenceTable() {
         <div className="mt-3 space-y-1.5 text-xs text-gray-500">
           <p>• <b>Reembolso ao cliente é automático</b> em pedido online quando a culpa não é dele. Em dinheiro nada foi cobrado, então não há estorno.</p>
           <p>• <b>Descontar o entregador</b> pelo prejuízo (culpa dele) é decisão sua, caso a caso — use o botão <b>“Descontar do entregador”</b> no card da ocorrência. Não é automático.</p>
-          <p>• O <b>bot</b> decide o destino do pedido: danificado ou restaurante fechado → <b>descartar</b>; senão pergunta ao restaurante se quer a <b>devolução</b> (confirmada com código).</p>
+          <p>• O <b>bot</b> decide o destino do pedido: danificado ou parceiro fechado → <b>descartar</b>; senão pergunta ao parceiro se quer a <b>devolução</b> (confirmada com código).</p>
           <p>• Na <b>devolução confirmada</b> sem culpa do entregador, ele ganha a <b>taxa de retorno</b> (frete cheio) pelo deslocamento de volta.</p>
         </div>
       </div>
@@ -157,7 +157,7 @@ function IncidentCard({ inc, onResolved }) {
   const doConfirmReturn = async () => {
     if (!(await confirm({
       title: 'Confirmar devolução',
-      message: 'Confirmar que o pedido voltou ao restaurante? (use quando o restaurante não confirmou pelo app). Se não for culpa do entregador, a taxa de retorno é creditada a ele.',
+      message: 'Confirmar que o pedido voltou ao parceiro? (use quando o parceiro não confirmou pelo app). Se não for culpa do entregador, a taxa de retorno é creditada a ele.',
       confirmText: 'Confirmar devolução',
     }))) return;
     setConfirmingReturn(true);
@@ -276,7 +276,7 @@ function IncidentCard({ inc, onResolved }) {
         <div className="rounded-lg p-2.5 mb-3 text-sm bg-blue-50 flex items-center justify-between gap-2">
           <span className="text-blue-800">
             {inc.outcome === 'awaiting_restaurant'
-              ? 'Aguardando o restaurante decidir a devolução'
+              ? 'Aguardando o parceiro decidir a devolução'
               : inc.return_confirmed_at
                 ? <>Devolução confirmada ✓ {inc.return_code ? <>(cód. <b>{inc.return_code}</b>)</> : null}</>
                 : <>Devolução pendente {inc.return_code ? <>— código <b>{inc.return_code}</b></> : null}</>}

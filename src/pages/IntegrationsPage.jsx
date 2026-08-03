@@ -219,7 +219,7 @@ export default function IntegrationsPage() {
           icon={Wallet}
           iconColor="bg-amber-500"
           title={`Repasses — ${payoutLabel}`}
-          description="Provider que envia os repasses (PIX) a restaurantes e entregadores."
+          description="Provider que envia os repasses (PIX) a parceiros e entregadores."
           statusOk={payoutOk}
           loading={loading}
           detail={

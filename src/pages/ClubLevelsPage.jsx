@@ -6,7 +6,7 @@ import { Loader2, Save, Trophy, Bike, Store, User, CheckCircle2 } from 'lucide-r
 const AUDIENCES = [
   { key: 'client',     label: 'Clientes',     icon: User,  unit: 'pedidos/mês' },
   { key: 'delivery',   label: 'Entregadores', icon: Bike,  unit: 'entregas/mês' },
-  { key: 'restaurant', label: 'Restaurantes', icon: Store, unit: 'pedidos/mês' },
+  { key: 'restaurant', label: 'Parceiros', icon: Store, unit: 'pedidos/mês' },
 ];
 
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';

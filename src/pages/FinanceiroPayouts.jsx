@@ -254,7 +254,7 @@ function PayoutDetailsModal({ open, payout, detail, loading, onClose, onCopy }) 
   const head = detail?.payout || {};
   const items = detail?.items || [];
   const name = payout.partner_name || payout.partner_id;
-  const tipo = payout.partner_type === "restaurant" ? "Restaurante" : "Entregador";
+  const tipo = payout.partner_type === "restaurant" ? "Parceiro" : "Entregador";
   const statusLabel =
     payout.status === "paid" ? "Pago" :
     payout.status === "cancelled" ? "Cancelado" : "Pendente";
@@ -538,7 +538,7 @@ export default function FinanceiroPayouts() {
             onChange={(e) => { setPage(0); setPartnerType(e.target.value); }}
           >
             <option value="">Todos</option>
-            <option value="restaurant">Restaurantes</option>
+            <option value="restaurant">Parceiros</option>
             <option value="delivery">Entregadores</option>
           </select>
 
@@ -599,7 +599,7 @@ export default function FinanceiroPayouts() {
                   "Pendente";
                 return (
                 <tr key={p.id} className="border-t hover:bg-gray-50">
-                  <td className="px-3 py-2 capitalize">{p.partner_type === "restaurant" ? "Restaurante" : "Entregador"}</td>
+                  <td className="px-3 py-2 capitalize">{p.partner_type === "restaurant" ? "Parceiro" : "Entregador"}</td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-gray-800">{p.partner_name || "—"}</div>
                     <div className="text-[11px] text-gray-400 font-mono">{p.partner_id}</div>

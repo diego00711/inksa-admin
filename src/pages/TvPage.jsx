@@ -300,8 +300,8 @@ export default function TvPage() {
             <AlertTriangle className="h-6 w-6 shrink-0" />
             <span className="text-xl font-bold">
               {pending === 1
-                ? '1 restaurante aguardando sua aprovação'
-                : `${pending} restaurantes aguardando sua aprovação`}
+                ? '1 parceiro aguardando sua aprovação'
+                : `${pending} parceiros aguardando sua aprovação`}
             </span>
           </div>
         )}
@@ -319,7 +319,7 @@ export default function TvPage() {
         {/* Agora + acumulado */}
         <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
           <StatCard icon={Bike} label="Entregadores online" value={d.deliverymenOnline} loading={loading} />
-          <StatCard icon={Store} label="Restaurantes abertos" value={d.restaurantsOpen} loading={loading} />
+          <StatCard icon={Store} label="Parceiros abertos" value={d.restaurantsOpen} loading={loading} />
           <StatCard icon={Wallet} label="Faturamento total" value={d.revenueTotal} format="brl" sub="desde o início" loading={loading} />
           <StatCard icon={PiggyBank} label="Sua receita total" value={d.platformRevenueTotal} format="brl"
                     sub="desde o início" tone="soft" loading={loading} />
@@ -342,7 +342,7 @@ export default function TvPage() {
             ) : (
               <div className="space-y-2 overflow-hidden">
                 {orders.map((o, i) => {
-                  const name = o.restaurant_name || o.restaurante || 'Restaurante';
+                  const name = o.restaurant_name || o.restaurante || 'Parceiro';
                   const st = STATUS_META[o.status] || { label: o.status || '—', cls: 'bg-slate-600/20 text-slate-300 ring-slate-500/30' };
                   return (
                     <div
@@ -367,7 +367,7 @@ export default function TvPage() {
 
           <div className="rounded-2xl border border-white/[0.06] bg-slate-800/50 backdrop-blur-sm p-5 min-h-0">
             <h2 className="text-[0.8rem] font-semibold uppercase tracking-wider text-slate-400 mb-1">A base</h2>
-            <BaseRow icon={Store} label="Restaurantes" total={d.restaurantsTotal} today={d.restaurantsToday} />
+            <BaseRow icon={Store} label="Parceiros" total={d.restaurantsTotal} today={d.restaurantsToday} />
             <BaseRow icon={Bike} label="Entregadores" total={d.deliverymenTotal} today={d.deliverymenToday} />
             <BaseRow icon={Users} label="Clientes" total={d.clientsTotal} today={d.clientsToday} />
           </div>

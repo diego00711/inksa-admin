@@ -70,7 +70,7 @@ export function AdminLayout() {
       const parts = [];
       if (a.tickets_open) parts.push(`${a.tickets_open} de suporte`);
       if (a.incidents_pending) parts.push(`${a.incidents_pending} ocorrência${a.incidents_pending > 1 ? 's' : ''}`);
-      if (a.restaurants_pending) parts.push(`${a.restaurants_pending} restaurante${a.restaurants_pending > 1 ? 's' : ''} p/ aprovar`);
+      if (a.restaurants_pending) parts.push(`${a.restaurants_pending} parceiro${a.restaurants_pending > 1 ? 's' : ''} p/ aprovar`);
       notifCtx?.notify?.(`🔔 Novo aviso — ${parts.join(' · ')}`, 'info', 7000);
     },
   });
@@ -191,7 +191,7 @@ export function AdminLayout() {
                     onClick={() => setSidebarOpen(false)}
                     className="flex items-center justify-between gap-2 text-gray-300 hover:text-white"
                   >
-                    <span className="truncate">Restaurantes p/ aprovar</span>
+                    <span className="truncate">Parceiros p/ aprovar</span>
                     <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
                       {alerts.restaurants_pending}
                     </span>

@@ -184,14 +184,14 @@ export default function SettingsPage() {
           </Field>
         </div>
         <p className="text-xs text-gray-500 mt-3">
-          💡 Esses dados aparecem no botão de Suporte nos 3 apps (Cliente, Restaurante, Entregador). Mudou aqui, muda lá em até 1 hora.
+          💡 Esses dados aparecem no botão de Suporte nos 3 apps (Cliente, Parceiro, Entregador). Mudou aqui, muda lá em até 1 hora.
         </p>
       </SectionCard>
 
       {/* Financeiro */}
       <SectionCard icon={DollarSign} title="Financeiro">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado do restaurante sobre o valor de cada pedido. É a comissão que o sistema aplica de fato.">
+          <Field label="Comissão da plataforma (%)" hint="Percentual cobrado do parceiro sobre o valor de cada pedido. É a comissão que o sistema aplica de fato.">
             <input
               type="number" min="0" max="99.99" step="0.1"
               value={fields.commission_rate}
@@ -339,7 +339,7 @@ export default function SettingsPage() {
           </Field>
           <Field
             label="Raio máximo de entrega (km)"
-            hint="Separa as regiões: o cliente só vê restaurantes dentro deste raio dele, e o entregador só vê pedidos cujo restaurante está dentro deste raio dele. Aumente para atender um raio maior (cidades vizinhas)."
+            hint="Separa as regiões: o cliente só vê parceiros dentro deste raio dele, e o entregador só vê pedidos cujo parceiro está dentro deste raio dele. Aumente para atender um raio maior (cidades vizinhas)."
           >
             <input
               type="number"
@@ -405,7 +405,7 @@ export default function SettingsPage() {
               <div>
                 <span className="text-sm font-medium text-gray-700">Modo de manutenção</span>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Bloqueia acesso de clientes e restaurantes à plataforma
+                  Bloqueia acesso de clientes e parceiros à plataforma
                 </p>
               </div>
               <input
