@@ -35,6 +35,9 @@ const DEFAULTS = {
   delivery_radius_bike_km: '2',
   delivery_radius_moto_km: '8',
   delivery_radius_carro_km: '10',
+  dispatch_assign_enabled: '0',
+  dispatch_offer_seconds: '30',
+  dispatch_decline_cooldown_min: '15',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
   commission_rate: '10',
@@ -368,6 +371,34 @@ export default function SettingsPage() {
                   onChange={(e) => set('delivery_radius_carro_km', e.target.value)} className={inputCls} />
               </div>
             </div>
+          </Field>
+          <Field
+            label="Distribuição de pedidos"
+            hint="Broadcast: todos no raio veem e o primeiro a aceitar leva. Atribuição: oferta ao entregador mais próximo com tempo; se recusar/expirar, passa pro próximo. Quem recusa fica um tempo sem receber ofertas."
+          >
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={fields.dispatch_assign_enabled === '1'}
+                onChange={(e) => set('dispatch_assign_enabled', e.target.checked ? '1' : '0')}
+                className="h-4 w-4"
+              />
+              <span className="text-sm text-gray-700">Ativar modo <strong>Atribuição</strong> (oferta ao mais próximo)</span>
+            </label>
+            {fields.dispatch_assign_enabled === '1' && (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Tempo da oferta (s)</label>
+                  <input type="number" min="10" step="5" value={fields.dispatch_offer_seconds}
+                    onChange={(e) => set('dispatch_offer_seconds', e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Cooldown ao recusar (min)</label>
+                  <input type="number" min="0" step="1" value={fields.dispatch_decline_cooldown_min}
+                    onChange={(e) => set('dispatch_decline_cooldown_min', e.target.value)} className={inputCls} />
+                </div>
+              </div>
+            )}
           </Field>
           <div className="sm:col-span-2">
             <label className="flex items-center justify-between cursor-pointer">
