@@ -38,6 +38,7 @@ const DEFAULTS = {
   dispatch_assign_enabled: '0',
   dispatch_offer_seconds: '30',
   dispatch_decline_cooldown_min: '15',
+  idle_logout_minutes: '60',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
   commission_rate: '10',
@@ -399,6 +400,18 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </Field>
+          <Field
+            label="Logoff automático por inatividade (min)"
+            hint="Parceiro e Entregador deslogam sozinhos após esse tempo sem toque/clique na tela (segurança de sessão esquecida). Use 0 para desligar. Vale a partir do próximo login/atualização do app."
+          >
+            <input
+              type="number" min="0" step="5"
+              value={fields.idle_logout_minutes}
+              onChange={(e) => set('idle_logout_minutes', e.target.value)}
+              className={inputCls}
+              placeholder="60"
+            />
           </Field>
           <div className="sm:col-span-2">
             <label className="flex items-center justify-between cursor-pointer">
