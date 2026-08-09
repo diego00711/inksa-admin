@@ -46,6 +46,7 @@ const DEFAULTS = {
   dispatch_idle_target_minutes: '60',
   dispatch_daily_target: '10',
   dispatch_default_rating: '4',
+  coupon_max_discount_pct: '30',
   idle_logout_minutes: '60',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
@@ -460,6 +461,18 @@ export default function SettingsPage() {
                 </p>
               </div>
             )}
+          </Field>
+          <Field
+            label="Desconto máximo do cupom do parceiro (%)"
+            hint="Teto do cupom que o parceiro cria na tela Cupons dele. Esse desconto sai do repasse dele (a comissão da Inksa continua sobre o valor cheio), então o teto evita que alguém digite 90 achando que é R$ 90. Não limita os cupons criados aqui pela Inksa."
+          >
+            <input
+              type="number" min="0" max="100" step="5"
+              value={fields.coupon_max_discount_pct}
+              onChange={(e) => set('coupon_max_discount_pct', e.target.value)}
+              className={inputCls}
+              placeholder="30"
+            />
           </Field>
           <Field
             label="Logoff automático por inatividade (min)"

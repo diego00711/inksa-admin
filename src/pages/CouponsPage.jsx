@@ -21,6 +21,13 @@ const getInitialFormData = () => ({
   valid_until: '',
 });
 
+// Quem banca o desconto. Cupom criado pelo parceiro nasce 'restaurant' (sai do
+// repasse dele); o que o admin cria é da casa e sai da margem da Inksa.
+const PAID_BY_LABEL = {
+  restaurant: 'Parceiro paga',
+  platform: 'Inksa paga',
+};
+
 const CouponsPage = () => {
   const { notify } = useContext(NotificationContext);
   const [coupons, setCoupons] = useState([]);
@@ -30,6 +37,8 @@ const CouponsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [formData, setFormData] = useState(getInitialFormData());
+  // id do cupom sendo editado (null = criando um novo)
+  const [editingId, setEditingId] = useState(null);
 
   const API_URL = API_BASE_URL;
 
@@ -70,7 +79,7 @@ const CouponsPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.code.trim()) {
+    if (!editingId && !formData.code.trim()) {
       setError('O código do cupom é obrigatório');
       return;
     }
@@ -89,7 +98,6 @@ const CouponsPage = () => {
       const token = authService.getToken();
 
       const payload = {
-        code: formData.code.toUpperCase().trim(),
         discount_type: formData.discount_type,
         discount_value:
           formData.discount_type === 'free_delivery'
@@ -101,30 +109,50 @@ const CouponsPage = () => {
         max_uses: formData.max_uses ? parseInt(formData.max_uses, 10) : null,
         valid_until: formData.valid_until,
       };
+      // O código é a identidade do cupom (o cliente já anotou) — só na criação.
+      if (!editingId) payload.code = formData.code.toUpperCase().trim();
 
-      const response = await fetch(`${API_URL}/api/coupons/admin`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        editingId ? `${API_URL}/api/coupons/admin/${editingId}` : `${API_URL}/api/coupons/admin`,
+        {
+          method: editingId ? 'PUT' : 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || errorData.message || `Erro HTTP: ${response.status}`);
       }
 
-      notify('Cupom criado com sucesso!', 'success');
+      notify(editingId ? 'Cupom atualizado!' : 'Cupom criado com sucesso!', 'success');
       await loadCoupons();
       resetForm();
     } catch (err) {
-      setError('Erro ao criar cupom: ' + err.message);
-      notify('Erro ao criar cupom: ' + err.message, 'error');
+      setError('Erro ao salvar cupom: ' + err.message);
+      notify('Erro ao salvar cupom: ' + err.message, 'error');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startEdit = (coupon) => {
+    setEditingId(coupon.id);
+    setFormData({
+      code: coupon.code,
+      discount_type: coupon.discount_type,
+      discount_value:
+        coupon.discount_type === 'free_delivery' ? '' : String(coupon.discount_value ?? ''),
+      min_order_value: coupon.min_order_value ? String(coupon.min_order_value) : '',
+      max_uses: coupon.max_uses ? String(coupon.max_uses) : '',
+      valid_until: coupon.valid_until ? String(coupon.valid_until).slice(0, 10) : '',
+    });
+    setError('');
+    setShowForm(true);
   };
 
   const handleToggleStatus = async (coupon) => {
@@ -183,6 +211,7 @@ const CouponsPage = () => {
 
   const resetForm = () => {
     setFormData(getInitialFormData());
+    setEditingId(null);
     setShowForm(false);
     setError('');
   };
@@ -224,6 +253,7 @@ const CouponsPage = () => {
         <button
           onClick={() => {
             setFormData(getInitialFormData());
+            setEditingId(null);
             setError('');
             setShowForm(true);
           }}
@@ -248,7 +278,9 @@ const CouponsPage = () => {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto mx-4">
-            <h2 className="text-xl font-bold mb-4">Novo Cupom</h2>
+            <h2 className="text-xl font-bold mb-4">
+              {editingId ? 'Editar Cupom' : 'Novo Cupom'}
+            </h2>
 
             <form onSubmit={handleSubmit}>
               {/* Código */}
@@ -259,13 +291,19 @@ const CouponsPage = () => {
                 <input
                   type="text"
                   value={formData.code}
+                  disabled={!!editingId}
                   onChange={(e) =>
                     setFormData({ ...formData, code: e.target.value.toUpperCase() })
                   }
-                  className="w-full border border-gray-300 rounded px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-3 py-2 uppercase disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="EX: DESCONTO10"
                   maxLength={30}
                 />
+                {editingId && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    O código não muda: quem já anotou continua usando o mesmo.
+                  </p>
+                )}
               </div>
 
               {/* Tipo de desconto */}
@@ -378,7 +416,7 @@ const CouponsPage = () => {
                   disabled={submitting}
                   className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
                 >
-                  {submitting ? 'Criando...' : 'Criar Cupom'}
+                  {submitting ? 'Salvando...' : editingId ? 'Salvar' : 'Criar Cupom'}
                 </button>
               </div>
             </form>
@@ -399,6 +437,9 @@ const CouponsPage = () => {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Código
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Dono / Quem paga
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Tipo
@@ -429,6 +470,20 @@ const CouponsPage = () => {
                     <td className="px-4 py-4">
                       <span className="font-mono font-semibold text-sm text-gray-900">
                         {coupon.code}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className="text-gray-700">
+                        {coupon.owner_label || 'Inksa (plataforma)'}
+                      </span>
+                      <span
+                        className={`ml-2 inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          coupon.paid_by === 'restaurant'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {PAID_BY_LABEL[coupon.paid_by] || PAID_BY_LABEL.platform}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
@@ -462,6 +517,12 @@ const CouponsPage = () => {
                     </td>
                     <td className="px-4 py-4 text-sm font-medium">
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => startEdit(coupon)}
+                          className="text-blue-600 hover:text-blue-900 min-h-[44px] inline-flex items-center"
+                        >
+                          Editar
+                        </button>
                         <button
                           onClick={() => handleToggleStatus(coupon)}
                           className={`min-h-[44px] inline-flex items-center ${
