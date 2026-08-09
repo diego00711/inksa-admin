@@ -84,7 +84,9 @@ export async function autoPayPayout(id, { description, pix_key_type } = {}) {
   return handle(r);
 }
 
-// Dívidas em dinheiro dos entregadores (cash_debt > 0)
+// Dívidas em dinheiro em aberto. Traz entregadores (recolheram em espécie) e
+// lojas de ENTREGA PRÓPRIA (ficaram com 100% do pedido em dinheiro e devem a
+// comissão) — cada item vem com partner_type.
 export async function listCashDebts() {
   const r = await apiFetch(`${ADMIN_PAYOUTS}/cash-debts`, {
     headers: { ...authHeaders() },
@@ -93,13 +95,15 @@ export async function listCashDebts() {
   return handle(r);
 }
 
-// Registrar acerto (entregador quitou total/parcial a dívida em dinheiro)
-export async function settleCashDebt(deliveryId, { amount, note } = {}) {
-  const r = await apiFetch(`${ADMIN_PAYOUTS}/cash-debts/${deliveryId}/settle`, {
+// Registrar acerto (parceiro quitou total/parcial a dívida em dinheiro).
+// partnerType decide de qual tabela a dívida sai — sem ele, quitar a dívida de
+// uma loja mexeria no entregador de mesmo id (ou em ninguém).
+export async function settleCashDebt(partnerId, { amount, note, partnerType = "delivery" } = {}) {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/cash-debts/${partnerId}/settle`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     credentials: "include",
-    body: JSON.stringify({ amount, note }),
+    body: JSON.stringify({ amount, note, partner_type: partnerType }),
   });
   return handle(r);
 }

@@ -101,7 +101,10 @@ export default function CashDebtsPage() {
     if (!target) return;
     setSaving(true);
     try {
-      const res = await settleCashDebt(target.id, { amount, note });
+      // partnerType diz de qual tabela sai a dívida (entregador ou loja).
+      const res = await settleCashDebt(target.id, {
+        amount, note, partnerType: target.partner_type || 'delivery',
+      });
       const d = res?.data || {};
       notify(`Acerto registrado: ${brl(d.applied)} — dívida agora ${brl(d.debt_after)}`, "success");
       setTarget(null);
@@ -124,15 +127,17 @@ export default function CashDebtsPage() {
         </div>
       </div>
       <p className="text-sm text-gray-500">
-        Entregadores que recolheram pedidos em dinheiro e devem à plataforma. O abatimento automático já desconta
-        do repasse online de quem faz pedidos online; aqui você registra o acerto manual (depósito) de quem só faz dinheiro.
+        Quem recolheu dinheiro e deve à plataforma: <strong>entregadores</strong> (recolheram o pedido
+        em espécie) e <strong>lojas de entrega própria</strong> (o motoboy da casa recolheu 100%, então
+        a comissão ficou pendente). O abatimento automático já desconta do repasse online de quem
+        também vende online; aqui você registra o acerto manual (depósito) de quem só faz dinheiro.
       </p>
 
       <div className="border rounded overflow-x-auto bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left">Entregador</th>
+              <th className="px-3 py-2 text-left">Parceiro</th>
               <th className="px-3 py-2 text-left">Chave PIX</th>
               <th className="px-3 py-2 text-left">Dívida</th>
               <th className="px-3 py-2 text-left">Recebido total</th>
@@ -147,7 +152,18 @@ export default function CashDebtsPage() {
             ) : items.map((d) => (
               <tr key={d.id} className="border-t hover:bg-gray-50">
                 <td className="px-3 py-2">
-                  <div className="font-medium text-gray-800">{d.name || "—"}</div>
+                  <div className="font-medium text-gray-800 flex items-center gap-2">
+                    {d.name || "—"}
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        d.partner_type === 'restaurant'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {d.partner_type === 'restaurant' ? 'Loja (comissão)' : 'Entregador'}
+                    </span>
+                  </div>
                   <div className="text-[11px] text-gray-400 font-mono">{d.id}</div>
                 </td>
                 <td className="px-3 py-2">
