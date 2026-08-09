@@ -58,10 +58,57 @@ const BannerManagementPage = () => {
     duration_seconds: '', // segundos na tela (vazio = padrão do app)
     audience: 'cliente', // app-alvo: cliente / parceiro / entregador
     is_sponsored: false, // mostra o selo "Patrocinado"
-    sponsor_name: '' // nome do anunciante (quando patrocinado)
+    sponsor_name: '', // nome do anunciante (quando patrocinado)
+    // Alcance geográfico: vazio = banner nacional (aparece pra todo mundo).
+    // Com CEP preenchido, só aparece pra quem está dentro do raio.
+    geo_cep: '',
+    geo_city: '',
+    geo_latitude: '',
+    geo_longitude: '',
+    geo_radius_km: ''
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
+  const [geoBuscando, setGeoBuscando] = useState(false);
+
+  // CEP -> cidade + coordenadas do centro da cidade. É o que define o alcance
+  // do banner: quem estiver a mais de `geo_radius_km` daqui não vê o anúncio.
+  const handleGeoCepChange = async (e) => {
+    const bruto = e.target.value.replace(/\D/g, '').slice(0, 8);
+    const mascarado = bruto.length > 5 ? `${bruto.slice(0, 5)}-${bruto.slice(5)}` : bruto;
+    setFormData(f => ({ ...f, geo_cep: mascarado }));
+    if (bruto.length !== 8) return;
+
+    setGeoBuscando(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${bruto}/json/`);
+      const cep = await r.json();
+      if (cep?.erro) { setError('CEP não encontrado.'); return; }
+
+      // Nominatim: cidade/UF -> lat/lon (mesma fonte usada no resto do sistema).
+      const q = new URLSearchParams({
+        city: cep.localidade || '', state: cep.uf || '',
+        country: 'Brazil', format: 'json', limit: '1',
+      });
+      const g = await fetch(`https://nominatim.openstreetmap.org/search?${q}`);
+      const achados = await g.json();
+      const ponto = Array.isArray(achados) ? achados[0] : null;
+      if (!ponto) { setError('Não foi possível localizar a cidade desse CEP.'); return; }
+
+      setFormData(f => ({
+        ...f,
+        geo_city: `${cep.localidade} - ${cep.uf}`,
+        geo_latitude: Number(ponto.lat),
+        geo_longitude: Number(ponto.lon),
+        geo_radius_km: f.geo_radius_km || 50, // padrão razoável pra uma cidade
+      }));
+      setError('');
+    } catch {
+      setError('Falha ao consultar o CEP.');
+    } finally {
+      setGeoBuscando(false);
+    }
+  };
 
   const API_URL = API_BASE_URL;
 
@@ -172,11 +219,18 @@ const BannerManagementPage = () => {
       const method = editingBanner ? 'PUT' : 'POST';
 
       // Converte os horários locais dos inputs para ISO (UTC) ou null.
+      // geo_cep é só da tela (serve pra achar a cidade) — não vai pro banco.
+      const { geo_cep, ...semCep } = formData;
       const payload = {
-        ...formData,
+        ...semCep,
         starts_at: localInputToIso(formData.starts_at),
         ends_at: localInputToIso(formData.ends_at),
         duration_seconds: formData.duration_seconds === '' ? null : Number(formData.duration_seconds),
+        // Vazio = banner nacional (sem restrição de região).
+        geo_latitude: formData.geo_latitude === '' ? null : Number(formData.geo_latitude),
+        geo_longitude: formData.geo_longitude === '' ? null : Number(formData.geo_longitude),
+        geo_radius_km: formData.geo_radius_km === '' ? null : Number(formData.geo_radius_km),
+        geo_city: formData.geo_city || null,
       };
 
       const response = await fetch(url, {
@@ -216,7 +270,12 @@ const BannerManagementPage = () => {
       duration_seconds: banner.duration_seconds ?? '',
       audience: banner.audience || 'cliente',
       is_sponsored: !!banner.is_sponsored,
-      sponsor_name: banner.sponsor_name || ''
+      sponsor_name: banner.sponsor_name || '',
+      geo_cep: '',
+      geo_city: banner.geo_city || '',
+      geo_latitude: banner.geo_latitude ?? '',
+      geo_longitude: banner.geo_longitude ?? '',
+      geo_radius_km: banner.geo_radius_km ?? ''
     });
     setImagePreview(banner.image_url || '');
     setShowForm(true);
@@ -393,6 +452,65 @@ const BannerManagementPage = () => {
                     className="w-full border border-gray-300 rounded px-3 py-2 mt-2 text-sm"
                     placeholder="Nome do anunciante (ex.: Embalagens Sul)"
                   />
+                )}
+              </div>
+
+              {/* ── Alcance geográfico ────────────────────────────────────────
+                  Vazio = banner nacional. Com CEP + raio, só aparece pra quem
+                  está perto: um parceiro de Lages não é exibido em São Paulo
+                  (nem é cobrado por essa exibição). */}
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alcance geográfico
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Deixe em branco para exibir no Brasil inteiro. Informe o CEP da cidade
+                  do anunciante para mostrar só na região dele.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={formData.geo_cep}
+                    onChange={handleGeoCepChange}
+                    maxLength={9}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="CEP (00000-000)"
+                  />
+                  <input
+                    type="text"
+                    value={formData.geo_city}
+                    readOnly
+                    className="border border-gray-200 bg-gray-50 rounded px-3 py-2 text-sm text-gray-600"
+                    placeholder="Cidade"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.geo_radius_km}
+                    onChange={(e) => setFormData({ ...formData, geo_radius_km: e.target.value })}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Raio em km (ex.: 50)"
+                  />
+                </div>
+                {geoBuscando && <p className="text-xs text-gray-500 mt-1">Buscando CEP…</p>}
+                {formData.geo_latitude ? (
+                  <div className="flex items-center justify-between mt-2 text-xs">
+                    <span className="text-green-700">
+                      ✓ Alcance: {formData.geo_city || 'região definida'} · {formData.geo_radius_km || 50} km
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(f => ({
+                        ...f, geo_cep: '', geo_city: '', geo_latitude: '', geo_longitude: '', geo_radius_km: ''
+                      }))}
+                      className="text-red-600 hover:underline"
+                    >
+                      Tornar nacional
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-2">🌎 Banner nacional (sem restrição de região)</p>
                 )}
               </div>
 
