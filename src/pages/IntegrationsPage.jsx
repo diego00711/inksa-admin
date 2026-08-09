@@ -12,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
+import authService from '../services/authService';
 
 function useHealthCheck() {
   const [health, setHealth] = useState(null);
@@ -95,8 +96,35 @@ function IntegrationCard({ icon: Icon, iconColor, title, description, statusOk, 
   );
 }
 
+// Teste REAL da conta Asaas. O /api/health só olha se a variável de ambiente
+// existe — numa troca de conta (PF→PJ, chave regerada) ele continuaria verde
+// com a chave morta, e o erro só apareceria no primeiro pedido do cliente.
+function useAsaasCheck() {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const check = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = authService.getToken();
+      const res = await fetch(`${API_BASE_URL}/api/admin/integrations/asaas/check`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: AbortSignal.timeout(20000),
+      });
+      setResult(await res.json());
+    } catch (err) {
+      setResult({ conectado: false, motivo: err.message || 'Falha ao testar a conta' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { result, loading, check };
+}
+
 export default function IntegrationsPage() {
   const { health, loading, error, lastChecked, check } = useHealthCheck();
+  const asaas = useAsaasCheck();
 
   const backendOk = health ? health.status === 'healthy' || health.status === 'ok' : null;
   const dbOk = health ? health.database === 'connected' : null;
@@ -151,6 +179,66 @@ export default function IntegrationsPage() {
         <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Teste REAL da conta Asaas. Os cards abaixo mostram "configurado" só
+          porque a variável existe — depois de trocar de conta (PF→PJ) isso
+          continuaria verde com a chave morta. Aqui a gente pergunta ao Asaas. */}
+      {usingAsaas && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-slate-800">Conta Asaas — teste real</h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Confirma se a chave ainda vale e de qual CNPJ é a conta. Use depois de
+                trocar a chave ou o cadastro (PF → PJ).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={asaas.check}
+              disabled={asaas.loading}
+              className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-700 disabled:opacity-50"
+            >
+              {asaas.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+              {asaas.loading ? 'Testando…' : 'Testar conta'}
+            </button>
+          </div>
+
+          {asaas.result && (
+            asaas.result.conectado ? (
+              <dl className="mt-4 grid gap-2 sm:grid-cols-2 text-sm border-t border-slate-100 pt-4">
+                <div><dt className="text-slate-500">Conta</dt><dd className="font-medium text-slate-800">{asaas.result.conta?.conta || '—'}</dd></div>
+                <div><dt className="text-slate-500">CPF/CNPJ</dt><dd className="font-medium text-slate-800">{asaas.result.conta?.cpf_cnpj || '—'}</dd></div>
+                <div><dt className="text-slate-500">Tipo</dt><dd className="font-medium text-slate-800">{asaas.result.conta?.tipo_pessoa === 'JURIDICA' ? 'Pessoa Jurídica (CNPJ)' : asaas.result.conta?.tipo_pessoa === 'FISICA' ? 'Pessoa Física' : '—'}</dd></div>
+                <div><dt className="text-slate-500">Ambiente</dt><dd className={`font-medium ${asaas.result.conta?.ambiente === 'production' ? 'text-emerald-700' : 'text-amber-700'}`}>{asaas.result.conta?.ambiente === 'production' ? 'Produção' : 'Sandbox (teste)'}</dd></div>
+                <div>
+                  <dt className="text-slate-500">Saldo</dt>
+                  <dd className={`font-medium ${Number(asaas.result.saldo) > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {asaas.result.saldo === null || asaas.result.saldo === undefined
+                      ? '—'
+                      : Number(asaas.result.saldo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {Number(asaas.result.saldo) <= 0 && ' — sem saldo o PIX de repasse falha'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Token do webhook</dt>
+                  <dd className={`font-medium ${asaas.result.webhook_token_configurado ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {asaas.result.webhook_token_configurado ? 'Configurado' : 'AUSENTE — webhooks serão recusados'}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <div className="mt-4 flex gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                <XCircle className="h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Não conectou: {asaas.result.motivo}</p>
+                  {asaas.result.dica && <p className="mt-1">{asaas.result.dica}</p>}
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
 
