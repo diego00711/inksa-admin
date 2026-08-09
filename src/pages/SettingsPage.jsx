@@ -35,9 +35,17 @@ const DEFAULTS = {
   delivery_radius_bike_km: '2',
   delivery_radius_moto_km: '8',
   delivery_radius_carro_km: '10',
-  dispatch_assign_enabled: '0',
+  dispatch_assign_enabled: '1',
   dispatch_offer_seconds: '30',
   dispatch_decline_cooldown_min: '15',
+  // Pesos da escolha do entregador (proporção, não precisa somar 100).
+  dispatch_weight_distance: '50',
+  dispatch_weight_idle: '20',
+  dispatch_weight_rating: '15',
+  dispatch_weight_balance: '15',
+  dispatch_idle_target_minutes: '60',
+  dispatch_daily_target: '10',
+  dispatch_default_rating: '4',
   idle_logout_minutes: '60',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
@@ -398,6 +406,58 @@ export default function SettingsPage() {
                   <input type="number" min="0" step="1" value={fields.dispatch_decline_cooldown_min}
                     onChange={(e) => set('dispatch_decline_cooldown_min', e.target.value)} className={inputCls} />
                 </div>
+              </div>
+            )}
+
+            {/* Pesos da escolha do entregador. Só ordenam quem JÁ passou nos
+                filtros de raio/cooldown/cadastro — ninguém fora do raio recebe
+                oferta por ter peso alto em outro fator. */}
+            {fields.dispatch_assign_enabled === '1' && (
+              <div className="mt-4 border-t pt-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Como escolher o entregador</p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Peso de cada critério na escolha. Não precisa somar 100 — o que vale é a
+                  proporção entre eles. Só <strong>proximidade</strong> (e o resto em 0) =
+                  sempre o mais perto.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Proximidade</label>
+                    <input type="number" min="0" step="5" value={fields.dispatch_weight_distance}
+                      onChange={(e) => set('dispatch_weight_distance', e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Tempo parado</label>
+                    <input type="number" min="0" step="5" value={fields.dispatch_weight_idle}
+                      onChange={(e) => set('dispatch_weight_idle', e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Nota do entregador</label>
+                    <input type="number" min="0" step="5" value={fields.dispatch_weight_rating}
+                      onChange={(e) => set('dispatch_weight_rating', e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Equilíbrio do dia</label>
+                    <input type="number" min="0" step="5" value={fields.dispatch_weight_balance}
+                      onChange={(e) => set('dispatch_weight_balance', e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Parado por (min) = nota cheia</label>
+                    <input type="number" min="5" step="5" value={fields.dispatch_idle_target_minutes}
+                      onChange={(e) => set('dispatch_idle_target_minutes', e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Entregas/dia = fim do bônus</label>
+                    <input type="number" min="1" step="1" value={fields.dispatch_daily_target}
+                      onChange={(e) => set('dispatch_daily_target', e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Entregador ainda sem avaliação entra com nota {fields.dispatch_default_rating || '4'} —
+                  senão nunca receberia pedido pra ser avaliado.
+                </p>
               </div>
             )}
           </Field>
