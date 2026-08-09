@@ -23,6 +23,10 @@ export default function FinanceDashboard() {
   const [metricsError, setMetricsError] = useState(null);
   const [series, setSeries] = useState([]);
   const [tx, setTx] = useState({ items: [], loading: true });
+  // Quantas linhas de "Pedidos Recentes" mostrar, e um jeito de limpar a lista
+  // da tela. Com o volume crescendo, 20 linhas fixas viram uma parede.
+  const [txLimit, setTxLimit] = useState(20);
+  const [txHidden, setTxHidden] = useState(false);
 
   const params = useMemo(() => ({ from: range.from, to: range.to }), [range]);
 
@@ -39,7 +43,12 @@ export default function FinanceDashboard() {
         if (!cancelled) {
           // O endpoint responde { status, data: { ...kpis } } em camelCase.
           setMetrics(m?.data ?? m ?? null);
-          setSeries(s?.data || []);
+          // O backend manda formatted_date/daily_revenue; o gráfico lia
+          // date/revenue e por isso não desenhava barra nenhuma.
+          setSeries((s?.data || []).map((p) => ({
+            date: p.date ?? p.formatted_date ?? '',
+            revenue: Number(p.revenue ?? p.daily_revenue ?? 0),
+          })));
         }
       } catch (e) {
         console.error(e);
@@ -58,14 +67,24 @@ export default function FinanceDashboard() {
   useEffect(() => {
     let cancelled = false;
     setTx((prev) => ({ ...prev, loading: true }));
-    financeApi.getTransactions({ ...params, limit: 20 })
-      .then((r) => !cancelled && setTx({ items: r?.data || [], loading: false }))
+    setTxHidden(false);
+    financeApi.getTransactions({ ...params, limit: txLimit })
+      // A tabela lia customer_name/amount/payment_method, que o backend não
+      // manda — por isso Cliente vinha "-" e Valor R$ 0,00 em toda linha.
+      .then((r) => !cancelled && setTx({
+        items: (r?.data || []).map((t) => ({
+          ...t,
+          customer_name: t.customer_name ?? t.client_name,
+          amount: t.amount ?? t.total_amount,
+        })),
+        loading: false,
+      }))
       .catch((e) => {
         console.error(e);
         !cancelled && setTx({ items: [], loading: false });
       });
     return () => { cancelled = true; };
-  }, [params]);
+  }, [params, txLimit]);
 
   return (
     <div className="space-y-6">
@@ -160,8 +179,36 @@ export default function FinanceDashboard() {
           </div>
         </div>
         <div className="rounded-lg border bg-white p-4">
-          <h3 className="mb-3 text-sm font-medium text-gray-600">Pedidos Recentes</h3>
-          <TransactionsTable items={tx.items} loading={tx.loading} />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-gray-600">Pedidos Recentes</h3>
+            <div className="flex items-center gap-2">
+              <select
+                value={txLimit}
+                onChange={(e) => setTxLimit(Number(e.target.value))}
+                className="rounded border border-gray-300 px-2 py-1 text-xs"
+                title="Quantas linhas mostrar"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>{n} linhas</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setTxHidden((v) => !v)}
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                title="Some com a lista da tela (não apaga nada)"
+              >
+                {txHidden ? 'Mostrar' : 'Limpar'}
+              </button>
+            </div>
+          </div>
+          {txHidden ? (
+            <p className="py-6 text-center text-xs text-gray-400">
+              Lista oculta — nada foi apagado. Clique em “Mostrar” pra ver de novo.
+            </p>
+          ) : (
+            <TransactionsTable items={tx.items} loading={tx.loading} />
+          )}
         </div>
       </div>
     </div>
