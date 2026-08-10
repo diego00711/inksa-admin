@@ -17,11 +17,14 @@ const BENEFIT_FIELDS = {
     { key: 'free_delivery_always', label: 'Frete grátis em todos os pedidos', type: 'bool' },
     { key: 'free_delivery_from_nth', label: 'Frete grátis a partir do Nº pedido do mês', type: 'int', placeholder: 'ex: 5' },
     { key: 'subtotal_discount_pct', label: '% de desconto no subtotal', type: 'num', placeholder: 'ex: 10' },
+    // A comissão da Inksa é FIXA por pedido, mas a % cresce com o ticket: 5%
+    // num pedido de R$300 custa R$15, mais que o dobro da receita dele. Este
+    // teto é o que impede qualquer configuração de sangrar. 0/vazio = sem teto.
+    { key: 'max_discount_brl', label: 'Teto do desconto em R$ (0 = sem teto)', type: 'num', placeholder: 'ex: 6' },
   ],
   delivery: [
     { key: 'per_delivery_bonus', label: 'Bônus por entrega (R$)', type: 'num', placeholder: 'ex: 0.50' },
     { key: 'freight_keep_extra_pct', label: 'Fica com +% do frete (reduz taxa de administração)', type: 'num', placeholder: 'ex: 5' },
-    { key: 'priority', label: 'Prioridade na fila de pedidos', type: 'bool' },
   ],
   restaurant: [
     { key: 'featured_listing', label: 'Destaque na listagem para os clientes', type: 'bool' },
