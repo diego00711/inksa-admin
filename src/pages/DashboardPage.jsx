@@ -1,187 +1,286 @@
 // src/pages/DashboardPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { getMetrics, getRevenueSeries, getTransactions } from '../services/analytics';
+import { Link } from 'react-router-dom';
+import {
+  Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck,
+  AlertTriangle, CheckCircle2, Wallet, HandCoins, LifeBuoy, PackageX,
+  MapPinOff, DoorOpen, TrendingUp, ArrowRight, RefreshCw,
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
+} from 'recharts';
+import { getOverview } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
 
-const FALLBACK_DASHBOARD = {
-  kpis: {
-    totalRevenue: 48250.4,
-    ordersToday: 128,
-    averageTicket: 54.9,
-    newClientsToday: 23,
-    ordersInProgress: 14,
-    ordersCanceled: 7,
-    restaurantsPending: 3,
-    activeDeliverymen: 28,
-  },
-  revenueSeries: Array.from({ length: 7 }).map((_, idx) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - idx));
-    return {
-      formatted_date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      daily_revenue: 4200 + idx * 350,
-      total_clients: 800 + idx * 35,
-    };
-  }),
-  ordersStatus: {
-    concluido: 312,
-    pendente: 41,
-    em_andamento: 26,
-    cancelado: 12,
-  },
-  recentOrders: [
-    {
-      id: 'ord-fallback-1',
-      client_name: 'Maria Souza',
-      restaurant_name: 'Restaurante Sabor & Arte',
-      total_amount: 128.4,
-      status: 'concluído',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'ord-fallback-2',
-      client_name: 'João Pereira',
-      restaurant_name: 'Bistrô da Vila',
-      total_amount: 86.2,
-      status: 'em andamento',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'ord-fallback-3',
-      client_name: 'Ana Lima',
-      restaurant_name: 'Sushibar Origami',
-      total_amount: 142.9,
-      status: 'pendente',
-      created_at: new Date().toISOString(),
-    },
-  ],
-};
-
-// Paleta
 const COLORS = {
-  blue: "#2563eb",
-  green: "#22C55E",
-  orange: "#F59E0B",
-  red: "#EF4444",
-  sky: "#0ea5e9",
-  gray: "#64748b",
-  purple: "#8b5cf6",
-  yellow: "#fde047"
+  blue: '#2563eb', green: '#22C55E', orange: '#F59E0B', red: '#EF4444',
+  sky: '#0ea5e9', gray: '#64748b', purple: '#8b5cf6',
 };
 
-const KpiCard = ({ title, value, icon: Icon, color, tooltip }) => (
-  <div className={`p-4 sm:p-6 rounded-lg shadow-lg text-white relative ${color}`} title={tooltip || undefined}>
-    <div className="flex justify-between items-start gap-2">
-      <p className="text-sm sm:text-lg font-semibold leading-tight">{title}</p>
-      <Icon className="h-6 w-6 sm:h-8 sm:w-8 opacity-80 shrink-0" />
+const brl = (v) => new Intl.NumberFormat('pt-BR', {
+  style: 'currency', currency: 'BRL',
+}).format(Number(v) || 0);
+
+/* ------------------------------------------------------------------ *
+ * Painel de pendências — a parte que o dashboard não tinha.
+ * KPI é retrovisor: conta o que já aconteceu. Isto aqui é a fila de
+ * trabalho, e cada item leva direto pra tela onde se resolve.
+ * ------------------------------------------------------------------ */
+const TONS = {
+  red:   { caixa: 'bg-red-50 border-red-200 hover:bg-red-100',       icone: 'text-red-600',    valor: 'text-red-700' },
+  amber: { caixa: 'bg-amber-50 border-amber-200 hover:bg-amber-100', icone: 'text-amber-600',  valor: 'text-amber-700' },
+  blue:  { caixa: 'bg-blue-50 border-blue-200 hover:bg-blue-100',    icone: 'text-blue-600',   valor: 'text-blue-700' },
+};
+
+const PainelPendencias = ({ op }) => {
+  const itens = [
+    {
+      chave: 'semCoord', tom: 'red', icone: MapPinOff, para: '/usuarios',
+      qtd: op.entregadoresSemCoordenada,
+      titulo: 'Entregador online sem localização',
+      detalhe: 'Está online mas o motor não enxerga — não recebe pedido nenhum.',
+    },
+    {
+      chave: 'ocorrencias', tom: 'red', icone: PackageX, para: '/ocorrencias',
+      qtd: op.ocorrenciasAbertas,
+      titulo: 'Ocorrência aberta',
+      detalhe: 'Tem cliente esperando uma decisão sua.',
+    },
+    {
+      chave: 'parceiros', tom: 'amber', icone: Store, para: '/restaurantes',
+      qtd: op.parceirosPendentes,
+      titulo: 'Parceiro aguardando aprovação',
+      detalhe: 'Cadastrou e está parado até você liberar.',
+    },
+    {
+      chave: 'repasses', tom: 'amber', icone: Wallet, para: '/financeiro/payouts',
+      qtd: op.repassesPendentes, valor: op.repassesValor,
+      titulo: 'Repasse pendente',
+      detalhe: 'Dinheiro de parceiro esperando pagamento.',
+    },
+    {
+      chave: 'tickets', tom: 'blue', icone: LifeBuoy, para: '/suporte',
+      qtd: op.ticketsAbertos,
+      titulo: 'Ticket de suporte aberto',
+      detalhe: 'Alguém pediu ajuda e ainda não foi respondido.',
+    },
+    {
+      chave: 'dividas', tom: 'blue', icone: HandCoins, para: '/financeiro/dividas',
+      qtd: (op.dividaParceiros || 0) + (op.dividaEntregadores || 0) > 0 ? 1 : 0,
+      valor: (op.dividaParceiros || 0) + (op.dividaEntregadores || 0),
+      titulo: 'Comissão a receber',
+      detalhe: 'De pedidos em dinheiro, ainda não acertados.',
+    },
+  ].filter((i) => Number(i.qtd) > 0);
+
+  if (!itens.length) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+        <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+        <div>
+          <p className="font-semibold text-green-800">Nada pendente</p>
+          <p className="text-sm text-green-700">
+            Sem ocorrência aberta, repasse a pagar ou parceiro esperando aprovação.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <h2 className="text-lg font-bold text-gray-800">Precisa de você</h2>
+        <span className="text-sm text-gray-500">({itens.length})</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {itens.map((i) => {
+          const t = TONS[i.tom];
+          const Icone = i.icone;
+          return (
+            <Link
+              key={i.chave}
+              to={i.para}
+              className={`group flex items-start gap-3 rounded-xl border p-4 transition-colors ${t.caixa}`}
+            >
+              <Icone className={`h-5 w-5 mt-0.5 shrink-0 ${t.icone}`} />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-gray-800">
+                  <span className={t.valor}>
+                    {i.valor != null ? brl(i.valor) : i.qtd}
+                  </span>
+                  {' · '}{i.titulo}{i.valor == null && i.qtd > 1 ? 's' : ''}
+                </p>
+                <p className="text-sm text-gray-600">{i.detalhe}</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-gray-400 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Link>
+          );
+        })}
+      </div>
     </div>
-    <p className="text-2xl sm:text-4xl font-bold mt-2 break-words">{value}</p>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+
+const CardHero = ({ receita, comissao, margem }) => (
+  <div className="rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 p-6 text-white shadow-lg">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-blue-100 text-sm font-medium">Receita da Inksa</p>
+        <p className="text-4xl font-bold mt-1 break-words">{brl(receita)}</p>
+        <p className="text-blue-100 text-xs mt-2">
+          O que fica com a plataforma — comissão + margem de frete
+        </p>
+      </div>
+      <TrendingUp className="h-9 w-9 opacity-70 shrink-0" />
+    </div>
+    <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4 text-sm">
+      <div>
+        <p className="text-blue-100">Comissão</p>
+        <p className="font-semibold text-base">{brl(comissao)}</p>
+      </div>
+      <div>
+        <p className="text-blue-100">Margem de frete</p>
+        <p className="font-semibold text-base">{brl(margem)}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const Kpi = ({ titulo, valor, icone: Icone, cor, dica }) => (
+  <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+    <div className="flex items-start justify-between gap-2">
+      <p className="text-sm font-medium text-gray-500">{titulo}</p>
+      <span className={`rounded-lg p-2 ${cor}`}><Icone className="h-4 w-4" /></span>
+    </div>
+    <p className="text-2xl font-bold text-gray-800 mt-2 break-words">{valor}</p>
+    {dica && <p className="text-xs text-gray-400 mt-1">{dica}</p>}
   </div>
 );
 
 const RevenueChart = ({ data }) => (
-  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
-    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Faturamento (período)</h3>
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="formatted_date" />
-        <YAxis />
-        <Tooltip formatter={(v) => [`R$ ${Number(v ?? 0).toFixed(2)}`, 'Receita']} />
-        <Legend />
-        <Bar dataKey="daily_revenue" name="Receita Diária" fill={COLORS.blue} />
-      </BarChart>
-    </ResponsiveContainer>
+  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+    <h3 className="text-lg font-bold text-gray-800 mb-4">Volume vendido por dia</h3>
+    {data?.length ? (
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="formatted_date" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip formatter={(v) => [brl(v), 'Vendido']} />
+          <Bar dataKey="daily_revenue" name="Vendido no dia" fill={COLORS.blue} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <p className="text-gray-400 text-sm py-16 text-center">Sem vendas no período.</p>
+    )}
   </div>
 );
 
 const OrdersStatusPie = ({ data }) => {
-  const statusColors = {
-    pendente: COLORS.orange,
-    concluido: COLORS.green,
-    cancelado: COLORS.red,
-    em_andamento: COLORS.blue,
-    aguardando: COLORS.purple,
-    entregue: COLORS.sky
+  const cores = {
+    pendente: COLORS.orange, pending: COLORS.orange,
+    concluido: COLORS.green, delivered: COLORS.green, completed: COLORS.green,
+    cancelado: COLORS.red, cancelled: COLORS.red, canceled: COLORS.red,
+    em_andamento: COLORS.blue, preparing: COLORS.blue, on_the_way: COLORS.sky,
+    accepted_by_delivery: COLORS.sky, awaiting_payment: COLORS.purple,
   };
-  const entries = Object.entries(data || {});
-  if (!entries.length) return null;
-
-  const chartData = entries.map(([status, count]) => ({
-    name: status.charAt(0).toUpperCase() + status.slice(1),
-    value: Number(count || 0),
-    color: statusColors[status] || COLORS.gray
-  }));
+  const rotulos = {
+    pending: 'Pendente', delivered: 'Entregue', completed: 'Concluído',
+    cancelled: 'Cancelado', canceled: 'Cancelado', preparing: 'Preparando',
+    on_the_way: 'Em rota', accepted_by_delivery: 'Aceito', awaiting_payment: 'Aguardando pgto',
+    ready_for_pickup: 'Pronto', delivery_failed: 'Falhou',
+  };
+  const entries = Object.entries(data || {}).filter(([, c]) => Number(c) > 0);
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
-      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Pedidos por Status</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
-          <Pie data={chartData} innerRadius={50} outerRadius={90} dataKey="value" nameKey="name" label>
-            {chartData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-          </Pie>
-          <Tooltip formatter={(v) => [`${v} pedidos`, 'Total']} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Pedidos por status</h3>
+      {entries.length ? (
+        <ResponsiveContainer width="100%" height={240}>
+          <PieChart>
+            <Pie
+              data={entries.map(([s, c]) => ({
+                name: rotulos[s] || s.replace(/_/g, ' '),
+                value: Number(c || 0),
+                color: cores[s] || COLORS.gray,
+              }))}
+              innerRadius={50} outerRadius={85} dataKey="value" nameKey="name" paddingAngle={2}
+            >
+              {entries.map(([s]) => <Cell key={s} fill={cores[s] || COLORS.gray} />)}
+            </Pie>
+            <Tooltip formatter={(v) => [`${v} pedidos`, 'Total']} />
+            <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <p className="text-gray-400 text-sm py-16 text-center">Nenhum pedido ainda.</p>
+      )}
     </div>
   );
 };
 
 const ClientsLineChart = ({ data }) => (
-  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
-    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Crescimento de Clientes</h3>
+  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+    <h3 className="text-lg font-bold text-gray-800 mb-4">Clientes cadastrados</h3>
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="formatted_date" />
-        <YAxis allowDecimals={false} />
-        <Tooltip formatter={(v) => [`${v} clientes`, 'Clientes']} />
-        <Legend />
-        <Line type="monotone" dataKey="total_clients" name="Clientes" stroke={COLORS.green} strokeWidth={3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <XAxis dataKey="formatted_date" tick={{ fontSize: 12 }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+        <Tooltip formatter={(v) => [`${v} clientes`, 'Total']} />
+        <Line type="monotone" dataKey="total_clients" name="Clientes" stroke={COLORS.green} strokeWidth={3} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   </div>
 );
 
 const RecentOrdersList = ({ orders }) => (
-  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg h-full">
-    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Pedidos Recentes</h3>
+  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+    <h3 className="text-lg font-bold text-gray-800 mb-4">Pedidos recentes</h3>
     {orders?.length ? (
-      <div className="space-y-4">
-        {orders.map((o) => (
-          <div key={o.id} className="flex items-center justify-between gap-3">
+      <div className="divide-y divide-gray-100">
+        {orders.slice(0, 8).map((o) => (
+          <div key={o.id} className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-gray-700 truncate">{o.client_name || '-'}</p>
               <p className="text-sm text-gray-500 truncate">{o.restaurant_name || '-'}</p>
             </div>
             <div className="text-right shrink-0">
-              <p className="font-bold text-gray-800 text-sm sm:text-base">R$ {Number(o.total_amount ?? o.amount ?? o.total ?? 0).toFixed(2)}</p>
-              <p className="text-xs sm:text-sm text-gray-500 capitalize">{o.status || '-'}</p>
+              <p className="font-bold text-gray-800">{brl(o.total_amount)}</p>
+              <p className="text-xs text-gray-500">
+                {/* Quanto ESTE pedido deixou pra Inksa. O valor total é quase
+                    todo do parceiro; sem isto o número engana. */}
+                {o.platform_commission > 0 && (
+                  <span className="text-green-600 font-medium">
+                    +{brl(o.platform_commission)}{' · '}
+                  </span>
+                )}
+                <span className="capitalize">{(o.status || '-').replace(/_/g, ' ')}</span>
+              </p>
             </div>
           </div>
         ))}
       </div>
     ) : (
-      <p className="text-gray-500">Nenhum pedido recente.</p>
+      <p className="text-gray-400 text-sm py-8 text-center">Nenhum pedido recente.</p>
     )}
   </div>
 );
 
+/* ------------------------------------------------------------------ */
+
 export function DashboardPage() {
   const { user } = useAuth();
-  const [kpis, setKpis] = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [ordersStatus, setOrdersStatus] = useState({});
-  const [clientsGrowth, setClientsGrowth] = useState([]);
+  const [dados, setDados] = useState(null);
   const [period, setPeriod] = useState('week');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const makeRange = (p) => {
     const end = new Date();
@@ -189,166 +288,137 @@ export function DashboardPage() {
     if (p === 'month') start.setMonth(end.getMonth() - 1);
     else start.setDate(end.getDate() - 7);
     // Data LOCAL (Brasil), não toISOString (UTC): às 22h de SP o UTC já é o dia
-    // seguinte, e o período saía deslocado 1 dia (zerava/torçia o gráfico).
+    // seguinte, e o período saía deslocado 1 dia (zerava/torcia o gráfico).
     const fmt = (d) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return { from: fmt(start), to: fmt(end) };
   };
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        setIsUsingFallback(false);
-
-        const { from, to } = makeRange(period);
-
-        const [m, s, t] = await Promise.all([
-          getMetrics({ from, to }),
-          getRevenueSeries({ from, to }),
-          getTransactions({ from, to, limit: 20 }),
-        ]);
-
-        if (!mounted) return;
-
-        const mkpis = m?.kpis || m || {};
-        const k = {
-          totalRevenue: Number(mkpis.totalRevenue ?? mkpis.total_revenue ?? 0),
-          ordersToday: Number(mkpis.ordersToday ?? mkpis.orders_today ?? 0),
-          averageTicket: Number(mkpis.averageTicket ?? mkpis.avg_ticket ?? 0),
-          newClientsToday: Number(mkpis.newClientsToday ?? mkpis.new_clients_today ?? 0),
-          ordersInProgress: Number(mkpis.ordersInProgress ?? mkpis.orders_in_progress ?? 0),
-          ordersCanceled: Number(mkpis.ordersCanceled ?? mkpis.orders_canceled ?? 0),
-          restaurantsPending: Number(mkpis.restaurantsPending ?? mkpis.restaurants_pending ?? 0),
-          activeDeliverymen: Number(mkpis.activeDeliverymen ?? mkpis.active_deliverymen ?? 0),
-        };
-        setKpis(k);
-
-        const sItems = s?.items || s || [];
-        const normSeries = sItems.map((row) => ({
-          formatted_date: row.formatted_date || row.date || row.day,
-          daily_revenue: Number(row.daily_revenue ?? row.revenue ?? row.value ?? 0),
-          total_clients: Number(row.total_clients ?? 0),
-        }));
-        setChartData(normSeries);
-        setClientsGrowth(normSeries.map(r => ({ formatted_date: r.formatted_date, total_clients: r.total_clients })));
-
-        const statusMap = mkpis.ordersStatus || mkpis.orders_status || {};
-        setOrdersStatus(statusMap);
-
-        const tItems = t?.items || t || [];
-        setRecentOrders(
-          tItems.map((it) => ({
-            id: it.id,
-            client_name: it.customer_name ?? it.client_name ?? '-',
-            restaurant_name: it.restaurant_name ?? '-',
-            total_amount: Number(it.total_amount ?? it.amount ?? it.total ?? 0),
-            status: it.status ?? '-',
-            created_at: it.created_at,
-          }))
-        );
-
-      } catch (err) {
-        console.error(err);
-        setError(err?.message || 'Ocorreu um erro ao buscar os dados do dashboard.');
-        // Sem dados fake — mostra estado vazio (zeros) pra nao confundir
-        setKpis({
-          totalRevenue: 0,
-          ordersToday: 0,
-          averageTicket: 0,
-          newClientsToday: 0,
-          ordersInProgress: 0,
-          ordersCanceled: 0,
-          restaurantsPending: 0,
-          activeDeliverymen: 0,
-        });
-        setChartData([]);
-        setClientsGrowth([]);
-        setOrdersStatus({ concluido: 0, pendente: 0, em_andamento: 0, cancelado: 0 });
-        setRecentOrders([]);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    load();
-    return () => { mounted = false; };
+  const carregar = React.useCallback(async () => {
+    setError(null);
+    const { from, to } = makeRange(period);
+    try {
+      const d = await getOverview({ from, to, limit: 20 });
+      const k = d?.kpis || {};
+      setDados({
+        kpis: k,
+        chartData: d?.chartData || [],
+        clientsGrowth: d?.clientsGrowth || d?.chartData || [],
+        ordersStatus: d?.ordersStatus || {},
+        recentOrders: d?.recentOrders || [],
+        operacao: d?.operacao || {},
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || 'Erro ao buscar os dados do dashboard.');
+      // Zeros, nunca número inventado: dashboard que mente é pior que vazio.
+      setDados({ kpis: {}, chartData: [], clientsGrowth: [], ordersStatus: {}, recentOrders: [], operacao: {} });
+    }
   }, [period]);
 
+  useEffect(() => {
+    let vivo = true;
+    (async () => { setIsLoading(true); await carregar(); if (vivo) setIsLoading(false); })();
+    return () => { vivo = false; };
+  }, [carregar]);
+
+  const atualizar = async () => {
+    setIsRefreshing(true);
+    await carregar();
+    setIsRefreshing(false);
+  };
+
   if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
+    return <div className="flex justify-center items-center h-full py-24"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
   }
 
-  if (!kpis) {
-    return <div className="text-gray-500 text-center p-4">Carregando dados...</div>;
-  }
-
-  const extraKpis = [
-    { title: "Pedidos em Andamento", value: kpis.ordersInProgress ?? '-', icon: Clock, color: "bg-purple-600", tooltip: "Pedidos em andamento" },
-    { title: "Pedidos Cancelados", value: kpis.ordersCanceled ?? '-', icon: XOctagon, color: "bg-red-500", tooltip: "Pedidos cancelados no período" },
-    { title: "Parceiros Pendentes", value: kpis.restaurantsPending ?? '-', icon: Store, color: "bg-yellow-500", tooltip: "Parceiros aguardando aprovação" },
-    { title: "Entregadores Ativos", value: kpis.activeDeliverymen ?? '-', icon: Truck, color: "bg-green-700", tooltip: "Entregadores ativos" },
-  ];
-
-  const periodOptions = [
-    { value: "week", label: "Esta Semana" },
-    { value: "month", label: "Este Mês" }
-  ];
+  const k = dados.kpis;
+  const op = dados.operacao;
 
   const adminName =
-    user?.name ||
-    user?.full_name ||
-    (user?.email ? user.email.split('@')[0] : null) ||
-    'Admin';
-
+    user?.name || user?.full_name ||
+    (user?.email ? user.email.split('@')[0] : null) || 'Admin';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-800">{greeting}, {adminName}!</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Este é o resumo da sua plataforma em tempo real.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-800">{greeting}, {adminName}!</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Como está a plataforma agora.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {[{ value: 'week', label: 'Semana' }, { value: 'month', label: 'Mês' }].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors border ${
+                period === opt.value
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <button
+            onClick={atualizar}
+            disabled={isRefreshing}
+            className="p-2.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            title="Atualizar"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          ⚠️ Não foi possível conectar à API: {error}. Os números abaixo refletem o estado vazio até a conexão voltar.
+          ⚠️ Não foi possível conectar à API: {error}. Os números abaixo estão zerados até a conexão voltar.
         </div>
       )}
 
-      <div className="mb-2 flex flex-wrap gap-3">
-        {periodOptions.map(opt => (
-          <button
-            key={opt.value}
-            className={`px-4 py-2 rounded-full font-semibold transition-colors border ${period === opt.value ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-            onClick={() => setPeriod(opt.value)}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <PainelPendencias op={op} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Receita Total" value={`R$ ${Number(kpis.totalRevenue ?? 0).toFixed(2)}`} icon={DollarSign} color="bg-blue-600" />
-        <KpiCard title="Pedidos Hoje" value={kpis.ordersToday ?? '-'} icon={BarChart3} color="bg-green-500" />
-        <KpiCard title="Ticket Médio" value={`R$ ${Number(kpis.averageTicket ?? 0).toFixed(2)}`} icon={DollarSign} color="bg-sky-500" />
-        <KpiCard title="Novos Clientes Hoje" value={kpis.newClientsToday ?? '-'} icon={Users} color="bg-orange-500" />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {extraKpis.map((kpi) => (<KpiCard key={kpi.title} {...kpi} />))}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 space-y-8">
-          <RevenueChart data={chartData} />
-          <ClientsLineChart data={clientsGrowth} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <CardHero
+          receita={k.platformRevenue}
+          comissao={k.platformCommission}
+          margem={k.deliveryMargin}
+        />
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4 sm:gap-6">
+          <Kpi titulo="Volume vendido" valor={brl(k.totalRevenue)} icone={DollarSign}
+               cor="bg-sky-100 text-sky-600" dica="Total pago pelos clientes (quase tudo é do parceiro)" />
+          <Kpi titulo="Ticket médio" valor={brl(k.averageTicket)} icone={BarChart3}
+               cor="bg-purple-100 text-purple-600" />
+          <Kpi titulo="Pedidos hoje" valor={k.ordersToday ?? 0} icone={BarChart3}
+               cor="bg-green-100 text-green-600" />
+          <Kpi titulo="Novos clientes hoje" valor={k.newClientsToday ?? 0} icone={Users}
+               cor="bg-orange-100 text-orange-600" />
         </div>
-        <div className="space-y-8">
-          <OrdersStatusPie data={ordersStatus} />
-          <RecentOrdersList orders={recentOrders} />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <Kpi titulo="Entregadores online" valor={op.entregadoresOnline ?? 0} icone={Truck}
+             cor="bg-green-100 text-green-600"
+             dica={op.entregadoresSemCoordenada > 0 ? `${op.entregadoresSemCoordenada} sem localização` : null} />
+        <Kpi titulo="Lojas abertas agora" valor={`${op.lojasAbertas ?? 0} de ${op.lojasAprovadas ?? 0}`}
+             icone={DoorOpen} cor="bg-blue-100 text-blue-600" />
+        <Kpi titulo="Pedidos em andamento" valor={k.ordersInProgress ?? 0} icone={Clock}
+             cor="bg-purple-100 text-purple-600" />
+        <Kpi titulo="Pedidos cancelados" valor={k.ordersCanceled ?? 0} icone={XOctagon}
+             cor="bg-red-100 text-red-600" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <RevenueChart data={dados.chartData} />
+          <ClientsLineChart data={dados.clientsGrowth} />
+        </div>
+        <div className="space-y-6">
+          <OrdersStatusPie data={dados.ordersStatus} />
+          <RecentOrdersList orders={dados.recentOrders} />
         </div>
       </div>
     </div>

@@ -35,6 +35,20 @@ async function getJson(pathWithQuery) {
   return body.data ?? body;
 }
 
+/**
+ * Dashboard inteiro numa chamada. Substitui getMetrics + getRevenueSeries +
+ * getTransactions, que rodavam o MESMO conjunto de queries três vezes por
+ * carregamento. As três continuam exportadas pra quem ainda usa.
+ */
+export async function getOverview({ from, to, limit = 20 } = {}) {
+  const q = new URLSearchParams();
+  if (from) q.set('from', from);
+  if (to) q.set('to', to);
+  if (limit) q.set('limit', String(limit));
+  const qs = q.toString();
+  return getJson(`/api/admin/overview${qs ? `?${qs}` : ''}`);
+}
+
 export async function getMetrics({ from, to } = {}) {
   const q = new URLSearchParams();
   if (from) q.set('from', from);
