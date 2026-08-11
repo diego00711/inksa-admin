@@ -98,15 +98,20 @@ function StatCard({ icon: Icon, label, value, format = 'int', sub, tone = 'defau
   const display = format === 'brl' ? brl(n) : int(n);
   const hero = tone === 'hero';
   const soft = tone === 'soft';
+  // 'alert' = número que está em zero e não deveria (ninguém apto a entregar,
+  // nenhuma loja aberta). Precisa saltar de longe, sem competir com o hero.
+  const alert = tone === 'alert';
 
   const shell = hero
     ? 'border-orange-400/40 bg-gradient-to-br from-orange-500 to-orange-700 shadow-[0_18px_50px_-12px_rgba(249,115,22,0.65)]'
     : soft
     ? 'border-orange-400/20 bg-orange-500/[0.08] backdrop-blur-sm'
+    : alert
+    ? 'border-red-500/40 bg-red-500/[0.12] backdrop-blur-sm'
     : 'border-white/[0.06] bg-slate-800/50 backdrop-blur-sm';
-  const labelCls = hero ? 'text-orange-50/90' : soft ? 'text-orange-200/80' : 'text-slate-400';
-  const chipCls = hero ? 'bg-white/20 text-white' : soft ? 'bg-orange-500/20 text-orange-300' : 'bg-slate-700/60 text-slate-300';
-  const subCls = hero ? 'text-orange-50/80' : soft ? 'text-orange-200/70' : 'text-slate-500';
+  const labelCls = hero ? 'text-orange-50/90' : soft ? 'text-orange-200/80' : alert ? 'text-red-200/90' : 'text-slate-400';
+  const chipCls = hero ? 'bg-white/20 text-white' : soft ? 'bg-orange-500/20 text-orange-300' : alert ? 'bg-red-500/25 text-red-300' : 'bg-slate-700/60 text-slate-300';
+  const subCls = hero ? 'text-orange-50/80' : soft ? 'text-orange-200/70' : alert ? 'text-red-200/80' : 'text-slate-500';
   const sizeCls = hero ? 'text-6xl' : format === 'brl' ? 'text-[2.6rem] leading-none' : 'text-6xl';
 
   return (
@@ -252,6 +257,35 @@ export default function TvPage() {
   const pending = d.restaurantsPending || 0;
   const dateStr = clock.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
+  // Semáforo da operação: de longe, a única pergunta que importa é "a
+  // plataforma consegue receber um pedido agora?". Precisa de loja aberta E
+  // entregador que o motor de despacho realmente alcance.
+  const aptos = Number(d.deliverymenEligible ?? 0);
+  const online = Number(d.deliverymenOnline ?? 0);
+  const abertas = Number(d.restaurantsOpen ?? 0);
+  const semCoord = Number(d.deliverymenNoCoord ?? 0);
+  const incompletos = Number(d.deliverymenIncomplete ?? 0);
+
+  const semaforo = abertas === 0 && aptos === 0
+    ? { cor: 'red', texto: 'Fora do ar: nenhuma loja aberta e nenhum entregador apto' }
+    : abertas === 0
+    ? { cor: 'red', texto: 'Nenhuma loja aberta — o cliente não vê ninguém' }
+    : aptos === 0
+    ? { cor: 'red', texto: 'Nenhum entregador apto — o pedido entra e não sai' }
+    : { cor: 'green', texto: 'Pronta para receber pedido' };
+
+  // Entregador que ligou o app e mesmo assim está invisível pro despacho.
+  const invisiveis = semCoord + incompletos;
+
+  const pendencias = d.pendencias || {};
+  const avisos = [
+    invisiveis > 0 && `${invisiveis} entregador${invisiveis > 1 ? 'es' : ''} online sem receber pedido`,
+    pending > 0 && `${pending} parceiro${pending > 1 ? 's' : ''} aguardando aprovação`,
+    Number(pendencias.ocorrenciasAbertas) > 0 && `${pendencias.ocorrenciasAbertas} ocorrência(s) aberta(s)`,
+    Number(pendencias.repassesPendentes) > 0 && `${pendencias.repassesPendentes} repasse(s) a pagar`,
+    Number(pendencias.ticketsAbertos) > 0 && `${pendencias.ticketsAbertos} ticket(s) de suporte`,
+  ].filter(Boolean);
+
   return (
     <div className="relative h-screen overflow-hidden bg-slate-950 text-white">
       <style>{KEYFRAMES}</style>
@@ -294,17 +328,26 @@ export default function TvPage() {
           </div>
         </div>
 
-        {/* Alerta acionavel: some sozinho quando nao ha nada a fazer */}
-        {pending > 0 && (
-          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 text-slate-900 px-5 py-3 mb-4 shrink-0 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.6)]">
-            <AlertTriangle className="h-6 w-6 shrink-0" />
-            <span className="text-xl font-bold">
-              {pending === 1
-                ? '1 parceiro aguardando sua aprovação'
-                : `${pending} parceiros aguardando sua aprovação`}
+        {/* Semáforo + avisos. Fica SEMPRE visível: o verde é informação tanto
+            quanto o vermelho — quem passa na frente da TV precisa saber que
+            está tudo de pé sem ter que ler número nenhum. */}
+        <div className={`flex items-center gap-4 rounded-2xl px-5 py-3 mb-4 shrink-0 ${
+          semaforo.cor === 'red'
+            ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_10px_30px_-10px_rgba(239,68,68,0.7)]'
+            : 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_10px_30px_-10px_rgba(16,185,129,0.6)]'
+        }`}>
+          <span className="relative flex h-4 w-4 shrink-0">
+            <span className="tv-ping absolute inline-flex h-full w-full rounded-full bg-white/70" />
+            <span className="relative inline-flex h-4 w-4 rounded-full bg-white" />
+          </span>
+          <span className="text-2xl font-black shrink-0">{semaforo.texto}</span>
+          {avisos.length > 0 && (
+            <span className="ml-auto flex items-center gap-2 text-right text-sm font-semibold text-white/90 min-w-0">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span className="truncate">{avisos.join('  ·  ')}</span>
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Hoje */}
         <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
@@ -318,8 +361,16 @@ export default function TvPage() {
 
         {/* Agora + acumulado */}
         <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
-          <StatCard icon={Bike} label="Entregadores online" value={d.deliverymenOnline} loading={loading} />
-          <StatCard icon={Store} label="Parceiros abertos" value={d.restaurantsOpen} loading={loading} />
+          {/* O número que vale é o de APTOS. "Online" sozinho já enganou:
+              3 na rua com só 1 recebendo pedido parecia 3. */}
+          <StatCard icon={Bike} label="Entregadores aptos" value={aptos} loading={loading}
+                    tone={aptos === 0 ? 'alert' : 'default'}
+                    sub={online > aptos
+                      ? `${online} online · ${online - aptos} não recebem pedido`
+                      : `${online} online`} />
+          <StatCard icon={Store} label="Parceiros abertos" value={abertas} loading={loading}
+                    tone={abertas === 0 ? 'alert' : 'default'}
+                    sub={`de ${d.restaurantsLive ?? 0} aprovados`} />
           <StatCard icon={Wallet} label="Faturamento total" value={d.revenueTotal} format="brl" sub="desde o início" loading={loading} />
           <StatCard icon={PiggyBank} label="Sua receita total" value={d.platformRevenueTotal} format="brl"
                     sub="desde o início" tone="soft" loading={loading} />

@@ -42,6 +42,12 @@ const PainelPendencias = ({ op }) => {
       detalhe: 'Está online mas o motor não enxerga — não recebe pedido nenhum.',
     },
     {
+      chave: 'incompletos', tom: 'red', icone: Truck, para: '/usuarios',
+      qtd: op.entregadoresIncompletos,
+      titulo: 'Entregador online com cadastro incompleto',
+      detalhe: 'Falta CPF, veículo, placa ou CNH — o despacho pula ele.',
+    },
+    {
       chave: 'ocorrencias', tom: 'red', icone: PackageX, para: '/ocorrencias',
       qtd: op.ocorrenciasAbertas,
       titulo: 'Ocorrência aberta',
@@ -400,9 +406,14 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Kpi titulo="Entregadores online" valor={op.entregadoresOnline ?? 0} icone={Truck}
-             cor="bg-green-100 text-green-600"
-             dica={op.entregadoresSemCoordenada > 0 ? `${op.entregadoresSemCoordenada} sem localização` : null} />
+        {/* "Online" engana: o que importa é quantos o motor de despacho
+            realmente alcança. Mostrar os dois lado a lado expõe o buraco. */}
+        <Kpi titulo="Entregadores aptos"
+             valor={`${op.entregadoresAptos ?? 0} de ${op.entregadoresOnline ?? 0}`}
+             icone={Truck} cor="bg-green-100 text-green-600"
+             dica={(op.entregadoresOnline ?? 0) > (op.entregadoresAptos ?? 0)
+               ? 'Os demais estão online mas não recebem pedido'
+               : 'Todos os online recebem pedido'} />
         <Kpi titulo="Lojas abertas agora" valor={`${op.lojasAbertas ?? 0} de ${op.lojasAprovadas ?? 0}`}
              icone={DoorOpen} cor="bg-blue-100 text-blue-600" />
         <Kpi titulo="Pedidos em andamento" valor={k.ordersInProgress ?? 0} icone={Clock}
