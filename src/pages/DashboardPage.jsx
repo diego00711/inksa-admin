@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Loader2, DollarSign, BarChart3, Users, Clock, XOctagon, Store, Truck,
   AlertTriangle, CheckCircle2, Wallet, HandCoins, LifeBuoy, PackageX,
-  MapPinOff, DoorOpen, TrendingUp, ArrowRight, RefreshCw,
+  MapPinOff, DoorOpen, TrendingUp, ArrowRight, RefreshCw, ShoppingCart, Wifi,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -46,6 +46,15 @@ const PainelPendencias = ({ op }) => {
       qtd: op.entregadoresIncompletos,
       titulo: 'Entregador online com cadastro incompleto',
       detalhe: 'Falta CPF, veículo, placa ou CNH — o despacho pula ele.',
+    },
+    {
+      // O sinal mais precoce de que o checkout quebrou. Cliente que monta o
+      // carrinho e desiste NÃO abre ticket nem liga — ele só some. Foi assim
+      // com o bug do frete: invisível até alguém testar na mão.
+      chave: 'carrinhos', tom: 'amber', icone: ShoppingCart, para: '/usuarios',
+      qtd: op.carrinhosParados, valor: op.carrinhosValor,
+      titulo: 'parado(s) em carrinho há mais de 15 min',
+      detalhe: 'Montaram o pedido e não finalizaram — vale conferir o checkout.',
     },
     {
       chave: 'ocorrencias', tom: 'red', icone: PackageX, para: '/ocorrencias',
@@ -420,6 +429,23 @@ export function DashboardPage() {
              cor="bg-purple-100 text-purple-600" />
         <Kpi titulo="Pedidos cancelados" valor={k.ordersCanceled ?? 0} icone={XOctagon}
              cor="bg-red-100 text-red-600" />
+      </div>
+
+      {/* Clientes: "online" aqui é presença (app aberto), não um botão que ele
+          aperta — cliente não tem esse conceito. O número que decide coisa é o
+          do carrinho parado. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Kpi titulo="Clientes com o app aberto" valor={op.clientesOnline ?? 0} icone={Wifi}
+             cor="bg-sky-100 text-sky-600" dica="Nos últimos 5 minutos" />
+        <Kpi titulo="Clientes ativos hoje" valor={op.clientesHoje ?? 0} icone={Users}
+             cor="bg-indigo-100 text-indigo-600" dica="Abriram o app, pediram ou não" />
+        <Kpi titulo="Parados no carrinho"
+             valor={`${op.carrinhosParados ?? 0}${
+               op.carrinhosValor > 0 ? ` · ${brl(op.carrinhosValor)}` : ''}`}
+             icone={ShoppingCart}
+             cor={(op.carrinhosParados ?? 0) > 0
+               ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}
+             dica="Montaram o pedido e não finalizaram" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
