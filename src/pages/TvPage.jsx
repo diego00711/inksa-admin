@@ -136,7 +136,7 @@ function StatCard({ icon: Icon, label, value, format = 'int', sub, tone = 'defau
 function BaseRow({ icon: Icon, label, total, today }) {
   const n = useCountUp(total == null ? 0 : total);
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-white/5 last:border-0">
+    <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0 min-h-0">
       <span className="flex items-center gap-3 text-lg text-slate-300">
         <span className="grid place-items-center h-9 w-9 rounded-lg bg-slate-700/50 text-slate-300">
           <Icon className="h-5 w-5" />
@@ -331,19 +331,19 @@ export default function TvPage() {
         {/* Semáforo + avisos. Fica SEMPRE visível: o verde é informação tanto
             quanto o vermelho — quem passa na frente da TV precisa saber que
             está tudo de pé sem ter que ler número nenhum. */}
-        <div className={`flex items-center gap-4 rounded-2xl px-5 py-3 mb-4 shrink-0 ${
+        <div className={`flex items-center gap-3 rounded-xl px-4 py-2 mb-3 shrink-0 ${
           semaforo.cor === 'red'
             ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_10px_30px_-10px_rgba(239,68,68,0.7)]'
             : 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_10px_30px_-10px_rgba(16,185,129,0.6)]'
         }`}>
-          <span className="relative flex h-4 w-4 shrink-0">
+          <span className="relative flex h-3 w-3 shrink-0">
             <span className="tv-ping absolute inline-flex h-full w-full rounded-full bg-white/70" />
-            <span className="relative inline-flex h-4 w-4 rounded-full bg-white" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
           </span>
-          <span className="text-2xl font-black shrink-0">{semaforo.texto}</span>
+          <span className="text-lg font-black shrink-0">{semaforo.texto}</span>
           {avisos.length > 0 && (
-            <span className="ml-auto flex items-center gap-2 text-right text-sm font-semibold text-white/90 min-w-0">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
+            <span className="ml-auto flex items-center gap-2 text-right text-xs font-semibold text-white/90 min-w-0">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
               <span className="truncate">{avisos.join('  ·  ')}</span>
             </span>
           )}
@@ -416,11 +416,17 @@ export default function TvPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-slate-800/50 backdrop-blur-sm p-5 min-h-0">
-            <h2 className="text-[0.8rem] font-semibold uppercase tracking-wider text-slate-400 mb-1">A base</h2>
-            <BaseRow icon={Store} label="Parceiros" total={d.restaurantsTotal} today={d.restaurantsToday} />
-            <BaseRow icon={Bike} label="Entregadores" total={d.deliverymenTotal} today={d.deliverymenToday} />
-            <BaseRow icon={Users} label="Clientes" total={d.clientsTotal} today={d.clientsToday} />
+          {/* flex-col + overflow-hidden: sem isso as 3 linhas mantinham a altura
+              natural e VAZAVAM por baixo do gráfico quando a faixa do semáforo
+              (que é permanente, diferente do alerta antigo) espremia esta
+              linha elástica. Agora o card encolhe junto. */}
+          <div className="rounded-2xl border border-white/[0.06] bg-slate-800/50 backdrop-blur-sm p-5 min-h-0 flex flex-col overflow-hidden">
+            <h2 className="text-[0.8rem] font-semibold uppercase tracking-wider text-slate-400 mb-1 shrink-0">A base</h2>
+            <div className="flex-1 min-h-0 flex flex-col justify-around">
+              <BaseRow icon={Store} label="Parceiros" total={d.restaurantsTotal} today={d.restaurantsToday} />
+              <BaseRow icon={Bike} label="Entregadores" total={d.deliverymenTotal} today={d.deliverymenToday} />
+              <BaseRow icon={Users} label="Clientes" total={d.clientsTotal} today={d.clientsToday} />
+            </div>
           </div>
         </div>
 
