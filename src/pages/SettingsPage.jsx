@@ -53,6 +53,10 @@ const DEFAULTS = {
   commission_rate: '10',
   fixed_delivery_fee: '3.00',
   per_km_delivery_fee: '1.50',
+  frete_adicional_carro: '8.00',
+  frete_km_carro: '2.50',
+  frete_adicional_utilitario: '25.00',
+  frete_km_utilitario: '3.50',
   free_delivery_threshold_km: '2.00',
   // Repasse ao entregador: recebe o frete integral menos esta % de administração.
   // (key financial_delivery_commission, percentual humano — 15 = 15%)
@@ -249,6 +253,56 @@ export default function SettingsPage() {
               type="number" min="0" step="0.1"
               value={fields.free_delivery_threshold_km}
               onChange={(e) => set('free_delivery_threshold_km', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+      </SectionCard>
+
+      {/* Frete por carga */}
+      <SectionCard icon={Truck} title="Frete por carga (carro e utilitário)">
+        <p className="text-xs text-gray-500 mb-4">
+          Cobra-se pelo que o <strong>pedido exige</strong>, não pelo veículo de quem aceita —
+          o frete é mostrado no checkout, antes de existir entregador. O peso do pedido
+          define a classe: acima de <strong>20&nbsp;kg</strong> exige carro, acima de{' '}
+          <strong>80&nbsp;kg</strong> exige utilitário. Bike e moto usam os valores da seção
+          acima, sem adicional.
+        </p>
+        <p className="text-xs text-gray-500 mb-4">
+          O <strong>fixo</strong> paga o trabalho de carregar (60&nbsp;kg de ração são 10–15&nbsp;min
+          a mais, iguais a 1&nbsp;km ou a 10). O <strong>por km</strong> substitui o valor normal e
+          paga o custo de rodar: carro faz ~10&nbsp;km/L contra ~35&nbsp;km/L da moto.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Carro — adicional fixo (R$)" hint="Somado à taxa fixa quando o pedido exige carro">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.frete_adicional_carro}
+              onChange={(e) => set('frete_adicional_carro', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Carro — por km (R$)" hint="Substitui o valor por km normal">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.frete_km_carro}
+              onChange={(e) => set('frete_km_carro', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Utilitário — adicional fixo (R$)" hint="Pedidos acima de 80 kg">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.frete_adicional_utilitario}
+              onChange={(e) => set('frete_adicional_utilitario', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Utilitário — por km (R$)" hint="Substitui o valor por km normal">
+            <input
+              type="number" min="0" step="0.01"
+              value={fields.frete_km_utilitario}
+              onChange={(e) => set('frete_km_utilitario', e.target.value)}
               className={inputCls}
             />
           </Field>

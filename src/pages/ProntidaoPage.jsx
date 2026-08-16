@@ -57,6 +57,7 @@ export default function ProntidaoPage() {
   if (!dados) return null;
 
   const { resumo, lojas, entregadores, clientes, pedidos, pracas } = dados;
+  const itensSemPeso = dados.itens_sem_peso || [];
   const lojasComProblema = lojas.filter((l) => l.faltas.length > 0);
   const entregadoresComProblema = entregadores.filter((e) => e.faltas.length > 0);
 
@@ -144,6 +145,22 @@ export default function ProntidaoPage() {
             [l.cidade, l.uf].filter(Boolean).join(' - ') || '—',
             <Faltas key="f" itens={l.faltas} />,
           ])}
+        />
+      </Secao>
+
+      <Secao
+        titulo={`Itens sem peso cadastrado (${itensSemPeso.length} ${itensSemPeso.length === 1 ? 'loja' : 'lojas'})`}
+        vazio="Todos os itens dos segmentos pesados têm peso."
+        temItens={itensSemPeso.length > 0}
+      >
+        <p className="text-xs text-gray-500 mb-3">
+          Só conta lojas de pet, mercado, agropecuária e bebidas — comida não precisa.
+          Item sem peso faz o pedido calcular <strong>0&nbsp;kg</strong>: sai com frete de
+          moto mesmo pesando 60&nbsp;kg, e a trava de veículo deixa passar.
+        </p>
+        <Tabela
+          colunas={['Loja', 'Segmento', 'Itens sem peso']}
+          linhas={itensSemPeso.map((i) => [i.loja, i.segmento, i.itens])}
         />
       </Secao>
 
