@@ -85,21 +85,22 @@ const BannerManagementPage = () => {
       const cep = await r.json();
       if (cep?.erro) { setError('CEP não encontrado.'); return; }
 
-      // Nominatim: cidade/UF -> lat/lon (mesma fonte usada no resto do sistema).
-      const q = new URLSearchParams({
-        city: cep.localidade || '', state: cep.uf || '',
-        country: 'Brazil', format: 'json', limit: '1',
-      });
-      const g = await fetch(`https://nominatim.openstreetmap.org/search?${q}`);
-      const achados = await g.json();
-      const ponto = Array.isArray(achados) ? achados[0] : null;
-      if (!ponto) { setError('Não foi possível localizar a cidade desse CEP.'); return; }
+      // cidade/UF -> lat/lon pelo NOSSO backend (mesma rota que os 3 apps
+      // usam): cache, User-Agent correto e provedor trocável num lugar só.
+      const q = new URLSearchParams({ city: cep.localidade || '', state: cep.uf || '' });
+      const g = await fetch(`${API_BASE_URL}/api/public/geocode?${q}`);
+      const j = g.ok ? await g.json() : null;
+      const plat = Number(j?.data?.lat);
+      const plng = Number(j?.data?.lng);
+      if (!Number.isFinite(plat) || !Number.isFinite(plng)) {
+        setError('Não foi possível localizar a cidade desse CEP.'); return;
+      }
 
       setFormData(f => ({
         ...f,
         geo_city: `${cep.localidade} - ${cep.uf}`,
-        geo_latitude: Number(ponto.lat),
-        geo_longitude: Number(ponto.lon),
+        geo_latitude: plat,
+        geo_longitude: plng,
         geo_radius_km: f.geo_radius_km || 50, // padrão razoável pra uma cidade
       }));
       setError('');
