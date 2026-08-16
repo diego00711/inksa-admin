@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShoppingCart, BellRing, RefreshCw, CheckCircle2, Phone } from 'lucide-react';
+import { ShoppingCart, BellRing, RefreshCw, CheckCircle2, Phone, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
 
@@ -18,6 +18,13 @@ import authService from '../services/authService';
  * propósito (é a janela de quem ainda dá pra recuperar); aqui você vê também
  * os antigos, marcados, porque eles contam outra história: carrinho de dias
  * atrás não é atrito de checkout, é entulho.
+ *
+ * ⚠️ EXCLUIR NÃO ESVAZIA O CARRINHO DA PESSOA. Estes números são um espelho:
+ * o app do cliente manda o conteúdo do carrinho de tempos em tempos, e é isso
+ * que preenche as colunas. Excluir limpa o painel agora; se a pessoa abrir o
+ * app com o carrinho ainda montado, ela reaparece. Serve pra sumir com
+ * carrinho velho de testador — esvaziar o carrinho de alguém pelas costas
+ * seria outra coisa, e uma coisa ruim.
  */
 const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
 
@@ -34,6 +41,8 @@ export default function CarrinhosPage() {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [confirmando, setConfirmando] = useState(null);
+  const [limpandoAntigos, setLimpandoAntigos] = useState(false);
 
   const carregar = async () => {
     setCarregando(true);
@@ -69,6 +78,43 @@ export default function CarrinhosPage() {
       setAviso({ ok: false, texto: 'Falha de rede ao enviar.' });
     } finally {
       setEnviando(null);
+    }
+  };
+
+  const excluir = async (c) => {
+    setEnviando(c.id);
+    setAviso(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/carrinhos/${c.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authService.getToken()}` },
+      });
+      const j = await r.json();
+      setAviso({ ok: r.ok, texto: j?.message || (r.ok ? 'Tirado da lista.' : 'Nao deu.') });
+      if (r.ok) await carregar();
+    } catch {
+      setAviso({ ok: false, texto: 'Falha de rede.' });
+    } finally {
+      setEnviando(null);
+      setConfirmando(null);
+    }
+  };
+
+  const limparAntigos = async () => {
+    setLimpandoAntigos(true);
+    setAviso(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/carrinhos/antigos?horas=48`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authService.getToken()}` },
+      });
+      const j = await r.json();
+      setAviso({ ok: r.ok, texto: j?.message || 'Nao deu.' });
+      if (r.ok) await carregar();
+    } catch {
+      setAviso({ ok: false, texto: 'Falha de rede.' });
+    } finally {
+      setLimpandoAntigos(false);
     }
   };
 
@@ -115,7 +161,10 @@ export default function CarrinhosPage() {
         subtitulo="Últimas 48h — é o que o dashboard conta."
         linhas={recentes}
         onLembrar={lembrar}
+        onExcluir={excluir}
         enviando={enviando}
+        confirmando={confirmando}
+        setConfirmando={setConfirmando}
         vazio="Nenhum carrinho recente parado."
       />
 
@@ -125,18 +174,37 @@ export default function CarrinhosPage() {
           subtitulo="Mais de 48h. Não são sinal de atrito no checkout — são resíduo. Ficam fora da conta do dashboard."
           linhas={antigos}
           onLembrar={lembrar}
+          onExcluir={excluir}
           enviando={enviando}
+          confirmando={confirmando}
+          setConfirmando={setConfirmando}
+          acaoEmLote={
+            <button
+              onClick={limparAntigos}
+              disabled={limpandoAntigos}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              <Trash2 size={13} />
+              {limpandoAntigos ? 'Limpando...' : 'Tirar todos da lista'}
+            </button>
+          }
         />
       )}
     </div>
   );
 }
 
-function Bloco({ titulo, subtitulo, linhas, onLembrar, enviando, vazio }) {
+function Bloco({ titulo, subtitulo, linhas, onLembrar, onExcluir, enviando,
+                confirmando, setConfirmando, vazio, acaoEmLote }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold text-gray-900">{titulo}</h2>
-      <p className="text-xs text-gray-500 mb-3">{subtitulo}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">{titulo}</h2>
+          <p className="text-xs text-gray-500 mb-3">{subtitulo}</p>
+        </div>
+        {acaoEmLote}
+      </div>
       <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
         {linhas.length === 0 ? (
           <p className="flex items-center gap-2 text-sm text-green-700 p-4">
@@ -172,23 +240,52 @@ function Bloco({ titulo, subtitulo, linhas, onLembrar, enviando, vazio }) {
                     <span className="text-gray-400"> · {c.itens} {c.itens === 1 ? 'item' : 'itens'}</span>
                   </td>
                   <td className="p-3 text-gray-700">{idade(c.minutos)}</td>
-                  <td className="p-3 text-right">
-                    {!c.tem_push ? (
-                      // Sem token não adianta botão: ele só daria erro. O
-                      // caminho que resta é o telefone, ao lado do nome.
-                      <span className="text-xs text-gray-400">sem avisos ligados</span>
-                    ) : c.ja_lembrado_hoje ? (
-                      <span className="text-xs text-gray-500">já lembrado hoje</span>
-                    ) : (
-                      <button
-                        onClick={() => onLembrar(c)}
-                        disabled={enviando === c.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 disabled:opacity-60"
-                      >
-                        <BellRing size={13} />
-                        {enviando === c.id ? 'Enviando…' : 'Lembrar'}
-                      </button>
-                    )}
+                  <td className="p-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {!c.tem_push ? (
+                        <span className="text-xs text-gray-400">sem avisos ligados</span>
+                      ) : c.ja_lembrado_hoje ? (
+                        <span className="text-xs text-gray-500">ja lembrado hoje</span>
+                      ) : (
+                        <button
+                          onClick={() => onLembrar(c)}
+                          disabled={enviando === c.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 disabled:opacity-60"
+                        >
+                          <BellRing size={13} />
+                          {enviando === c.id ? 'Enviando...' : 'Lembrar'}
+                        </button>
+                      )}
+
+                      {/* Confirmacao em dois toques em vez de modal: nao
+                          esconde a tabela e some ao cancelar. */}
+                      {confirmando === c.id ? (
+                        <span className="flex items-center gap-1">
+                          <button
+                            onClick={() => onExcluir(c)}
+                            disabled={enviando === c.id}
+                            className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
+                          >
+                            {enviando === c.id ? '...' : 'Confirmar'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmando(null)}
+                            className="px-2 py-1.5 text-xs text-gray-500 hover:underline"
+                          >
+                            cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmando(c.id)}
+                          title="Tira da lista. Nao esvazia o carrinho da pessoa."
+                          className="p-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                          aria-label="Tirar da lista"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
