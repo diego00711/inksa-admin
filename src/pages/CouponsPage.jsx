@@ -18,6 +18,7 @@ const getInitialFormData = () => ({
   discount_value: '',
   min_order_value: '',
   max_uses: '',
+  uma_vez_por_cliente: false,
   valid_until: '',
 });
 
@@ -107,6 +108,9 @@ const CouponsPage = () => {
           ? parseFloat(formData.min_order_value)
           : null,
         max_uses: formData.max_uses ? parseInt(formData.max_uses, 10) : null,
+        // null (não 0) quando desmarcado: NULL no banco = sem limite por
+        // pessoa, que é o comportamento dos cupons que já existem.
+        max_uses_per_client: formData.uma_vez_por_cliente ? 1 : null,
         valid_until: formData.valid_until,
       };
       // O código é a identidade do cupom (o cliente já anotou) — só na criação.
@@ -149,6 +153,7 @@ const CouponsPage = () => {
         coupon.discount_type === 'free_delivery' ? '' : String(coupon.discount_value ?? ''),
       min_order_value: coupon.min_order_value ? String(coupon.min_order_value) : '',
       max_uses: coupon.max_uses ? String(coupon.max_uses) : '',
+      uma_vez_por_cliente: Number(coupon.max_uses_per_client) === 1,
       valid_until: coupon.valid_until ? String(coupon.valid_until).slice(0, 10) : '',
     });
     setError('');
@@ -386,6 +391,29 @@ const CouponsPage = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: 100"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Total, somando todos os clientes.
+                </p>
+
+                <label className="mt-3 flex items-start gap-3 rounded border border-gray-200 p-3 cursor-pointer hover:bg-blue-50/50">
+                  <input
+                    type="checkbox"
+                    checked={formData.uma_vez_por_cliente}
+                    onChange={(e) =>
+                      setFormData({ ...formData, uma_vez_por_cliente: e.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-gray-800">
+                      Só 1 uso por cliente
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      Sem isso, a mesma pessoa pode usar quantas vezes quiser — e
+                      sozinha consumir todo o máximo acima.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {/* Válido até */}
