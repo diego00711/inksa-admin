@@ -30,12 +30,14 @@ import {
   HeartHandshake,
   Banknote,
   ClipboardCheck,
+  ShoppingCart,
 } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard', icon: Home, page: 'dashboard' },
   { to: '/metricas', label: 'Métricas', icon: Activity, page: 'metricas' },
   { to: '/prontidao', label: 'Prontidão', icon: ClipboardCheck, page: 'prontidao' },
+  { to: '/carrinhos', label: 'Carrinhos parados', icon: ShoppingCart, page: 'carrinhos' },
   { to: '/usuarios', label: 'Usuários', icon: Users, page: 'usuarios' },
   { to: '/restaurantes', label: 'Parceiros', icon: Store, page: 'restaurantes' },
   { to: '/avaliacoes', label: 'Avaliações', icon: Star, page: 'avaliacoes' },

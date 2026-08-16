@@ -36,13 +36,13 @@ const TONS = {
 const PainelPendencias = ({ op }) => {
   const itens = [
     {
-      chave: 'semCoord', tom: 'red', icone: MapPinOff, para: '/usuarios',
+      chave: 'semCoord', tom: 'red', icone: MapPinOff, para: '/prontidao',
       qtd: op.entregadoresSemCoordenada,
       titulo: 'Entregador online sem localização',
       detalhe: 'Está online mas o motor não enxerga — não recebe pedido nenhum.',
     },
     {
-      chave: 'incompletos', tom: 'red', icone: Truck, para: '/usuarios',
+      chave: 'incompletos', tom: 'red', icone: Truck, para: '/prontidao',
       qtd: op.entregadoresIncompletos,
       titulo: 'Entregador online com cadastro incompleto',
       detalhe: 'Falta CPF, veículo, placa ou CNH — o despacho pula ele.',
@@ -51,10 +51,10 @@ const PainelPendencias = ({ op }) => {
       // O sinal mais precoce de que o checkout quebrou. Cliente que monta o
       // carrinho e desiste NÃO abre ticket nem liga — ele só some. Foi assim
       // com o bug do frete: invisível até alguém testar na mão.
-      chave: 'carrinhos', tom: 'amber', icone: ShoppingCart, para: '/usuarios',
+      chave: 'carrinhos', tom: 'amber', icone: ShoppingCart, para: '/carrinhos',
       qtd: op.carrinhosParados, valor: op.carrinhosValor,
       titulo: 'parado(s) em carrinho há mais de 15 min',
-      detalhe: 'Montaram o pedido e não finalizaram — vale conferir o checkout.',
+      detalhe: 'Montaram o pedido e não finalizaram — dá pra lembrar cada um.',
     },
     {
       chave: 'ocorrencias', tom: 'red', icone: PackageX, para: '/ocorrencias',

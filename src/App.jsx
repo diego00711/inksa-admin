@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const UserMetricsPage = lazy(() => import('./pages/UserMetricsPage'));
 const ProntidaoPage = lazy(() => import('./pages/ProntidaoPage'));
+const CarrinhosPage = lazy(() => import('./pages/CarrinhosPage'));
 const UsuariosPage = lazy(() => import('./pages/UsuariosPage').then(m => ({ default: m.UsuariosPage })));
 const RestaurantesPage = lazy(() => import('./pages/RestaurantesPage').then(m => ({ default: m.RestaurantesPage })));
 const EvaluationsPage = lazy(() => import('./pages/EvaluationsPage'));
@@ -79,6 +80,7 @@ function AdminApp() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/metricas" element={<UserMetricsPage />} />
                 <Route path="/prontidao" element={<ProntidaoPage />} />
+                <Route path="/carrinhos" element={<CarrinhosPage />} />
                 <Route path="/usuarios" element={<UsuariosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
                 <Route path="/avaliacoes" element={<EvaluationsPage />} />
