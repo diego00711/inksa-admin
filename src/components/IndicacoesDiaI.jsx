@@ -13,10 +13,11 @@
 // decide de um jeito que sete votos anônimos não decidem.
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  HeartHandshake, Loader2, RefreshCw, Check, Star, CheckCircle2, Users,
+  HeartHandshake, Loader2, RefreshCw, Check, Star, CheckCircle2, Users, Trash2,
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { useConfirm } from './ConfirmProvider.jsx';
 
 const cab = () => ({
   'Content-Type': 'application/json',
@@ -33,6 +34,7 @@ function quando(iso) {
 }
 
 export default function IndicacoesDiaI() {
+  const confirm = useConfirm();
   const [aberta, setAberta] = useState(false);
   const [linhas, setLinhas] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -97,6 +99,37 @@ export default function IndicacoesDiaI() {
     }
   };
 
+  const limpar = async () => {
+    const escolhida = linhas.find((l) => l.escolhida);
+    const ok = await confirm({
+      title: 'Limpar todas as indicações',
+      message:
+        `Apaga as ${linhas.length} instituições indicadas e todos os votos, sem volta. ` +
+        (escolhida
+          ? `Antes de limpar, confirme que "${escolhida.nome}" já está registrada como destino no evento aqui embaixo — é de lá que a página pública lê.`
+          : 'Nenhuma indicação está marcada como escolhida ainda. Se você ainda vai decidir o destino, isso apaga a informação que ajudaria a decidir.'),
+      confirmText: 'Apagar tudo',
+      danger: true,
+    });
+    if (!ok) return;
+
+    setMexendo(true);
+    setAviso(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/social/nominations`, {
+        method: 'DELETE', headers: cab(),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || 'Não deu.');
+      setLinhas([]);
+      setAviso({ ok: true, texto: j.message });
+    } catch (e) {
+      setAviso({ ok: false, texto: e.message || 'Falha de rede.' });
+    } finally {
+      setMexendo(false);
+    }
+  };
+
   const totalVotos = linhas.reduce((s, l) => s + (l.votos || 0), 0);
 
   return (
@@ -110,7 +143,8 @@ export default function IndicacoesDiaI() {
             Com a chave ligada, aparece nos três apps uma caixa para o usuário
             indicar quem deve receber o lucro do Dia I. Abra com algumas semanas
             de antecedência — chegar no dia do evento ainda decidindo o destino
-            não dá tempo de falar com a instituição.
+            não dá tempo de falar com a instituição. Cada pessoa tem{' '}
+            <strong>uma indicação</strong>: indicar de novo troca a dela, não soma outra.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -121,6 +155,17 @@ export default function IndicacoesDiaI() {
           >
             <RefreshCw size={15} />
           </button>
+          {linhas.length > 0 && (
+            <button
+              onClick={limpar}
+              disabled={mexendo}
+              title="Zera as indicações para o próximo Dia I"
+              className="p-2 rounded border border-gray-300 text-gray-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+              aria-label="Limpar indicações"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
           <button
             onClick={alternar}
             disabled={mexendo}
