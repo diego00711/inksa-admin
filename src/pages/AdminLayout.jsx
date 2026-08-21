@@ -31,6 +31,7 @@ import {
   Banknote,
   ClipboardCheck,
   ShoppingCart,
+  Search,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -40,6 +41,7 @@ const NAV_LINKS = [
   { to: '/carrinhos', label: 'Carrinhos parados', icon: ShoppingCart, page: 'carrinhos' },
   { to: '/usuarios', label: 'Usuários', icon: Users, page: 'usuarios' },
   { to: '/restaurantes', label: 'Parceiros', icon: Store, page: 'restaurantes' },
+  { to: '/prospeccao', label: 'Prospecção', icon: Search, page: 'prospeccao' },
   { to: '/avaliacoes', label: 'Avaliações', icon: Star, page: 'avaliacoes' },
   { to: '/gamificacao', label: 'Gamificação', icon: Trophy, page: 'gamificacao' },
   { to: '/banners', label: 'Banners', icon: Image, page: 'banners' },

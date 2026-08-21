@@ -27,8 +27,11 @@ const ROLE_OPTIONS = [
 const PAGE_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'metricas', label: 'Métricas' },
+  { key: 'prontidao', label: 'Prontidão' },
+  { key: 'carrinhos', label: 'Carrinhos parados' },
   { key: 'usuarios', label: 'Usuários' },
   { key: 'restaurantes', label: 'Parceiros' },
+  { key: 'prospeccao', label: 'Prospecção' },
   { key: 'avaliacoes', label: 'Avaliações' },
   { key: 'gamificacao', label: 'Gamificação' },
   { key: 'banners', label: 'Banners' },
