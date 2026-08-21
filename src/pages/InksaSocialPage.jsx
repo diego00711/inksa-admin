@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import authService from '../services/authService';
 import { useConfirm } from '../components/ConfirmProvider.jsx';
+import IndicacoesDiaI from '../components/IndicacoesDiaI';
 import { NotificationContext } from '../context/NotificationContext';
 import {
   HeartHandshake, Save, Loader2, RefreshCw, CalendarDays, Clock,
@@ -412,6 +413,11 @@ export default function InksaSocialPage() {
           )}
         </div>
       </div>
+
+      {/* Indicações da cidade — vem ANTES do histórico de propósito: a ordem
+          da tela é a ordem do trabalho (configura o dia → abre indicação →
+          escolhe → registra o que foi doado). */}
+      <IndicacoesDiaI bannerVisivel={form.showInApps} />
 
       {/* Histórico / prestação de contas */}
       <div className="bg-white rounded-xl shadow p-5 space-y-4">
