@@ -417,7 +417,7 @@ export default function InksaSocialPage() {
       {/* Indicações da cidade — vem ANTES do histórico de propósito: a ordem
           da tela é a ordem do trabalho (configura o dia → abre indicação →
           escolhe → registra o que foi doado). */}
-      <IndicacoesDiaI bannerVisivel={form.showInApps} />
+      <IndicacoesDiaI />
 
       {/* Histórico / prestação de contas */}
       <div className="bg-white rounded-xl shadow p-5 space-y-4">

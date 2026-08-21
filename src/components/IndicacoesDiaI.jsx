@@ -13,7 +13,7 @@
 // decide de um jeito que sete votos anônimos não decidem.
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  HeartHandshake, Loader2, RefreshCw, Check, Star, AlertTriangle, Users,
+  HeartHandshake, Loader2, RefreshCw, Check, Star, CheckCircle2, Users,
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
@@ -32,7 +32,7 @@ function quando(iso) {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
 
-export default function IndicacoesDiaI({ bannerVisivel }) {
+export default function IndicacoesDiaI() {
   const [aberta, setAberta] = useState(false);
   const [linhas, setLinhas] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -134,15 +134,16 @@ export default function IndicacoesDiaI({ bannerVisivel }) {
         </div>
       </div>
 
-      {/* A caixa mora DENTRO do banner do Dia I. Com o banner escondido, abrir
-          as indicações não mostra nada em app nenhum — e sem este aviso o
-          Diego ia abrir, olhar o app e achar que o recurso não funciona. */}
-      {aberta && !bannerVisivel && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          As indicações estão abertas, mas o banner do Dia I está desligado nos
-          apps — e a caixa aparece dentro dele. Ligue “Mostrar nos apps” ali em
-          cima, senão ninguém vai ver.
+      {/* A caixa NÃO depende do banner nem de haver evento marcado: com um Dia
+          I no ar ela entra dentro do banner, e sem evento ativo ela aparece
+          como um convite próprio. Na primeira versão dependia, e abrir as
+          indicações com o último evento já passado não mostrava nada. */}
+      {aberta && (
+        <p className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+          Está no ar nos três apps. Se houver um Dia I marcado e visível, a
+          caixa entra dentro do banner; se não houver, ela aparece sozinha como
+          convite. Não precisa marcar data pra receber indicação.
         </p>
       )}
 
