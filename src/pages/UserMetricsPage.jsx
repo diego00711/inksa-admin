@@ -3,6 +3,7 @@ import { Users, ShoppingBag, Store, Truck, Shield, Activity, UserPlus, Clock, Lo
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
+import VisitasSite from '../components/VisitasSite';
 
 const TYPE_LABEL = {
   client: 'Cliente',
@@ -191,6 +192,12 @@ export default function UserMetricsPage() {
           </div>
         )}
       </div>
+
+      {/* O site é a porta de entrada de tudo isto: quem vira cliente,
+          parceiro ou entregador passa por lá primeiro. Fica na mesma página
+          de métricas de propósito — separar em outra tela faria a pergunta
+          "de onde vem nossa gente" morar em dois lugares. */}
+      <VisitasSite />
     </div>
   );
 }
