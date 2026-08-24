@@ -163,14 +163,26 @@ export default function TvMapaPage() {
           <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
           <Enquadra pontos={pontos} raioKm={dados.raio_km} centro={dados.centro} />
 
-          {/* Área que a Inksa cobre hoje. É o contorno do negócio: tudo que
-              acontece fora dele é pedido que o sistema recusa. */}
-          <Circle
-            center={[dados.centro.lat, dados.centro.lng]}
-            radius={dados.raio_km * 1000}
-            pathOptions={{ color: '#FF7A3D', weight: 1, opacity: 0.35,
-                           fillColor: '#FF7A3D', fillOpacity: 0.04 }}
-          />
+          {/* Área que a Inksa cobre. UM CÍRCULO POR LOJA, não um em volta do
+              centro do mapa.
+              A cobertura nasce da loja: o raio filtra o que fica perto DELA.
+              Um círculo único já era impreciso hoje, e quebraria de vez na
+              primeira cidade vizinha — o centro médio entre duas cidades cai
+              no meio do nada, e o desenho cobriria as duas pela metade.
+              Assim, cada cidade nova traz sua própria área, sem eu mexer em
+              nada. Sobrepostos e translúcidos, viram a mancha do que a Inksa
+              alcança. */}
+          {dados.parceiros.slice(0, 40).map((p) => (
+            <Circle
+              key={`a-${p.id}`}
+              center={[p.lat, p.lng]}
+              radius={dados.raio_km * 1000}
+              pathOptions={{ color: '#FF7A3D', weight: 1,
+                             opacity: p.aberto ? 0.3 : 0.12,
+                             fillColor: '#FF7A3D',
+                             fillOpacity: p.aberto ? 0.05 : 0.02 }}
+            />
+          ))}
 
           {entregues.map((o) => (
             <Marker key={`e-${o.id}`} position={[o.lat, o.lng]} icon={iconeEntrega} />
