@@ -6,7 +6,11 @@ import { Loader2, Save, Trophy, Bike, Store, User, CheckCircle2 } from 'lucide-r
 const AUDIENCES = [
   { key: 'client',     label: 'Clientes',     icon: User,  unit: 'pedidos/mês' },
   { key: 'delivery',   label: 'Entregadores', icon: Bike,  unit: 'entregas/mês' },
-  { key: 'restaurant', label: 'Parceiros', icon: Store, unit: 'pedidos/mês' },
+  // Parceiro sobe por FATURAMENTO, não por quantidade de pedidos: o desconto
+  // que ele ganha custa proporcional ao que ele vende, então qualificação e
+  // custo ficam na mesma unidade. Também é o que faz a escada continuar de pé
+  // quando entrar pet shop de ticket alto ao lado de lanchonete de ticket baixo.
+  { key: 'restaurant', label: 'Parceiros', icon: Store, unit: 'R$ vendidos no mês' },
 ];
 
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
@@ -28,6 +32,11 @@ const BENEFIT_FIELDS = {
   ],
   restaurant: [
     { key: 'featured_listing', label: 'Destaque na listagem para os clientes', type: 'bool' },
+    // Em PONTOS da comissão, não em "% de desconto sobre a comissão": 2 aqui
+    // significa 15% -> 13%, e é assim que o parceiro lê. O backend limita em
+    // 10 pontos — um zero a mais digitado aqui zeraria a receita da plataforma
+    // pedido a pedido, e só apareceria no fechamento do mês.
+    { key: 'commission_discount_pp', label: 'Comissão menor: pontos a descontar (2 = 15% vira 13%)', type: 'num', placeholder: 'ex: 2' },
   ],
 };
 
