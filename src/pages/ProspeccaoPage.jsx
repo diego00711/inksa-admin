@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, RefreshCw, Image as ImageIcon, Check, Undo2, Phone,
-  Download, Copy, Share2, X, Store, AlertTriangle,
+  Download, Copy, Share2, X, Store, AlertTriangle, Trash2,
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
@@ -49,6 +49,7 @@ export default function ProspeccaoPage() {
   const [ocultarAtendidas, setOcultarAtendidas] = useState(true);
   const [aviso, setAviso] = useState(null);
   const [marcando, setMarcando] = useState(null);
+  const [apagando, setApagando] = useState(null);   // nome_chave em confirmação
   const [arte, setArte] = useState(null);   // linha aberta no modal
 
   const carregar = useCallback(async () => {
@@ -93,6 +94,29 @@ export default function ProspeccaoPage() {
       setAviso({ ok: false, texto: e.message || 'Falha de rede.' });
     } finally {
       setMarcando(null);
+    }
+  };
+
+  // Apagar é para ENTULHO: erro de digitação que virou loja nova. Não é o
+  // mesmo que "já atendi" — atendida sai da fila e mantém o histórico; isto
+  // some de vez, e não tem volta.
+  const apagar = async (l) => {
+    setMarcando(l.nome_chave);
+    setAviso(null);
+    try {
+      const r = await fetch(
+        `${API_BASE_URL}/api/admin/sugestoes?nome_chave=${encodeURIComponent(l.nome_chave)}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${authService.getToken()}` } },
+      );
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || 'Não deu.');
+      setLinhas((atual) => atual.filter((x) => x.nome_chave !== l.nome_chave));
+      setAviso({ ok: true, texto: j.message });
+    } catch (e) {
+      setAviso({ ok: false, texto: e.message || 'Falha de rede.' });
+    } finally {
+      setMarcando(null);
+      setApagando(null);
     }
   };
 
@@ -174,6 +198,9 @@ export default function ProspeccaoPage() {
         linhas={aProspectar}
         onArte={(l) => setArte({ ...l, modo: 'prospect' })}
         onMarcar={marcar}
+        onApagar={apagar}
+        apagando={apagando}
+        setApagando={setApagando}
         marcando={marcando}
         vazio="Ninguém sugeriu nada ainda. Assim que um cliente digitar um nome no app, ele aparece aqui."
       />
@@ -186,6 +213,9 @@ export default function ProspeccaoPage() {
           linhas={invisiveis}
           onArte={(l) => setArte({ ...l, modo: 'parceiro' })}
           onMarcar={marcar}
+          onApagar={apagar}
+          apagando={apagando}
+          setApagando={setApagando}
           marcando={marcando}
           vazio=""
         />
@@ -202,7 +232,8 @@ export default function ProspeccaoPage() {
   );
 }
 
-function Bloco({ titulo, subtitulo, linhas, onArte, onMarcar, marcando, vazio, alerta }) {
+function Bloco({ titulo, subtitulo, linhas, onArte, onMarcar, onApagar,
+                apagando, setApagando, marcando, vazio, alerta }) {
   return (
     <section>
       <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
@@ -269,6 +300,35 @@ function Bloco({ titulo, subtitulo, linhas, onArte, onMarcar, marcando, vazio, a
                         {l.atendida ? <Undo2 size={13} /> : <Check size={13} />}
                         {l.atendida ? 'Voltar pra fila' : 'Já atendi'}
                       </button>
+
+                      {/* Confirmação em dois toques em vez de modal: não
+                          esconde a tabela e some ao cancelar. */}
+                      {apagando === l.nome_chave ? (
+                        <span className="flex items-center gap-1">
+                          <button
+                            onClick={() => onApagar(l)}
+                            disabled={marcando === l.nome_chave}
+                            className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                          >
+                            {marcando === l.nome_chave ? '...' : 'Apagar'}
+                          </button>
+                          <button
+                            onClick={() => setApagando(null)}
+                            className="px-2 py-1.5 text-xs text-gray-500 hover:underline"
+                          >
+                            cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setApagando(l.nome_chave)}
+                          title="Apaga de vez. Use para erro de digitação que virou loja nova."
+                          className="rounded-lg border border-gray-300 p-1.5 text-gray-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                          aria-label="Apagar sugestão"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
