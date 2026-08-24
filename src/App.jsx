@@ -39,6 +39,8 @@ const InksaSocialPage = lazy(() => import('./pages/InksaSocialPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 // Painel de parede do escritório: fica fora do AdminLayout (tela cheia, sem menu)
 const TvPage = lazy(() => import('./pages/TvPage'));
+// Mapa de parede: irmão do /tv. Aquele responde "quanto", este responde "onde".
+const TvMapaPage = lazy(() => import('./pages/TvMapaPage'));
 
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -77,6 +79,7 @@ function AdminApp() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/tv" element={<TvPage />} />
+              <Route path="/tv/mapa" element={<TvMapaPage />} />
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/metricas" element={<UserMetricsPage />} />
