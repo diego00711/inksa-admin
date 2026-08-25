@@ -261,6 +261,13 @@ const authService = {
 
   // -------- Clube (níveis/benefícios) --------
 
+  // Indique e ganhe: painel de controle (números + configuração da campanha).
+  async getReferralsPanel() {
+    return authorizedRequest('/api/admin/referrals');
+  },
+  async saveReferralsConfig(body) {
+    return authorizedRequest('/api/admin/referrals', { method: 'PUT', body });
+  },
   async getClubLevels(audience) {
     return authorizedRequest('/api/club/admin/levels', { params: { audience } });
   },

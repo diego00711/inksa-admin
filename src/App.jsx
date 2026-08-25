@@ -35,6 +35,7 @@ const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 const FinanceiroPayouts = lazy(() => import('./pages/FinanceiroPayouts'));
 const CashDebtsPage = lazy(() => import('./pages/CashDebtsPage'));
 const ClubLevelsPage = lazy(() => import('./pages/ClubLevelsPage'));
+const ReferralsPage = lazy(() => import('./pages/ReferralsPage'));
 const InksaSocialPage = lazy(() => import('./pages/InksaSocialPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 // Painel de parede do escritório: fica fora do AdminLayout (tela cheia, sem menu)
@@ -94,6 +95,7 @@ function AdminApp() {
                 <Route path="/cupons" element={<CouponsPage />} />
                 <Route path="/recompensas" element={<RewardsManagementPage />} />
                 <Route path="/clube" element={<ClubLevelsPage />} />
+                <Route path="/indicacoes" element={<ReferralsPage />} />
                 <Route path="/social" element={<InksaSocialPage />} />
                 <Route path="/logs" element={<LogsPage />} />
                 <Route path="/admins" element={<AdminsPage />} />
