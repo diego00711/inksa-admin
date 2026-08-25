@@ -140,7 +140,47 @@ export default function TvMapaPage() {
   }, [dados]);
 
   const r = dados?.resumo;
-  const emRota = (dados?.pedidos || []).filter((p) => p.em_rota && p.loja_lat);
+  // useMemo e não filter solto: o relógio do painel re-renderiza a cada
+  // segundo, e uma lista nova a cada render faria o efeito da rota (abaixo)
+  // disparar 60 vezes por minuto sem nada ter mudado.
+  const emRota = useMemo(
+    () => (dados?.pedidos || []).filter((p) => p.em_rota && p.loja_lat),
+    [dados],
+  );
+
+  // Traçado real por ruas, no lugar do risco reto entre loja e cliente.
+  //
+  // O risco reto atravessava quarteirão e rio e não dizia nada sobre a entrega.
+  // O app do entregador já busca a rota de verdade (OSRM); o painel passou a
+  // usar a mesma fonte, então a TV mostra o mesmo caminho que o entregador vê.
+  //
+  // CACHE POR PEDIDO, e isso não é otimização preguiçosa: o trajeto loja →
+  // cliente não muda enquanto a entrega existe (só a posição do entregador
+  // muda). Sem o cache, cada volta de 60s repetiria a mesma consulta pra
+  // sempre — e o servidor OSRM que usamos é uma demo pública que não aguenta
+  // isso, além de ser feio bater nela à toa.
+  const [rotas, setRotas] = useState({});
+  const buscando = useRef(new Set());
+
+  useEffect(() => {
+    emRota.forEach((o) => {
+      if (rotas[o.id] || buscando.current.has(o.id)) return;
+      buscando.current.add(o.id);
+      const url = `https://router.project-osrm.org/route/v1/driving/`
+        + `${o.loja_lng},${o.loja_lat};${o.lng},${o.lat}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('osrm'))))
+        .then((d) => {
+          const linha = d?.routes?.[0]?.geometry?.coordinates;
+          if (!linha?.length) return;
+          setRotas((atual) => ({ ...atual, [o.id]: linha.map(([lng, lat]) => [lat, lng]) }));
+        })
+        // Falhou: fica no risco reto. Painel de parede não pode ficar sem
+        // desenho porque um serviço de terceiro não respondeu.
+        .catch(() => {})
+        .finally(() => buscando.current.delete(o.id));
+    });
+  }, [emRota, rotas]);
   const entregues = (dados?.pedidos || []).filter((p) => p.entregue);
   const semMovimento = Boolean(dados) && entregues.length === 0 && emRota.length === 0;
 
@@ -188,14 +228,24 @@ export default function TvMapaPage() {
             <Marker key={`e-${o.id}`} position={[o.lat, o.lng]} icon={iconeEntrega} />
           ))}
 
-          {emRota.map((o) => (
-            <Polyline
-              key={`r-${o.id}`}
-              positions={[[o.loja_lat, o.loja_lng], [o.lat, o.lng]]}
-              pathOptions={{ color: '#FFB067', weight: 2.5, opacity: 0.9,
-                             dashArray: '6 10', className: 'rota-viva' }}
-            />
-          ))}
+          {emRota.map((o) => {
+            const real = rotas[o.id];
+            return (
+              <Polyline
+                key={`r-${o.id}`}
+                positions={real || [[o.loja_lat, o.loja_lng], [o.lat, o.lng]]}
+                // Contínua quando é o caminho de verdade; tracejada enquanto é
+                // só a ligação entre dois pontos. A diferença é proposital:
+                // quem olha a parede precisa saber se está vendo o trajeto ou
+                // um palpite — linha cheia promete uma coisa que o tracejado não.
+                pathOptions={real
+                  ? { color: '#FFB067', weight: 3, opacity: 0.95,
+                      lineCap: 'round', lineJoin: 'round', className: 'rota-viva' }
+                  : { color: '#FFB067', weight: 2.5, opacity: 0.7,
+                      dashArray: '6 10', className: 'rota-viva' }}
+              />
+            );
+          })}
 
           {dados.parceiros.map((p) => (
             <Marker key={p.id} position={[p.lat, p.lng]} icon={iconeLoja(p.aberto)} />
