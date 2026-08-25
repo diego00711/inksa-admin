@@ -19,6 +19,8 @@ const CAMPOS = [
     ajuda: 'Vai pra quem indicou, quando o pedido do indicado é entregue.' },
   { key: 'referral_min_order_brl', label: 'Mínimo de compra pro cupom (R$)', step: '1',
     ajuda: 'Sobre o subtotal, sem o frete. Abaixo disso a comissão não paga o cupom.' },
+  { key: 'referral_welcome_min_brl', label: 'Mínimo do frete grátis do convidado (R$)', step: '1',
+    ajuda: '0 = sem mínimo, converte mais. Mas frete grátis num pedido de R$15 dá prejuízo: a Inksa paga o entregador e fica com ~R$2 de comissão.' },
   { key: 'referral_validity_days', label: 'Validade do cupom (dias)', step: '1',
     ajuda: 'Cupom sem prazo vira dívida eterna e é resgatado na pior hora.' },
   { key: 'referral_monthly_cap', label: 'Teto de indicações premiadas por mês', step: '1',
