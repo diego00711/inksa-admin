@@ -95,13 +95,22 @@ export default function ReferralsPage() {
         </div>
         {/* Desligar não apaga nada do que já foi dado: cupom emitido continua
             valendo. Só para de emitir novos. */}
-        <button
-          onClick={() => setForm({ ...form, referral_enabled: ligado ? 0 : 1 })}
-          className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-            ligado ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}
-        >
-          {ligado ? 'Campanha ligada' : 'Campanha pausada'}
-        </button>
+        <div className="text-right">
+          <button
+            onClick={() => setForm({ ...form, referral_enabled: ligado ? 0 : 1 })}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+              ligado ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}
+          >
+            {ligado ? 'Campanha ligada' : 'Campanha pausada'}
+          </button>
+          {/* Ligada MAS fora do prazo é o estado que confunde: o botão diz
+              "ligada" e nada acontece. Aqui ele é dito em voz alta. */}
+          {ligado && dados.config.no_prazo === false && (
+            <p className="mt-1 text-xs font-semibold text-amber-700">
+              fora do período — não está premiando
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -134,6 +143,27 @@ export default function ReferralsPage() {
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
           Números da campanha
         </p>
+        {/* A data é uma trava À PARTE do interruptor: campanha com prazo
+            termina sozinha, sem depender de alguém lembrar de desligar num
+            domingo. Vazio = sem limite daquele lado. */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Começa em (opcional)</label>
+            <input type="date" value={form.referral_starts_at || ''}
+                   onChange={(e) => setForm({ ...form, referral_starts_at: e.target.value })}
+                   className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Termina em (opcional)</label>
+            <input type="date" value={form.referral_ends_at || ''}
+                   onChange={(e) => setForm({ ...form, referral_ends_at: e.target.value })}
+                   className={inputCls} />
+            <p className="mt-1 text-xs text-gray-400">
+              Depois desta data o programa para sozinho. Cupom já emitido continua valendo.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {CAMPOS.map((c) => (
             <div key={c.key}>
