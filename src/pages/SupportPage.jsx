@@ -9,8 +9,8 @@ import authService from '../services/authService';
 
 const FALLBACK_SUPPORT = {
   email: 'suporte@inksadelivery.com.br',
-  whatsapp: '5549999679697',
-  phone: '(49) 99967-9697',
+  whatsapp: '5549998292320',
+  phone: '(49) 99829-2320',
   hours: 'Seg a Sex, 8h às 18h',
 };
 
