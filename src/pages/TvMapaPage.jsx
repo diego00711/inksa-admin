@@ -37,10 +37,24 @@ const POLL_MS = 60000;
 
 // Escuro por padrão: é painel de parede, e mapa claro numa TV acesa o dia
 // inteiro cansa a vista e ofusca os pontos. Trocar é definir VITE_MAP_TILE_URL.
+//
+// ⚠️ NÃO VOLTE PRA CARTO. O padrão aqui era
+// basemaps.cartocdn.com/dark_all, que sempre funcionou sem cadastro. A CARTO
+// passou a exigir chave: em 27/08/2026 a TV do escritório amanheceu com
+// "API KEY REQUIRED · carto.com/basemaps/apikey" escrito na diagonal por cima
+// do mapa inteiro, repetido em cada tile. Não é erro nosso — é o provedor
+// cobrando. Uso comercial da CARTO só com licença Enterprise, então nem
+// cadastrando resolveria pra nós.
+//
+// Stadia é o mesmo provedor que o app do Cliente já usa, e autentica por
+// DOMÍNIO — sem chave nenhuma na URL. A propriedade cadastrada é
+// *.inksadelivery.com.br com "Allow All Subdomains", então admin. está
+// coberto. `alidade_smooth_dark` é o equivalente escuro do estilo que o
+// Cliente usa, o que deixa os dois mapas da casa parecidos.
 const TILE_URL = import.meta.env.VITE_MAP_TILE_URL ||
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
 const TILE_ATTR = import.meta.env.VITE_MAP_ATTRIBUTION ||
-  '&copy; OpenStreetMap &copy; CARTO';
+  '&copy; Stadia Maps &copy; OpenMapTiles &copy; OpenStreetMap';
 
 const brl = (v) =>
   (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
