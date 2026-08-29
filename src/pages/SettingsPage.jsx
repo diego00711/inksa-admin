@@ -58,6 +58,7 @@ const DEFAULTS = {
   frete_adicional_utilitario: '25.00',
   frete_km_utilitario: '3.50',
   free_delivery_threshold_km: '2.00',
+  road_distance_factor: '1.40',
   // Repasse ao entregador: recebe o frete integral menos esta % de administração.
   // (key financial_delivery_commission, percentual humano — 15 = 15%)
   financial_delivery_commission: '15',
@@ -256,6 +257,22 @@ export default function SettingsPage() {
               className={inputCls}
             />
           </Field>
+          {/* O sistema mede a distância em LINHA RETA (a que um pássaro voa).
+              Ninguém entrega assim: contorna quarteirão, respeita mão única,
+              atravessa em ponte. Sem este fator, TODO frete sai barato.
+              Medido na rua em 29/08/2026: 1,00 km reto = mais de 1,5 km de
+              percurso. 1,4 é o número que a logística urbana usa. */}
+          <Field
+            label="Fator de rua"
+            hint="Multiplica a distância em linha reta pra chegar no percurso real. 1,4 é o padrão; meça uma entrega e ajuste."
+          >
+            <input
+              type="number" min="1" max="3" step="0.05"
+              value={fields.road_distance_factor}
+              onChange={(e) => set('road_distance_factor', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
         </div>
       </SectionCard>
 
@@ -342,7 +359,7 @@ export default function SettingsPage() {
           Ela varia com a distância. Simule abaixo o impacto da configuração atual antes de salvar.
         </p>
         <div className="flex items-center gap-3 mb-4">
-          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Distância (km)</label>
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Distância em linha reta (km)</label>
           <input
             type="number" min="0" step="0.5"
             value={previewKm}
@@ -351,13 +368,23 @@ export default function SettingsPage() {
           />
         </div>
         {(() => {
-          const km = parseFloat(previewKm) || 0;
+          // O simulador recebe a LINHA RETA, que é o que o sistema mede, e
+          // aplica o fator antes de cobrar — igual ao servidor. Simular sobre
+          // a distância de rua daria um número que nunca aparece na prática.
+          const reta = parseFloat(previewKm) || 0;
+          const fator = Math.max(parseFloat(fields.road_distance_factor) || 1.4, 1);
+          const km = Math.round(reta * fator * 100) / 100;
           const cobrado = calcFreteCobrado(fields, km);
           const repasse = calcRepasseEntregador(fields, km);
           const margem = cobrado - repasse;
           const negativa = margem < 0;
           return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-3 text-xs text-gray-500">
+                {reta.toFixed(2).replace('.', ',')} km em linha reta ={' '}
+                <strong className="text-gray-700">{km.toFixed(2).replace('.', ',')} km de percurso</strong>{' '}
+                (fator {fator.toFixed(2).replace('.', ',')}) — é sobre o percurso que a conta é feita.
+              </div>
               <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
                 <p className="text-xs text-gray-500">Frete cobrado do cliente</p>
                 <p className="text-lg font-semibold text-gray-900">R$ {cobrado.toFixed(2)}</p>
@@ -374,7 +401,11 @@ export default function SettingsPage() {
           );
         })()}
         {(() => {
-          const km = parseFloat(previewKm) || 0;
+          // Mesmo fator do bloco acima. Sem isto os dois quadros mostrariam
+          // margens diferentes pro mesmo cenário.
+          const _reta = parseFloat(previewKm) || 0;
+          const _fator = Math.max(parseFloat(fields.road_distance_factor) || 1.4, 1);
+          const km = Math.round(_reta * _fator * 100) / 100;
           const margem = calcFreteCobrado(fields, km) - calcRepasseEntregador(fields, km);
           if (margem < 0) {
             return (
