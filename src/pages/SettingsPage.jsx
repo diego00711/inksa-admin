@@ -35,6 +35,12 @@ const DEFAULTS = {
   delivery_radius_bike_km: '2',
   delivery_radius_moto_km: '8',
   delivery_radius_carro_km: '10',
+  // Distancia maxima da ENTREGA (loja -> cliente). Diferente do raio acima,
+  // que mede entregador -> loja. 0 = sem limite.
+  entrega_max_km_bike: '5',
+  entrega_max_km_moto: '0',
+  entrega_max_km_carro: '0',
+  entrega_max_km_utilitario: '0',
   dispatch_assign_enabled: '1',
   dispatch_offer_seconds: '30',
   dispatch_decline_cooldown_min: '15',
@@ -446,8 +452,8 @@ export default function SettingsPage() {
             />
           </Field>
           <Field
-            label="Raio por veículo (km)"
-            hint="Alcance de cada tipo de veículo para receber pedidos. A bike costuma ter raio menor que moto/carro. Deixe 0 para usar o raio máximo acima."
+            label="Raio de coleta por veículo (km)"
+            hint="Distância do ENTREGADOR até a LOJA. Quem está mais longe que isso não recebe a oferta. Não limita o tamanho da entrega — para isso, use o campo abaixo. Deixe 0 para usar o raio máximo acima."
           >
             <div className="grid grid-cols-3 gap-2">
               <div>
@@ -464,6 +470,33 @@ export default function SettingsPage() {
                 <label className="block text-xs text-gray-500 mb-1">🚗 Carro</label>
                 <input type="number" min="0" step="1" value={fields.delivery_radius_carro_km}
                   onChange={(e) => set('delivery_radius_carro_km', e.target.value)} className={inputCls} />
+              </div>
+            </div>
+          </Field>
+          <Field
+            label="Distância máxima da entrega por veículo (km)"
+            hint="Da LOJA até o CLIENTE. Uma bicicleta não deve pegar uma entrega de 12 km só porque estava parada na porta do restaurante — o raio de coleta acima não impede isso, porque mede outra coisa. Deixe 0 para não limitar."
+          >
+            <div className="grid grid-cols-4 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🚲 Bike</label>
+                <input type="number" min="0" step="1" value={fields.entrega_max_km_bike}
+                  onChange={(e) => set('entrega_max_km_bike', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🏍️ Moto</label>
+                <input type="number" min="0" step="1" value={fields.entrega_max_km_moto}
+                  onChange={(e) => set('entrega_max_km_moto', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🚗 Carro</label>
+                <input type="number" min="0" step="1" value={fields.entrega_max_km_carro}
+                  onChange={(e) => set('entrega_max_km_carro', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">🚐 Utilitário</label>
+                <input type="number" min="0" step="1" value={fields.entrega_max_km_utilitario}
+                  onChange={(e) => set('entrega_max_km_utilitario', e.target.value)} className={inputCls} />
               </div>
             </div>
           </Field>
