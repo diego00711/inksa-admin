@@ -169,6 +169,11 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [statusFilter, setStatusFilter] = useState('todos');
+  // SUGESTÃO CHEGA COMO CHAMADO, com category='Sugestão'. Não é caixa
+  // separada de propósito: duas caixas de entrada garantem que uma delas
+  // deixa de ser aberta, e caixa de sugestão esquecida é pior que não ter.
+  // Aqui ela ganha só um recorte, para você conseguir ler todas de uma vez.
+  const [tipoFiltro, setTipoFiltro] = useState('todos'); // todos | sugestao | chamado
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -193,13 +198,21 @@ export default function SupportPage() {
 
   const CHANNELS = useMemo(() => buildChannels(supportInfo), [supportInfo]);
 
+  // Compara sem acento e sem caixa: o ticket chega com 'Sugestão' do app, mas
+  // um chamado antigo pode ter vindo com outra grafia. Casar por texto exato
+  // faria sugestão sumir do recorte sem ninguém perceber.
+  const ehSugestao = (t) => (t.category || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().startsWith('sugest');
+
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
       if (statusFilter !== 'todos' && t.status !== statusFilter) return false;
+      if (tipoFiltro === 'sugestao' && !ehSugestao(t)) return false;
+      if (tipoFiltro === 'chamado' && ehSugestao(t)) return false;
       if (search && !`${t.subject} ${t.category}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [tickets, statusFilter, search]);
+  }, [tickets, statusFilter, tipoFiltro, search]);
 
   const counts = useMemo(() => {
     return {
@@ -208,6 +221,8 @@ export default function SupportPage() {
       aguardando: tickets.filter((t) => t.status === 'aguardando').length,
       andamento: tickets.filter((t) => t.status === 'andamento').length,
       resolvido: tickets.filter((t) => t.status === 'resolvido').length,
+      sugestoes: tickets.filter(ehSugestao).length,
+      chamados: tickets.filter((t) => !ehSugestao(t)).length,
     };
   }, [tickets]);
 
@@ -259,6 +274,38 @@ export default function SupportPage() {
 
       {/* Filtros */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+        {/* Recorte por TIPO antes do recorte por status: ler as sugestões é
+            outro trabalho que responder chamado. Chamado tem prazo; sugestão
+            tem padrão — o valor está em ler várias seguidas e notar o que se
+            repete. Misturadas na mesma lista, elas somem entre os problemas. */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'todos',    rotulo: 'Tudo',      n: counts.todos },
+            { id: 'sugestao', rotulo: 'Sugestões', n: counts.sugestoes },
+            { id: 'chamado',  rotulo: 'Chamados',  n: counts.chamados },
+          ].map(({ id, rotulo, n }) => {
+            const ativo = tipoFiltro === id;
+            const destaque = id === 'sugestao';
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTipoFiltro(id)}
+                aria-pressed={ativo}
+                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors ${
+                  ativo
+                    ? (destaque ? 'bg-amber-500 border-amber-500 text-white'
+                                : 'bg-slate-800 border-slate-800 text-white')
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                {rotulo}
+                <span className={`text-xs tabular-nums ${ativo ? 'opacity-80' : 'text-slate-400'}`}>{n}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 items-stretch">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
