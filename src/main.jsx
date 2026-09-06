@@ -26,14 +26,7 @@ window.addEventListener('vite:preloadError', () => {
   const last = Number(sessionStorage.getItem('preloadErrReloadAt')) || 0;
   if (Date.now() - last < 10000) return;
   sessionStorage.setItem('preloadErrReloadAt', String(Date.now()));
-  // JOGA O CACHE FORA ANTES DE RECARREGAR. Sem isto o reload le o MESMO cache
-  // envenenado do service worker (HTML gravado sob nome de .js) e a tela branca
-  // volta identica — foi exatamente o que aconteceu em 05/09/2026, quando o
-  // reload sozinho nao resolveu nada. Ver o comentario em public/sw.js.
-  const limpar = ('caches' in window)
-    ? caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k)))).catch(() => {})
-    : Promise.resolve();
-  limpar.finally(() => window.location.reload());
+  window.location.reload();
 });
 
 // Pega a versao nova sem o usuario ter que fechar e abrir o app.
