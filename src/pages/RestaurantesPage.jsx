@@ -122,8 +122,13 @@ export function RestaurantesPage() {
   };
 
   const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setEditingRestaurant(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    // Checkbox manda `checked`, não `value`. Sem este ramo, o toggle de
+    // dinheiro gravaria a string "on" no lugar de true/false.
+    setEditingRestaurant(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   // ALTERADO: Lógica completa para salvar as alterações
@@ -382,6 +387,32 @@ export function RestaurantesPage() {
               <div>
                 <label htmlFor="address_neighborhood" className="block text-sm font-medium text-gray-700">Bairro</label>
                 <input type="text" name="address_neighborhood" id="address_neighborhood" value={editingRestaurant.address_neighborhood || ''} onChange={handleFormChange} className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md"/>
+              </div>
+              {/* PAGAMENTO EM DINHEIRO — controle SÓ do admin.
+                  Saiu do app do Parceiro de propósito: o dono ligava "aceito
+                  dinheiro" entendendo que o entregador traria o dinheiro dele.
+                  Na mecânica da Inksa o entregador FICA com o dinheiro e passa
+                  a dever à plataforma; a loja recebe no repasse, não no balcão.
+                  Essa distância entre o que ele entende e o que acontece é
+                  briga garantida — então quem liga é quem conhece a mecânica. */}
+              <div className="md:col-span-2 border-t pt-4 mt-2">
+                <label className="flex items-center gap-3 cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    name="accepts_cash"
+                    checked={!!editingRestaurant.accepts_cash}
+                    onChange={handleFormChange}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Aceitar pagamento em dinheiro
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  O entregador recolhe em espécie e fica devendo à plataforma; a loja
+                  recebe no repasse, não no balcão. O parceiro não vê nem controla
+                  esta opção.
+                </p>
               </div>
             </form>
             <div className="flex justify-end mt-8 space-x-4">
