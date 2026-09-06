@@ -169,7 +169,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="E-mail de contato">
             <input
-              type="email"
+              type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false}
               value={fields.contact_email}
               onChange={(e) => set('contact_email', e.target.value)}
               placeholder="contato@inksa.com"

@@ -779,7 +779,7 @@ export function AdminsPage() {
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                   value={formValues.email}
                   onChange={handleFormChange}
                   placeholder="ana.souza@inksa.com"
