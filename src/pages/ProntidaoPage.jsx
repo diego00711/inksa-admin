@@ -39,6 +39,48 @@ export default function ProntidaoPage() {
     }
   };
 
+  // ── Cobrar cadastro por push ────────────────────────────────────────────
+  // O texto do push NÃO sai daqui: o backend recalcula o que falta e monta a
+  // mensagem. A tela pode estar velha, e cobrar cardápio de quem já cadastrou
+  // é o jeito mais rápido de ensinar a pessoa a ignorar nossas notificações.
+  const [cobrando, setCobrando] = useState('');
+  const [resultado, setResultado] = useState(null);
+
+  const cobrar = async (tipo, id, nome) => {
+    if (!id || cobrando) return;
+    if (!window.confirm(
+      `Enviar uma notificação para ${nome} pedindo que termine o cadastro?`
+    )) return;
+    setCobrando(id);
+    setResultado(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/prontidao/cobrar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authService.getToken()}`,
+                   'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, id }),
+      });
+      const j = await r.json();
+      setResultado({ ok: r.ok, msg: j?.message || (r.ok ? 'Enviado.' : 'Não deu.') });
+    } catch {
+      setResultado({ ok: false, msg: 'Falha de rede ao enviar.' });
+    } finally {
+      setCobrando('');
+    }
+  };
+
+  const BotaoCobrar = ({ tipo, id, nome }) => (
+    <button
+      onClick={() => cobrar(tipo, id, nome)}
+      disabled={cobrando === id}
+      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-300
+                 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50
+                 whitespace-nowrap"
+    >
+      {cobrando === id ? 'Enviando…' : '🔔 Cobrar cadastro'}
+    </button>
+  );
+
   useEffect(() => { carregar(); }, []);
 
   if (carregando) {
@@ -58,6 +100,7 @@ export default function ProntidaoPage() {
 
   const { resumo, lojas, entregadores, clientes, pedidos, pracas } = dados;
   const itensSemPeso = dados.itens_sem_peso || [];
+
   const lojasComProblema = lojas.filter((l) => l.faltas.length > 0);
   const entregadoresComProblema = entregadores.filter((e) => e.faltas.length > 0);
 
@@ -133,17 +176,26 @@ export default function ProntidaoPage() {
         )}
       </Secao>
 
+      {resultado && (
+        <div className={`mb-4 rounded-xl border p-3 text-sm ${
+          resultado.ok ? 'bg-green-50 border-green-200 text-green-800'
+                       : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+          {resultado.msg}
+        </div>
+      )}
+
       <Secao
         titulo={`Lojas que não estão vendendo (${lojasComProblema.length})`}
         vazio="Todas as lojas cadastradas estão vendáveis."
         temItens={lojasComProblema.length > 0}
       >
         <Tabela
-          colunas={['Loja', 'Praça', 'O que falta']}
+          colunas={['Loja', 'Praça', 'O que falta', '']}
           linhas={lojasComProblema.map((l) => [
             l.nome,
             [l.cidade, l.uf].filter(Boolean).join(' - ') || '—',
             <Faltas key="f" itens={l.faltas} />,
+            <BotaoCobrar key="b" tipo="loja" id={l.id} nome={l.nome} />,
           ])}
         />
       </Secao>
@@ -175,11 +227,12 @@ export default function ProntidaoPage() {
           veículo o filtro de carga bloqueia por precaução.
         </p>
         <Tabela
-          colunas={['Entregador', 'Cidade', 'O que falta']}
+          colunas={['Entregador', 'Cidade', 'O que falta', '']}
           linhas={entregadoresComProblema.map((e) => [
             e.nome,
             e.cidade || '—',
             <Faltas key="f" itens={e.faltas} />,
+            <BotaoCobrar key="b" tipo="entregador" id={e.id} nome={e.nome} />,
           ])}
         />
       </Secao>
