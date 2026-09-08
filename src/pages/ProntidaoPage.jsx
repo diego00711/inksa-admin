@@ -16,6 +16,24 @@ import authService from '../services/authService';
  * ativa, dono ativo e COM COORDENADA (loja sem lat/lng é escondida do cliente
  * de propósito) — mais a única que decide se ele tem o que pedir: cardápio.
  */
+/** "hoje 11:32" / "ontem" / "há 3 dias" — o que decide se cobra de novo.
+ *
+ *  Uma data seca ("08/09/2026 11:32") obriga a fazer a conta de cabeça toda
+ *  vez. O que importa aqui é uma pergunta só: já dei tempo pra pessoa? */
+function quando(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // Diferença em DIAS DE CALENDÁRIO, não em 24h: às 8h da manhã, algo enviado
+  // às 22h de ontem é "ontem", e não "há 10 horas".
+  const meiaNoite = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const dias = Math.round((meiaNoite(new Date()) - meiaNoite(d)) / 86400000);
+  if (dias <= 0) return `hoje ${hora}`;
+  if (dias === 1) return `ontem ${hora}`;
+  if (dias < 30) return `há ${dias} dias`;
+  return `em ${d.toLocaleDateString('pt-BR')}`;
+}
+
 export default function ProntidaoPage() {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -62,6 +80,10 @@ export default function ProntidaoPage() {
       });
       const j = await r.json();
       setResultado({ ok: r.ok, msg: j?.message || (r.ok ? 'Enviado.' : 'Não deu.') });
+      // Marca a linha SEM recarregar a tela: carregar() acende o "Conferindo a
+      // praça…" e apagaria o aviso do envio que a pessoa acabou de ler.
+      // A data vem do servidor, não do relógio deste computador.
+      if (r.ok && j?.cobrado_em) marcarCobrado(tipo, id, j.cobrado_em);
     } catch {
       setResultado({ ok: false, msg: 'Falha de rede ao enviar.' });
     } finally {
@@ -69,16 +91,40 @@ export default function ProntidaoPage() {
     }
   };
 
-  const BotaoCobrar = ({ tipo, id, nome }) => (
-    <button
-      onClick={() => cobrar(tipo, id, nome)}
-      disabled={cobrando === id}
-      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-300
-                 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50
-                 whitespace-nowrap"
-    >
-      {cobrando === id ? 'Enviando…' : '🔔 Cobrar cadastro'}
-    </button>
+  const marcarCobrado = (tipo, id, quando) => {
+    const chave = tipo === 'loja' ? 'lojas' : 'entregadores';
+    setDados((d) => d && ({
+      ...d,
+      [chave]: d[chave].map((x) => (x.id === id ? { ...x, cobrado_em: quando } : x)),
+    }));
+  };
+
+  // Coluna de ação: o verde só aparece quando o servidor CONFIRMOU o envio —
+  // ele vem do banco, então sobrevive ao F5 e ao dia seguinte. Sem isso o
+  // sinal viveria no estado do React e a mesma pessoa levaria a mesma
+  // cobrança a cada recarga da tela.
+  const BotaoCobrar = ({ tipo, id, nome, cobradoEm }) => (
+    <div className="flex items-center justify-end gap-3">
+      {cobradoEm && (
+        <span
+          title={new Date(cobradoEm).toLocaleString('pt-BR')}
+          className="inline-flex items-center gap-1 text-xs font-medium text-green-700 whitespace-nowrap"
+        >
+          <CheckCircle2 size={15} className="shrink-0" />
+          Cobrado {quando(cobradoEm)}
+        </span>
+      )}
+      <button
+        onClick={() => cobrar(tipo, id, nome)}
+        disabled={cobrando === id}
+        className={`px-3 py-1.5 text-xs font-semibold rounded-lg border disabled:opacity-50
+                    whitespace-nowrap ${cobradoEm
+            ? 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+            : 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100'}`}
+      >
+        {cobrando === id ? 'Enviando…' : cobradoEm ? 'Cobrar de novo' : '🔔 Cobrar cadastro'}
+      </button>
+    </div>
   );
 
   useEffect(() => { carregar(); }, []);
@@ -195,7 +241,7 @@ export default function ProntidaoPage() {
             l.nome,
             [l.cidade, l.uf].filter(Boolean).join(' - ') || '—',
             <Faltas key="f" itens={l.faltas} />,
-            <BotaoCobrar key="b" tipo="loja" id={l.id} nome={l.nome} />,
+            <BotaoCobrar key="b" tipo="loja" id={l.id} nome={l.nome} cobradoEm={l.cobrado_em} />,
           ])}
         />
       </Secao>
@@ -232,7 +278,7 @@ export default function ProntidaoPage() {
             e.nome,
             e.cidade || '—',
             <Faltas key="f" itens={e.faltas} />,
-            <BotaoCobrar key="b" tipo="entregador" id={e.id} nome={e.nome} />,
+            <BotaoCobrar key="b" tipo="entregador" id={e.id} nome={e.nome} cobradoEm={e.cobrado_em} />,
           ])}
         />
       </Secao>
