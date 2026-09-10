@@ -43,7 +43,7 @@ export function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
-          <img src="/inka-logo.png" alt="Inksa Logo" className="w-24 h-auto mx-auto mb-4" />
+          <img src="/inksa-marca.png" alt="Inksa Logo" className="w-24 h-auto mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-800">Painel de Admin</h1>
           <p className="mt-2 text-gray-600">Bem-vindo(a). Por favor, faça login.</p>
         </div>

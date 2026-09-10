@@ -40,7 +40,7 @@ export const FORMATOS = {
 };
 
 /** Carrega o logo uma vez. Resolve com null se falhar — a arte sai sem ele. */
-export function carregarLogo(src = '/inka-logo.png') {
+export function carregarLogo(src = '/inksa-marca.png') {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
