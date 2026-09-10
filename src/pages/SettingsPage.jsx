@@ -102,20 +102,45 @@ export default function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState(null);
   const [previewKm, setPreviewKm] = useState('4');
 
-  useEffect(() => {
+  // ⚠️ SE O CARREGAMENTO FALHAR, ESTA TELA NÃO PODE SALVAR NADA.
+  //
+  // O `.catch(() => {})` que estava aqui engolia a falha: a tela abria normal,
+  // o formulário mostrava os DEFAULTS do código, e o Salvar manda o objeto
+  // INTEIRO. Uma oscilação de rede na abertura + um clique em Salvar gravava os
+  // padrões por cima de tudo — comissão 15% -> 10%, frete R$ 7 -> R$ 3, repasse
+  // do entregador 97% -> 85%, logoff 500 min -> 60, e mais nove. Sem aviso
+  // nenhum, nem na hora nem depois.
+  //
+  // Agora a falha é visível e o Salvar fica trancado até conseguir ler. Numa
+  // tela que decide dinheiro, não saber o valor atual é motivo de não deixar
+  // gravar — nunca de gravar um chute.
+  const [erroCarregar, setErroCarregar] = useState(null);
+
+  const carregar = React.useCallback(() => {
+    setLoading(true);
+    setErroCarregar(null);
     authService
       .getSystemSettings()
       .then((result) => {
         const data = result?.data ?? result ?? {};
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          throw new Error('resposta em formato inesperado');
+        }
         setFields((prev) => ({ ...prev, ...data }));
       })
-      .catch(() => {})
+      .catch((e) => setErroCarregar(e?.message || 'não deu pra falar com o servidor'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   const set = (key, value) => setFields((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
+    // Segunda tranca, de propósito: a tela já não renderiza o formulário
+    // quando o carregamento falha, mas esta função é o que de fato escreve.
+    // Quem grava é quem confere.
+    if (erroCarregar) return;
     setSaving(true);
     setSaveStatus(null);
     try {
@@ -133,6 +158,38 @@ export default function SettingsPage() {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="animate-spin h-8 w-8 text-indigo-600" />
+      </div>
+    );
+  }
+
+  // O formulário NEM APARECE se não deu pra ler o que está valendo. Mostrar os
+  // campos preenchidos com os padrões do código seria mentir sobre o estado da
+  // plataforma — e a mentira ficaria a um clique de virar verdade no banco.
+  if (erroCarregar) {
+    return (
+      <div className="max-w-3xl mx-auto py-12">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h2 className="text-base font-semibold text-red-900">
+                Não deu pra carregar as configurações
+              </h2>
+              <p className="mt-1 text-sm text-red-800">
+                O servidor não respondeu ({erroCarregar}). Os campos estão
+                escondidos de propósito: sem saber o que está valendo agora,
+                salvar gravaria os valores padrão por cima dos seus — comissão,
+                frete e repasse inclusive.
+              </p>
+              <button
+                onClick={carregar}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
+              >
+                <Loader2 className="w-4 h-4" /> Tentar de novo
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
