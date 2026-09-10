@@ -12,15 +12,13 @@ import {
 } from 'recharts';
 import { getOverview } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
+import { brl } from '../utils/dinheiro';
 
 const COLORS = {
   blue: '#2563eb', green: '#22C55E', orange: '#F59E0B', red: '#EF4444',
   sky: '#0ea5e9', gray: '#64748b', purple: '#8b5cf6',
 };
 
-const brl = (v) => new Intl.NumberFormat('pt-BR', {
-  style: 'currency', currency: 'BRL',
-}).format(Number(v) || 0);
 
 /* ------------------------------------------------------------------ *
  * Painel de pendências — a parte que o dashboard não tinha.

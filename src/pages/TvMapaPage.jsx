@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
+import { brl } from '../utils/dinheiro';
 
 const POLL_MS = 60000;
 
@@ -56,8 +57,6 @@ const TILE_URL = import.meta.env.VITE_MAP_TILE_URL ||
 const TILE_ATTR = import.meta.env.VITE_MAP_ATTRIBUTION ||
   '&copy; Stadia Maps &copy; OpenMapTiles &copy; OpenStreetMap';
 
-const brl = (v) =>
-  (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const VEICULO = { bicicleta: '🚲', bike: '🚲', moto: '🛵', motocicleta: '🛵',
                   carro: '🚗', utilitario: '🚚', utilitário: '🚚' };

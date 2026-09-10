@@ -5,6 +5,7 @@ import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
 import { Loader2 } from 'lucide-react';
+import { brl } from '../utils/dinheiro';
 
 const DISCOUNT_TYPES = [
   { value: 'percentage', label: '% Percentual' },
@@ -229,7 +230,7 @@ const CouponsPage = () => {
   const formatValue = (coupon) => {
     if (coupon.discount_type === 'free_delivery') return '—';
     if (coupon.discount_type === 'percentage') return `${coupon.discount_value}%`;
-    return `R$ ${parseFloat(coupon.discount_value || 0).toFixed(2)}`;
+    return brl(parseFloat(coupon.discount_value || 0));
   };
 
   const formatDate = (dateStr) => {
@@ -522,7 +523,7 @@ const CouponsPage = () => {
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
                       {coupon.min_order_value
-                        ? `R$ ${parseFloat(coupon.min_order_value).toFixed(2)}`
+                        ? brl(parseFloat(coupon.min_order_value))
                         : '—'}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">

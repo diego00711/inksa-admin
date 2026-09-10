@@ -1,11 +1,4 @@
-function formatBRL(value) {
-  const n = Number(value ?? 0);
-  try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-  } catch {
-    return `R$ ${n.toFixed(2)}`;
-  }
-}
+import { brl } from '../utils/dinheiro';
 
 export default function PayoutsTable({ payouts }) {
   const rows = Array.isArray(payouts) ? payouts : [];
@@ -44,7 +37,7 @@ export default function PayoutsTable({ payouts }) {
                 {p.period_start ? new Date(p.period_start).toLocaleString() : "-"} — {" "}
                 {p.period_end ? new Date(p.period_end).toLocaleString() : "-"}
               </Td>
-              <Td>{formatBRL(p.total_amount)}</Td>
+              <Td>{brl(p.total_amount)}</Td>
               <Td>
                 {p.order_count} {" "}
                 <span className="text-gray-500">

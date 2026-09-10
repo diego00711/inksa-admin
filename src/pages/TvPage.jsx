@@ -19,11 +19,10 @@ import {
   Bike, Store, Wallet, PiggyBank, Users, AlertTriangle,
 } from 'lucide-react';
 import authService from '../services/authService';
+import { brl } from '../utils/dinheiro';
 
 const POLL_MS = 30000;
 
-const brl = (v) =>
-  (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const int = (v) => Math.round(Number(v) || 0).toLocaleString('pt-BR');
 
 const STATUS_META = {

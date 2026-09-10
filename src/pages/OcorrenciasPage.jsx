@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2, RefreshCw, Phone, CheckCircle2 } from 'lucide-r
 import { listIncidents, resolveIncident, refundIncident, chargeIncidentCourier, confirmIncidentReturn } from '../services/incidents';
 import { NotificationContext } from '../context/NotificationContext';
 import { useConfirm } from '../components/ConfirmProvider.jsx';
+import { brl } from '../utils/dinheiro';
 
 const FAULT_LABELS = {
   customer: 'Culpa do cliente',
@@ -141,7 +142,7 @@ function IncidentCard({ inc, onResolved }) {
     if (!(amt > 0)) { notify('Informe um valor maior que zero', 'error'); return; }
     if (!(await confirm({
       title: 'Descontar do entregador',
-      message: `Lançar R$ ${amt.toFixed(2)} como dívida do entregador ${inc.courier_name || ''}? Será abatido do próximo repasse.`,
+      message: `Lançar ${brl(amt)} como dívida do entregador ${inc.courier_name || ''}? Será abatido do próximo repasse.`,
       confirmText: 'Descontar', danger: true,
     }))) return;
     setCharging(true);
@@ -187,7 +188,7 @@ function IncidentCard({ inc, onResolved }) {
     // Confirmação explícita: reembolso é destrutivo (move dinheiro de verdade).
     if (!(await confirm({
       title: 'Processar reembolso',
-      message: `Reembolsar R$ ${Number(inc.refund_amount || 0).toFixed(2)} ao cliente? Isso devolve o dinheiro de verdade e não pode ser desfeito.`,
+      message: `Reembolsar ${brl(Number(inc.refund_amount || 0))} ao cliente? Isso devolve o dinheiro de verdade e não pode ser desfeito.`,
       confirmText: 'Reembolsar',
       danger: true,
     }))) return;
@@ -239,7 +240,7 @@ function IncidentCard({ inc, onResolved }) {
         </div>
         <div>
           <p className="text-xs text-gray-400">Valor do pedido</p>
-          <p className="text-gray-800 font-semibold">R$ {Number(inc.total_amount || 0).toFixed(2)}</p>
+          <p className="text-gray-800 font-semibold">{brl(Number(inc.total_amount || 0))}</p>
         </div>
         <div>
           <p className="text-xs text-gray-400">Tentou contato?</p>
@@ -260,7 +261,7 @@ function IncidentCard({ inc, onResolved }) {
       {Number(inc.refund_amount) > 0 && (
         <div className={`rounded-lg p-2.5 mb-3 text-sm flex items-center justify-between gap-2 ${inc.refund_status === 'done' ? 'bg-green-50' : 'bg-purple-50'}`}>
           <span className={inc.refund_status === 'done' ? 'text-green-700' : 'text-purple-700'}>
-            Reembolso ao cliente: <b>R$ {Number(inc.refund_amount).toFixed(2)}</b>
+            Reembolso ao cliente: <b>{brl(Number(inc.refund_amount))}</b>
             {inc.refund_status === 'done' ? ' — processado ✓' : ' — pendente'}
           </span>
           {refundPending && (
@@ -294,7 +295,7 @@ function IncidentCard({ inc, onResolved }) {
       {inc.delivery_id && (
         alreadyCharged ? (
           <div className="rounded-lg p-2.5 mb-3 text-sm bg-orange-50 text-orange-800">
-            Descontado do entregador: <b>R$ {Number(inc.courier_charge).toFixed(2)}</b> (lançado na dívida)
+            Descontado do entregador: <b>{brl(Number(inc.courier_charge))}</b> (lançado na dívida)
           </div>
         ) : (
           <div className="rounded-lg p-2.5 mb-3 bg-gray-50 border border-gray-200 flex items-end gap-2">

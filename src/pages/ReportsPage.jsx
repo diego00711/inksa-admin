@@ -7,6 +7,7 @@ import {
   DollarSign, ShoppingBag, Users, Receipt, XCircle, Clock, Store, Truck,
 } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
+import { brl } from '../utils/dinheiro';
 
 const TABS = [
   { id: 'metricas',   label: 'Métricas',    icon: BarChart2,   subtitle: 'Indicadores agregados do período' },
@@ -126,7 +127,7 @@ function fmt(val) {
 
 function fmtMoney(val) {
   if (val == null || val === '') return '—';
-  return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return brl(val);
 }
 
 function fmtDate(val) {

@@ -2,9 +2,8 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { listCashDebts, settleCashDebt } from "../services/payouts";
 import { NotificationContext } from "../context/NotificationContext";
 import { Loader2, Banknote, HandCoins } from "lucide-react";
+import { brl } from '../utils/dinheiro';
 
-const brl = (v) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 // Modal de acerto: registra quanto o entregador pagou/depositou.
 function SettleModal({ open, driver, onClose, onConfirm, loading }) {

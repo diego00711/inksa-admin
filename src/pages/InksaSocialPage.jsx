@@ -8,11 +8,10 @@ import {
   Smartphone, CheckCircle2, Radio, Hourglass, Flag,
   History, Trash2, Plus, ExternalLink,
 } from 'lucide-react';
+import { brl } from '../utils/dinheiro';
 
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
 
-const money = (v) =>
-  (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // Linha editável do histórico (prestação de contas de um Dia I)
 function EventRow({ event, onSaved, onDeleted }) {
@@ -68,7 +67,7 @@ function EventRow({ event, onSaved, onDeleted }) {
           <span className="text-xs text-gray-500">{event.start_time || '—'} – {event.end_time || '—'}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-bold text-rose-600">{money(event.raised)}</span>
+          <span className="font-bold text-rose-600">{brl(event.raised)}</span>
           <span className="text-xs text-gray-500">{event.orders_count} pedido(s)</span>
           <button onClick={remove} className="p-1.5 rounded hover:bg-red-50 text-red-500" title="Remover">
             <Trash2 className="w-4 h-4" />
@@ -384,7 +383,7 @@ export default function InksaSocialPage() {
                       ? 'Arrecadado até agora'
                       : 'Total arrecadado'}
                 </p>
-                <p className="text-4xl font-extrabold mt-1">{money(status.raised)}</p>
+                <p className="text-4xl font-extrabold mt-1">{brl(status.raised)}</p>
                 {status.phase !== 'scheduled' && (
                   <p className="text-xs text-white/85 mt-1">{status.orders_count} pedido(s) na janela</p>
                 )}
@@ -394,11 +393,11 @@ export default function InksaSocialPage() {
                 <div className="grid grid-cols-2 gap-3 text-center">
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs text-gray-500">Comissão</p>
-                    <p className="font-bold text-gray-800">{money(status.breakdown.commission)}</p>
+                    <p className="font-bold text-gray-800">{brl(status.breakdown.commission)}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs text-gray-500">Margem de frete</p>
-                    <p className="font-bold text-gray-800">{money(status.breakdown.margin)}</p>
+                    <p className="font-bold text-gray-800">{brl(status.breakdown.margin)}</p>
                   </div>
                 </div>
               )}

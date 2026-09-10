@@ -12,9 +12,8 @@ import {
 import { NotificationContext } from "../context/NotificationContext";
 import { Loader2, Copy, Zap } from "lucide-react";
 import PayoutsProcessModal from "../components/PayoutsProcessModal";
+import { brl } from '../utils/dinheiro';
 
-const brl = (v) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 // Copia texto pra área de transferência (com fallback pra navegadores antigos)
 async function copyText(text) {

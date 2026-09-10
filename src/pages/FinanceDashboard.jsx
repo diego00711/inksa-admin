@@ -5,6 +5,7 @@ import KpiCard from '../components/KpiCard';
 import TransactionsTable from '../components/TransactionsTable';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, ShoppingCart, TicketPercent, Clock3, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { brl } from '../utils/dinheiro';
 
 export default function FinanceDashboard() {
   const [range, setRange] = useState(() => {
@@ -113,7 +114,7 @@ export default function FinanceDashboard() {
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Receita real da plataforma</p>
             <p className="text-2xl font-bold text-emerald-800">
-              {metricsLoading ? '…' : formatBRL(metrics?.platformRevenue)}
+              {metricsLoading ? '…' : brl(metrics?.platformRevenue)}
             </p>
             <p className="text-xs text-emerald-700/80 mt-0.5">
               Comissão + margem de frete sobre pedidos concluídos
@@ -123,13 +124,13 @@ export default function FinanceDashboard() {
             <div>
               <p className="text-xs text-emerald-700/80">Comissão</p>
               <p className="text-lg font-semibold text-emerald-800">
-                {metricsLoading ? '…' : formatBRL(metrics?.platformCommission)}
+                {metricsLoading ? '…' : brl(metrics?.platformCommission)}
               </p>
             </div>
             <div>
               <p className="text-xs text-emerald-700/80">Margem de frete</p>
               <p className="text-lg font-semibold text-emerald-800">
-                {metricsLoading ? '…' : formatBRL(metrics?.deliveryMargin)}
+                {metricsLoading ? '…' : brl(metrics?.deliveryMargin)}
               </p>
             </div>
           </div>
@@ -139,7 +140,7 @@ export default function FinanceDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           title="Receita Total (GMV)"
-          value={metricsLoading ? '…' : formatBRL(metrics?.totalRevenue)}
+          value={metricsLoading ? '…' : brl(metrics?.totalRevenue)}
           icon={<DollarSign size={18} />}
         />
         <KpiCard
@@ -149,7 +150,7 @@ export default function FinanceDashboard() {
         />
         <KpiCard
           title="Ticket Médio"
-          value={metricsLoading ? '…' : formatBRL(metrics?.averageTicket)}
+          value={metricsLoading ? '…' : brl(metrics?.averageTicket)}
           icon={<TicketPercent size={18} />}
         />
         <KpiCard
@@ -213,9 +214,4 @@ export default function FinanceDashboard() {
       </div>
     </div>
   );
-}
-
-function formatBRL(v) {
-  const n = Number(v || 0);
-  return `R$ ${n.toFixed(2)}`;
 }

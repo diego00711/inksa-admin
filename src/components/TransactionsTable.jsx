@@ -1,3 +1,4 @@
+import { brl } from '../utils/dinheiro';
 export default function TransactionsTable({ items = [], loading }) {
   return (
     <div className="overflow-x-auto rounded-lg border bg-white">
@@ -25,7 +26,7 @@ export default function TransactionsTable({ items = [], loading }) {
                 <td className="px-3 py-2">#{t.order_code || t.order_id || t.id}</td>
                 <td className="px-3 py-2">{t.customer_name || '-'}</td>
                 <td className="px-3 py-2">{t.restaurant_name || '-'}</td>
-                <td className="px-3 py-2 font-medium">R$ {Number(t.amount || 0).toFixed(2)}</td>
+                <td className="px-3 py-2 font-medium">{brl(Number(t.amount || 0))}</td>
                 <td className="px-3 py-2">{t.status || '-'}</td>
                 <td className="px-3 py-2">{t.payment_method || '-'}</td>
               </tr>

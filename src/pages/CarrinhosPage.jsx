@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ShoppingCart, BellRing, RefreshCw, CheckCircle2, Phone, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { brl } from '../utils/dinheiro';
 
 /**
  * Carrinhos parados.
@@ -26,7 +27,6 @@ import authService from '../services/authService';
  * carrinho velho de testador — esvaziar o carrinho de alguém pelas costas
  * seria outra coisa, e uma coisa ruim.
  */
-const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
 
 function idade(minutos) {
   if (minutos < 60) return `${minutos} min`;

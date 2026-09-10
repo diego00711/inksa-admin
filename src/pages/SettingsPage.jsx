@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, DollarSign, Globe, Save, CheckCircle, AlertCircle, Loader2, Truck, Bike, Calculator } from 'lucide-react';
 import authService from '../services/authService';
+import { brl } from '../utils/dinheiro';
 
 // Frete que o cliente paga (modelo 'platform'): taxa fixa + por km acima do limite grátis.
 function calcFreteCobrado(f, km) {
@@ -410,8 +411,8 @@ export default function SettingsPage() {
         </div>
         <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-100 text-xs text-blue-800">
           <strong>Exemplo:</strong> administração de {fields.financial_delivery_commission || '0'}%
-          {' '}→ num frete de R$ 12,50, o entregador recebe R$ {(12.5 * (1 - adminRate(fields))).toFixed(2)}
-          {' '}e a plataforma retém R$ {(12.5 * adminRate(fields)).toFixed(2)}.
+          {' '}→ num frete de R$ 12,50, o entregador recebe {brl(12.5 * (1 - adminRate(fields)))}
+          {' '}e a plataforma retém {brl(12.5 * adminRate(fields))}.
         </div>
       </SectionCard>
 
@@ -450,15 +451,15 @@ export default function SettingsPage() {
               </div>
               <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
                 <p className="text-xs text-gray-500">Frete cobrado do cliente</p>
-                <p className="text-lg font-semibold text-gray-900">R$ {cobrado.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-gray-900">{brl(cobrado)}</p>
               </div>
               <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
                 <p className="text-xs text-gray-500">Repasse ao entregador</p>
-                <p className="text-lg font-semibold text-gray-900">R$ {repasse.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-gray-900">{brl(repasse)}</p>
               </div>
               <div className={`p-3 rounded-md border ${negativa ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
                 <p className={`text-xs ${negativa ? 'text-red-600' : 'text-green-700'}`}>Margem da plataforma</p>
-                <p className={`text-lg font-bold ${negativa ? 'text-red-700' : 'text-green-700'}`}>R$ {margem.toFixed(2)}</p>
+                <p className={`text-lg font-bold ${negativa ? 'text-red-700' : 'text-green-700'}`}>{brl(margem)}</p>
               </div>
             </div>
           );

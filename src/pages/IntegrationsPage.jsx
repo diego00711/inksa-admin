@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { brl } from '../utils/dinheiro';
 
 function useHealthCheck() {
   const [health, setHealth] = useState(null);
@@ -275,7 +276,7 @@ export default function IntegrationsPage() {
                   <dd className={`font-medium ${Number(asaas.result.saldo) > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {asaas.result.saldo === null || asaas.result.saldo === undefined
                       ? '—'
-                      : Number(asaas.result.saldo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      : brl(asaas.result.saldo)}
                     {Number(asaas.result.saldo) <= 0 && ' — sem saldo o PIX de repasse falha'}
                   </dd>
                 </div>
