@@ -17,6 +17,7 @@ import {
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 function useHealthCheck() {
   const [health, setHealth] = useState(null);
@@ -38,7 +39,7 @@ function useHealthCheck() {
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
         setError('Timeout — backend não respondeu em 10 s');
       } else {
-        setError(err.message || 'Falha ao contatar o servidor');
+        setError(mensagemDeErro(err, 'Falha ao contatar o servidor'));
       }
       setHealth(null);
     } finally {

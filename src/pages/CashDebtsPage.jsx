@@ -3,6 +3,7 @@ import { listCashDebts, settleCashDebt } from "../services/payouts";
 import { NotificationContext } from "../context/NotificationContext";
 import { Loader2, Banknote, HandCoins } from "lucide-react";
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 
 // Modal de acerto: registra quanto o entregador pagou/depositou.
@@ -86,7 +87,7 @@ export default function CashDebtsPage() {
       const res = await listCashDebts();
       setItems(res.items || []);
     } catch (e) {
-      notify(`Falha ao carregar dívidas: ${e.message}`, "error");
+      notify(`Falha ao carregar dívidas: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,7 @@ export default function CashDebtsPage() {
       setTarget(null);
       await fetchDebts();
     } catch (e) {
-      notify(`Erro no acerto: ${e.message}`, "error");
+      notify(`Erro no acerto: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setSaving(false);
     }

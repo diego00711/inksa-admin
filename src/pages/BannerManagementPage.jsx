@@ -5,6 +5,7 @@ import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
 import { Loader2 } from 'lucide-react';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 // --- Helpers de agendamento (datetime-local <-> ISO) ---
 // datetime-local trabalha em horário LOCAL; o backend guarda timestamptz (UTC).
@@ -134,7 +135,7 @@ const BannerManagementPage = () => {
       
     } catch (error) {
       console.error('Erro ao carregar banners:', error);
-      setError('Erro ao carregar banners: ' + error.message);
+      setError('Erro ao carregar banners: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
       setBanners([]);
     } finally {
       setLoading(false);
@@ -187,7 +188,7 @@ const BannerManagementPage = () => {
       
     } catch (error) {
       console.error('Erro no upload:', error);
-      setError('Erro no upload da imagem: ' + error.message);
+      setError('Erro no upload da imagem: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
       setImagePreview('');
     } finally {
       setUploading(false);
@@ -252,8 +253,8 @@ const BannerManagementPage = () => {
       await loadBanners();
       resetForm();
     } catch (error) {
-      setError('Erro ao salvar banner: ' + error.message);
-      notify('Erro ao salvar banner: ' + error.message, 'error');
+      setError('Erro ao salvar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao salvar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     }
   };
 
@@ -302,8 +303,8 @@ const BannerManagementPage = () => {
       notify('Banner deletado com sucesso!', 'success');
       await loadBanners();
     } catch (error) {
-      setError('Erro ao deletar banner: ' + error.message);
-      notify('Erro ao deletar banner: ' + error.message, 'error');
+      setError('Erro ao deletar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao deletar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     }
   };
 
@@ -325,8 +326,8 @@ const BannerManagementPage = () => {
       notify(`Banner ${banner.is_active ? 'desativado' : 'ativado'} com sucesso!`, 'success');
       await loadBanners();
     } catch (error) {
-      setError('Erro ao alterar status: ' + error.message);
-      notify('Erro ao alterar status: ' + error.message, 'error');
+      setError('Erro ao alterar status: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao alterar status: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     }
   };
 

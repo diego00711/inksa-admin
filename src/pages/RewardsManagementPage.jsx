@@ -7,6 +7,7 @@ import { NotificationContext } from '../context/NotificationContext';
 import { useConfirm } from '../components/ConfirmProvider.jsx';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const REWARD_TYPES = [
   { value: 'gift',         label: 'Brinde físico' },
@@ -185,7 +186,7 @@ export default function RewardsManagementPage() {
         const uploadData = await uploadRes.json();
         uploadedImageUrl = uploadData.data?.url ?? uploadData.url ?? '';
       } catch (e) {
-        notify(`Erro ao enviar imagem: ${e.message}`, 'error');
+        notify(`Erro ao enviar imagem: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
         setSaving(false);
         setUploadingImage(false);
         return;
@@ -218,7 +219,7 @@ export default function RewardsManagementPage() {
       setShowModal(false);
       loadRewards(); loadSummary();
     } catch (e) {
-      notify(`Erro: ${e.message}`, 'error');
+      notify(`Erro: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
     } finally {
       setSaving(false);
     }

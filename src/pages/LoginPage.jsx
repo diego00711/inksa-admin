@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // NOVO: Importar o nosso hook useAuth
 import { useAuth } from '../context/AuthContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 export function LoginPage() {
   // NOVO: Obter a função de login do nosso contexto
@@ -32,7 +33,8 @@ export function LoginPage() {
 
     } catch (err) {
       console.error("ERRO CAPTURADO no handleSubmit:", err);
-      setError(err.message);
+      setError(mensagemDeErro(err, 'Não consegui entrar agora.',
+        'Sem conexão. Tente entrar de novo quando o sinal voltar.'));
     } finally {
       setIsLoading(false);
     }

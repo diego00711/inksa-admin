@@ -10,6 +10,7 @@ import {
 import authService from '../services/authService';
 import { NotificationContext } from '../context/NotificationContext';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const data = (s) => (s ? new Date(s).toLocaleDateString('pt-BR') : '—');
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
@@ -53,7 +54,7 @@ export default function ReferralsPage() {
       setDados(d);
       setForm({ ...d.config });
     } catch (e) {
-      setErro(e?.message || 'Erro ao carregar');
+      setErro(mensagemDeErro(e, 'Erro ao carregar'));
     }
   }, []);
 
@@ -68,7 +69,7 @@ export default function ReferralsPage() {
       setTimeout(() => setSalvo(false), 2500);
       carregar();
     } catch (e) {
-      notify('Erro ao salvar: ' + (e?.message || e), 'error');
+      notify('Erro ao salvar: ' + mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     } finally {
       setSalvando(false);
     }

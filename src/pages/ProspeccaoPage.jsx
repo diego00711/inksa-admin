@@ -6,6 +6,7 @@ import {
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 import {
   desenharArte, carregarLogo, mensagemProspeccao, FORMATOS, FUNDADOR_ATE,
 } from '../utils/arteProspeccao';
@@ -63,7 +64,7 @@ export default function ProspeccaoPage() {
       if (!r.ok) throw new Error(j?.error || j?.message || 'Falha ao carregar');
       setLinhas(j.sugestoes || []);
     } catch (e) {
-      setErro(e.message || 'Falha ao carregar');
+      setErro(mensagemDeErro(e, 'Falha ao carregar'));
     } finally {
       setCarregando(false);
     }

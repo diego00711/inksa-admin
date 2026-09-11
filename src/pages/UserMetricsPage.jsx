@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
 import VisitasSite from '../components/VisitasSite';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const TYPE_LABEL = {
   client: 'Cliente',
@@ -65,7 +66,7 @@ export default function UserMetricsPage() {
       const json = await res.json();
       setData(json.data || json);
     } catch (e) {
-      setError(e.message || 'Erro ao carregar métricas');
+      setError(mensagemDeErro(e, 'Erro ao carregar métricas'));
     } finally {
       setLoading(false);
       setRefreshing(false);

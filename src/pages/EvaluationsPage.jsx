@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw, Star, Users } from 'lucide-react';
 import { fetchEvaluationSummary, fetchEvaluations } from '../services/evaluations';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 import {
   PERIOD_OPTIONS,
   SCOPE_OPTIONS,
@@ -49,7 +50,7 @@ export default function EvaluationsPage() {
         setSummary(createEmptySummary());
         setEvaluations([]);
         setLastUpdatedAt(null);
-        setError(err?.message || 'Não foi possível carregar os dados.');
+        setError(mensagemDeErro(err, 'Não foi possível carregar os dados.'));
       } finally {
         if (!cancelled) {
           setIsLoading(false);

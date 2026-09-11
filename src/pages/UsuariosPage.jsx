@@ -3,6 +3,7 @@ import authService from '../services/authService';
 import { Loader2, Users, ShoppingBag, Store, Truck, Shield, MoreVertical, KeyRound, Ban, CheckCircle2, Trash2, Star, Pencil, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { NotificationContext } from '../context/NotificationContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const PAGE_SIZE = 20;
 
@@ -151,7 +152,8 @@ export function UsuariosPage() {
       // O backend retorna { status, data }, então pegamos a lista:
       setUsers(usersResp.data || []);
     } catch (err) {
-      setError(err.message);
+      setError(mensagemDeErro(err, 'Não consegui carregar os usuários.',
+        'Sem conexão. A lista carrega assim que o sinal voltar.'));
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +167,7 @@ export function UsuariosPage() {
       const res = await authService.resetUserPassword(u.id);
       notify(res?.message || `E-mail de redefinição enviado para ${u.email}.`, 'success');
     } catch (err) {
-      notify(err.message || 'Falha ao enviar redefinição de senha.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao enviar redefinição de senha.'), 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -181,7 +183,7 @@ export function UsuariosPage() {
       notify(`Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso.`, 'success');
       setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_active: newStatus === 'active' } : x)));
     } catch (err) {
-      notify(err.message || 'Falha ao alterar status.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao alterar status.'), 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -198,7 +200,7 @@ export function UsuariosPage() {
         : `Selo de Fundador removido de ${u.full_name || u.email}.`, 'success');
       setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, fundador: next } : x)));
     } catch (err) {
-      notify(err.message || 'Falha ao alterar o selo de Fundador.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao alterar o selo de Fundador.'), 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -215,7 +217,7 @@ export function UsuariosPage() {
         : `Aprovação de ${u.full_name || u.email} removida.`, 'success');
       setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, courier_approved: next } : x)));
     } catch (err) {
-      notify(err.message || 'Falha ao alterar a aprovação do entregador.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao alterar a aprovação do entregador.'), 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -229,7 +231,7 @@ export function UsuariosPage() {
       notify(`Usuário ${u.email} excluído.`, 'success');
       setUsers((prev) => prev.filter((x) => x.id !== u.id));
     } catch (err) {
-      notify(err.message || 'Falha ao excluir usuário.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao excluir usuário.'), 'error');
     } finally {
       setBusyUserId(null);
     }
@@ -246,7 +248,7 @@ export function UsuariosPage() {
       const detail = resp?.data ?? resp;
       setEditForm(detailToForm(detail));
     } catch (err) {
-      notify(err.message || 'Falha ao carregar dados do usuário.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao carregar dados do usuário.'), 'error');
       setEditUser(null);
     } finally {
       setEditLoading(false);
@@ -274,7 +276,7 @@ export function UsuariosPage() {
       }));
       setEditUser(null);
     } catch (err) {
-      notify(err.message || 'Falha ao salvar as alterações.', 'error');
+      notify(mensagemDeErro(err, 'Falha ao salvar as alterações.'), 'error');
     } finally {
       setEditSaving(false);
     }

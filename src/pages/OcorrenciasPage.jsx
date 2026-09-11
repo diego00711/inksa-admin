@@ -5,6 +5,7 @@ import { listIncidents, resolveIncident, refundIncident, chargeIncidentCourier, 
 import { NotificationContext } from '../context/NotificationContext';
 import { useConfirm } from '../components/ConfirmProvider.jsx';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const FAULT_LABELS = {
   customer: 'Culpa do cliente',
@@ -151,7 +152,7 @@ function IncidentCard({ inc, onResolved }) {
       notify('Desconto lançado na dívida do entregador', 'success');
       onResolved();
     } catch (e) {
-      notify(e.message || 'Erro ao descontar do entregador', 'error');
+      notify(mensagemDeErro(e, 'Erro ao descontar do entregador'), 'error');
     } finally { setCharging(false); }
   };
 
@@ -167,7 +168,7 @@ function IncidentCard({ inc, onResolved }) {
       notify('Devolução confirmada', 'success');
       onResolved();
     } catch (e) {
-      notify(e.message || 'Erro ao confirmar devolução', 'error');
+      notify(mensagemDeErro(e, 'Erro ao confirmar devolução'), 'error');
     } finally { setConfirmingReturn(false); }
   };
 
@@ -178,7 +179,7 @@ function IncidentCard({ inc, onResolved }) {
       notify('Ocorrência resolvida com sucesso', 'success');
       onResolved();
     } catch (e) {
-      notify(e.message || 'Erro ao resolver ocorrência', 'error');
+      notify(mensagemDeErro(e, 'Erro ao resolver ocorrência'), 'error');
     } finally {
       setSaving(false);
     }
@@ -198,7 +199,7 @@ function IncidentCard({ inc, onResolved }) {
       notify('Reembolso processado com sucesso', 'success');
       onResolved();
     } catch (e) {
-      notify(e.message || 'Erro ao processar reembolso', 'error');
+      notify(mensagemDeErro(e, 'Erro ao processar reembolso'), 'error');
     } finally {
       setRefunding(false);
     }

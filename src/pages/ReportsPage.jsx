@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const TABS = [
   { id: 'metricas',   label: 'Métricas',    icon: BarChart2,   subtitle: 'Indicadores agregados do período' },
@@ -343,7 +344,7 @@ export default function ReportsPage() {
       }
       setData(result);
     } catch (err) {
-      setError(err.message || 'Falha ao carregar relatório');
+      setError(mensagemDeErro(err, 'Falha ao carregar relatório'));
     } finally {
       setLoading(false);
     }

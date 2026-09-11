@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Globe, RefreshCw, Users, Smartphone, Monitor, ArrowUpRight } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const NOMES = {
   direto: 'Direto (digitou ou salvou)',
@@ -48,7 +49,7 @@ export default function VisitasSite() {
       if (!r.ok) throw new Error(j?.error || 'Falha ao carregar');
       setD(j);
     } catch (e) {
-      setErro(e.message || 'Falha ao carregar');
+      setErro(mensagemDeErro(e, 'Falha ao carregar'));
     } finally {
       setCarregando(false);
     }

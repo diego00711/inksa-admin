@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw, Save, Trophy, Zap } from 'lucide-react';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 import {
   fetchGamificationLeaderboard,
   fetchGamificationOverview,
@@ -60,7 +61,7 @@ export default function GamificationPage() {
         setAchievements([]);
         setLeaderboard([]);
         setLastUpdatedAt(null);
-        setError(err?.message || 'Não foi possível carregar os dados.');
+        setError(mensagemDeErro(err, 'Não foi possível carregar os dados.'));
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -286,7 +287,7 @@ function PointRulesSection() {
       );
     } catch (err) {
       console.error('Erro ao carregar regras de pontuação:', err);
-      setError(err?.message || 'Não foi possível carregar as regras de pontuação.');
+      setError(mensagemDeErro(err, 'Não foi possível carregar as regras de pontuação.'));
     } finally {
       setLoading(false);
     }
@@ -325,7 +326,7 @@ function PointRulesSection() {
       setTimeout(() => setSavedKey((key) => (key === rule.action_key ? null : key)), 2000);
     } catch (err) {
       console.error('Erro ao salvar regra de pontuação:', err);
-      setError(err?.message || 'Não foi possível salvar a regra.');
+      setError(mensagemDeErro(err, 'Não foi possível salvar a regra.'));
     } finally {
       setSavingKey(null);
     }

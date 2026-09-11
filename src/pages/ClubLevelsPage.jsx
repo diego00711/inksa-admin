@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useContext } from 'react';
 import authService from '../services/authService';
 import { NotificationContext } from '../context/NotificationContext';
 import { Loader2, Save, Trophy, Bike, Store, User, CheckCircle2 } from 'lucide-react';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const AUDIENCES = [
   { key: 'client',     label: 'Clientes',     icon: User,  unit: 'pedidos/mês' },
@@ -81,7 +82,7 @@ function LevelCard({ level, unit, benefitFields, onSaved }) {
       onSaved?.();
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      notify('Erro ao salvar: ' + (e?.message || e), 'error');
+      notify('Erro ao salvar: ' + mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -187,7 +188,7 @@ export default function ClubLevelsPage() {
       const res = await authService.getClubLevels(aud);
       setLevels(res?.data ?? []);
     } catch (e) {
-      setError(e?.message || 'Erro ao carregar níveis');
+      setError(mensagemDeErro(e, 'Erro ao carregar níveis'));
       setLevels([]);
     } finally {
       setLoading(false);

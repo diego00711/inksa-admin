@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertTriangle, RefreshCw, Store, Bike, Users, Receipt } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 /**
  * Prontidão da praça.
@@ -51,7 +52,7 @@ export default function ProntidaoPage() {
       if (!r.ok) throw new Error(j?.message || 'Falha ao carregar');
       setDados(j.data);
     } catch (e) {
-      setErro(e.message || 'Falha ao carregar');
+      setErro(mensagemDeErro(e, 'Falha ao carregar'));
     } finally {
       setCarregando(false);
     }

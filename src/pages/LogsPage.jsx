@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Search, RefreshCw, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const PAGE_SIZE = 25;
 
@@ -58,7 +59,8 @@ export default function LogsPage() {
       const total = data.total_pages || data.pages || Math.ceil((data.total || items.length) / PAGE_SIZE) || 1;
       setTotalPages(Math.max(1, total));
     } catch (err) {
-      setError(err.message);
+      setError(mensagemDeErro(err, 'Não consegui carregar os registros.',
+        'Sem conexão. Os registros carregam assim que o sinal voltar.'));
     } finally {
       setLoading(false);
     }

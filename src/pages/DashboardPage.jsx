@@ -13,6 +13,7 @@ import {
 import { getOverview } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const COLORS = {
   blue: '#2563eb', green: '#22C55E', orange: '#F59E0B', red: '#EF4444',
@@ -323,7 +324,7 @@ export function DashboardPage() {
       });
     } catch (err) {
       console.error(err);
-      setError(err?.message || 'Erro ao buscar os dados do dashboard.');
+      setError(mensagemDeErro(err, 'Erro ao buscar os dados do dashboard.'));
       // Zeros, nunca número inventado: dashboard que mente é pior que vazio.
       setDados({ kpis: {}, chartData: [], clientsGrowth: [], ordersStatus: {}, recentOrders: [], operacao: {} });
     }

@@ -4,6 +4,7 @@ import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 function getDisplayName(profile, fallbackUser) {
   return (
@@ -89,7 +90,7 @@ export default function ProfilePage() {
       setIsEditing(false);
       notify('Perfil atualizado com sucesso!', 'success');
     } catch (err) {
-      notify(err.message || 'Erro ao salvar perfil', 'error');
+      notify(mensagemDeErro(err, 'Erro ao salvar perfil'), 'error');
     } finally {
       setEditSaving(false);
     }
@@ -114,7 +115,8 @@ export default function ProfilePage() {
           await fetchAdminLogs(token, profileData.email);
         }
       } catch (err) {
-        setError(err.message);
+        setError(mensagemDeErro(err, 'Não consegui carregar o perfil.',
+        'Sem conexão. O perfil carrega assim que o sinal voltar.'));
         const stored = authService.getCurrentAdmin();
         if (stored) setProfile(stored);
         await fetchAdminLogs(authService.getToken(), null);

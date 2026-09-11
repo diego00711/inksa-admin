@@ -9,6 +9,7 @@ import {
   History, Trash2, Plus, ExternalLink,
 } from 'lucide-react';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const inputCls = 'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
 
@@ -41,7 +42,7 @@ function EventRow({ event, onSaved, onDeleted }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      notify(e.message || 'Erro ao salvar evento.', 'error');
+      notify(mensagemDeErro(e, 'Erro ao salvar evento.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -53,7 +54,7 @@ function EventRow({ event, onSaved, onDeleted }) {
       await authService.deleteSocialEvent(event.id);
       onDeleted(event.id);
     } catch (e) {
-      notify(e.message || 'Erro ao remover evento.', 'error');
+      notify(mensagemDeErro(e, 'Erro ao remover evento.'), 'error');
     }
   };
 
@@ -159,7 +160,7 @@ export default function InksaSocialPage() {
         showInApps: (s.social_day_show_in_apps || '').toLowerCase() === 'true',
       });
     } catch (e) {
-      setError(e.message || 'Erro ao carregar configurações.');
+      setError(mensagemDeErro(e, 'Erro ao carregar configurações.'));
     } finally {
       setLoading(false);
     }
@@ -209,7 +210,7 @@ export default function InksaSocialPage() {
       });
       if (res?.data) setEvents((prev) => [res.data, ...prev]);
     } catch (e) {
-      setError(e.message || 'Erro ao registrar evento.');
+      setError(mensagemDeErro(e, 'Erro ao registrar evento.'));
     } finally {
       setRegistering(false);
     }
@@ -240,7 +241,7 @@ export default function InksaSocialPage() {
       setTimeout(() => setSaved(false), 3000);
       loadStatus();
     } catch (e) {
-      setError(e.message || 'Erro ao salvar.');
+      setError(mensagemDeErro(e, 'Erro ao salvar.'));
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useContext } from 'react';
 import AuthService from '../services/authService';
 import { Loader2, Pencil, Star, Zap, CheckCircle2, Ban } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 export function RestaurantesPage() {
   const { notify } = useContext(NotificationContext);
@@ -101,7 +102,7 @@ export function RestaurantesPage() {
       const data = await AuthService.getAllRestaurants();
       setRestaurants(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Não foi possível carregar os restaurantes.');
+      setError(mensagemDeErro(err, 'Não foi possível carregar os restaurantes.'));
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +152,7 @@ export function RestaurantesPage() {
       handleCloseModal();
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      notify(`Erro ao salvar as alterações: ${error.message}`, 'error');
+      notify(`Erro ao salvar as alterações: ${mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -169,7 +170,7 @@ export function RestaurantesPage() {
       );
       notify(newApproved ? 'Restaurante aprovado!' : 'Aprovação removida.', 'success');
     } catch (err) {
-      notify(`Erro ao atualizar aprovação: ${err.message}`, 'error');
+      notify(`Erro ao atualizar aprovação: ${mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
     } finally {
       setApprovingId(null);
     }
@@ -189,7 +190,7 @@ export function RestaurantesPage() {
         ? 'Restaurante marcado como Parceiro Fundador (comissão pela metade).'
         : 'Selo de Fundador removido.', 'success');
     } catch (err) {
-      notify(`Erro ao atualizar Fundador: ${err.message}`, 'error');
+      notify(`Erro ao atualizar Fundador: ${mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
     } finally {
       setFoundingId(null);
     }

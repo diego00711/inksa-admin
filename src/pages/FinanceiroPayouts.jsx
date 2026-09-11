@@ -13,6 +13,7 @@ import { NotificationContext } from "../context/NotificationContext";
 import { Loader2, Copy, Zap } from "lucide-react";
 import PayoutsProcessModal from "../components/PayoutsProcessModal";
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 
 // Copia texto pra área de transferência (com fallback pra navegadores antigos)
@@ -416,7 +417,7 @@ export default function FinanceiroPayouts() {
       setTotal(res.total || 0);
     } catch (e) {
       console.error(e);
-      notify(`Falha ao carregar payouts: ${e.message}`, "error");
+      notify(`Falha ao carregar payouts: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setLoading(false);
     }
@@ -456,7 +457,7 @@ export default function FinanceiroPayouts() {
       await fetchPage();
     } catch (e) {
       console.error(e);
-      notify(`Erro ao processar: ${e.message}`, "error");
+      notify(`Erro ao processar: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setProcessLoading(false);
     }
@@ -472,7 +473,7 @@ export default function FinanceiroPayouts() {
       await fetchPage();
     } catch (e) {
       console.error(e);
-      notify(`Erro ao marcar pago: ${e.message}`, "error");
+      notify(`Erro ao marcar pago: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setMarkPaidLoading(false);
     }
@@ -488,7 +489,7 @@ export default function FinanceiroPayouts() {
       await fetchPage();
     } catch (e) {
       console.error(e);
-      notify(`Falha no PIX automático: ${e.message}`, "error");
+      notify(`Falha no PIX automático: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setAutoPayLoading(false);
     }
@@ -504,7 +505,7 @@ export default function FinanceiroPayouts() {
       await fetchPage();
     } catch (e) {
       console.error(e);
-      notify(`Erro ao cancelar: ${e.message}`, "error");
+      notify(`Erro ao cancelar: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setCancelLoading(false);
     }
@@ -520,7 +521,7 @@ export default function FinanceiroPayouts() {
       setViewDetail(res);
     } catch (e) {
       console.error(e);
-      notify(`Erro ao carregar detalhes: ${e.message}`, "error");
+      notify(`Erro ao carregar detalhes: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
     } finally {
       setViewLoading(false);
     }

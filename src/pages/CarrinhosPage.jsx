@@ -3,6 +3,7 @@ import { ShoppingCart, BellRing, RefreshCw, CheckCircle2, Phone, Trash2 } from '
 import { API_BASE_URL } from '../services/api';
 import authService from '../services/authService';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 /**
  * Carrinhos parados.
@@ -55,7 +56,7 @@ export default function CarrinhosPage() {
       if (!r.ok) throw new Error(j?.message || 'Falha ao carregar');
       setDados(j.data);
     } catch (e) {
-      setErro(e.message || 'Falha ao carregar');
+      setErro(mensagemDeErro(e, 'Falha ao carregar'));
     } finally {
       setCarregando(false);
     }

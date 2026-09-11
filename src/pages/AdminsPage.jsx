@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import adminsService from '../services/admins';
 import { NotificationContext } from '../context/NotificationContext';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const ROLE_OPTIONS = [
   { value: 'super_admin', label: 'Super Admin', description: 'Acesso completo a todas as áreas e configurações.' },
@@ -354,7 +355,7 @@ export function AdminsPage() {
 
       setAdmins(merged);
     } catch (err) {
-      setError(err.message || 'Não foi possível carregar os administradores.');
+      setError(mensagemDeErro(err, 'Não foi possível carregar os administradores.'));
       const draftFallback = getNormalizedDrafts();
 
       setAdmins((prev) => {

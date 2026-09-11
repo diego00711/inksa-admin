@@ -6,6 +6,7 @@ import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
 import { Loader2 } from 'lucide-react';
 import { brl } from '../utils/dinheiro';
+import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
 const DISCOUNT_TYPES = [
   { value: 'percentage', label: '% Percentual' },
@@ -71,7 +72,7 @@ const CouponsPage = () => {
       setCoupons(list);
     } catch (err) {
       console.error('Erro ao carregar cupons:', err);
-      setError('Erro ao carregar cupons: ' + err.message);
+      setError('Erro ao carregar cupons: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
       setCoupons([]);
     } finally {
       setLoading(false);
@@ -138,8 +139,8 @@ const CouponsPage = () => {
       await loadCoupons();
       resetForm();
     } catch (err) {
-      setError('Erro ao salvar cupom: ' + err.message);
-      notify('Erro ao salvar cupom: ' + err.message, 'error');
+      setError('Erro ao salvar cupom: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao salvar cupom: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -186,8 +187,8 @@ const CouponsPage = () => {
       );
       await loadCoupons();
     } catch (err) {
-      setError('Erro ao alterar status: ' + err.message);
-      notify('Erro ao alterar status: ' + err.message, 'error');
+      setError('Erro ao alterar status: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao alterar status: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     }
   };
 
@@ -210,8 +211,8 @@ const CouponsPage = () => {
       notify('Cupom removido com sucesso!', 'success');
       await loadCoupons();
     } catch (err) {
-      setError('Erro ao remover cupom: ' + err.message);
-      notify('Erro ao remover cupom: ' + err.message, 'error');
+      setError('Erro ao remover cupom: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
+      notify('Erro ao remover cupom: ' + mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
     }
   };
 
