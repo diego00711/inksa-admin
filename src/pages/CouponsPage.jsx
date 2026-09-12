@@ -4,7 +4,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 import { API_BASE_URL } from '../services/api';
 import { NotificationContext } from '../context/NotificationContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, EyeOff } from 'lucide-react';
 import { brl } from '../utils/dinheiro';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 
@@ -21,6 +21,7 @@ const getInitialFormData = () => ({
   min_order_value: '',
   max_uses: '',
   uma_vez_por_cliente: false,
+  somente_digitado: false,
   valid_until: '',
 });
 
@@ -113,6 +114,7 @@ const CouponsPage = () => {
         // null (não 0) quando desmarcado: NULL no banco = sem limite por
         // pessoa, que é o comportamento dos cupons que já existem.
         max_uses_per_client: formData.uma_vez_por_cliente ? 1 : null,
+        somente_digitado: formData.somente_digitado,
         valid_until: formData.valid_until,
       };
       // O código é a identidade do cupom (o cliente já anotou) — só na criação.
@@ -156,6 +158,7 @@ const CouponsPage = () => {
       min_order_value: coupon.min_order_value ? String(coupon.min_order_value) : '',
       max_uses: coupon.max_uses ? String(coupon.max_uses) : '',
       uma_vez_por_cliente: Number(coupon.max_uses_per_client) === 1,
+      somente_digitado: !!coupon.somente_digitado,
       valid_until: coupon.valid_until ? String(coupon.valid_until).slice(0, 10) : '',
     });
     setError('');
@@ -416,6 +419,32 @@ const CouponsPage = () => {
                     </span>
                   </span>
                 </label>
+
+                {/* Cupom de campanha de fora (rádio, panfleto, parceria).
+                    Escondido da vitrine, cada uso vira medição: quem usou
+                    ouviu o anúncio. Se aparecesse no app, qualquer cliente
+                    pegaria e a conta não mediria mais nada. */}
+                <label className="mt-3 flex items-start gap-3 rounded border border-gray-200 p-3 cursor-pointer hover:bg-blue-50/50">
+                  <input
+                    type="checkbox"
+                    checked={formData.somente_digitado}
+                    onChange={(e) =>
+                      setFormData({ ...formData, somente_digitado: e.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-gray-800">
+                      Não mostrar no app (só quem digitar o código)
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      Para divulgar fora do app — rádio, panfleto, parceria. O
+                      cupom some da vitrine e da lista do carrinho, mas continua
+                      valendo pra quem digitar. Assim cada uso mostra que a
+                      pessoa veio de lá.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {/* Válido até */}
@@ -501,6 +530,19 @@ const CouponsPage = () => {
                       <span className="font-mono font-semibold text-sm text-gray-900">
                         {coupon.code}
                       </span>
+                      {/* Sem esta etiqueta, um cupom escondido é
+                          indistinguível de um normal na lista — e "por que
+                          esse não aparece pro cliente?" vira caça ao tesouro
+                          meses depois, quando ninguém lembra da campanha. */}
+                      {coupon.somente_digitado && (
+                        <span
+                          className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800"
+                          title="Não aparece no app: só vale para quem digitar o código"
+                        >
+                          <EyeOff className="h-3 w-3" aria-hidden="true" />
+                          só digitado
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-sm">
                       <span className="text-gray-700">
