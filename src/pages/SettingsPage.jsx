@@ -55,6 +55,7 @@ const DEFAULTS = {
   dispatch_default_rating: '4',
   coupon_max_discount_pct: '30',
   idle_logout_minutes: '60',
+  courier_offline_minutes: '60',
   platform_maintenance_mode: 'false',
   // Taxas de entrega cobradas do cliente
   commission_rate: '10',
@@ -658,6 +659,18 @@ export default function SettingsPage() {
               type="number" min="0" step="5"
               value={fields.idle_logout_minutes}
               onChange={(e) => set('idle_logout_minutes', e.target.value)}
+              className={inputCls}
+              placeholder="60"
+            />
+          </Field>
+          <Field
+            label="Entregador vai pra offline após (min) sem sinal"
+            hint="NÃO é o campo de cima. Ali o entregador é DESLOGADO; aqui ele continua logado, só sai da fila de corridas. O app manda sinal de 2 em 2 minutos, mas só enquanto está aberto — com o celular bloqueado no bolso o Android congela o app e o sinal para. Quem está com entrega na mão nunca é desligado. A verificação roda de 10 em 10 min, então o tempo real é este número + até 10. Use 0 para nunca desligar (aí entregador que fechou o app fica marcado online até ele mesmo sair)."
+          >
+            <input
+              type="number" min="0" step="5"
+              value={fields.courier_offline_minutes}
+              onChange={(e) => set('courier_offline_minutes', e.target.value)}
               className={inputCls}
               placeholder="60"
             />
