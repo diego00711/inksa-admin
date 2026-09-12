@@ -70,6 +70,41 @@ const BannerManagementPage = () => {
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
+
+  // ─── Oferta Relâmpago ────────────────────────────────────────────────────
+  // Banner e cupom nascem JUNTOS (um endpoint só, /relampago/<id>/criar):
+  // banner que promete desconto sem cupom é propaganda enganosa, e cupom sem
+  // banner ninguém consegue ativar — a reserva só nasce do toque no banner.
+  const [lojas, setLojas] = useState([]);
+  const [relampago, setRelampago] = useState({
+    ligado: false,
+    restaurant_id: '',
+    discount_type: 'fixed',
+    discount_value: '',
+    reserva_minutos: '5',
+    max_uses: '',
+    min_order_value: '',
+  });
+  const [disparando, setDisparando] = useState(null); // id do banner em disparo
+
+  useEffect(() => {
+    // Lista de lojas pro seletor da oferta. Falha em silêncio: sem ela o admin
+    // ainda cria banner normal, só não consegue amarrar oferta.
+    (async () => {
+      try {
+        // API_BASE_URL (o import), não API_URL: o alias local só é declarado
+        // mais abaixo no corpo do componente, e depender da ordem de execução
+        // pra isso funcionar é pedir pra quebrar quando alguém mover a linha.
+        const r = await fetch(`${API_BASE_URL}/api/admin/restaurants`, {
+          headers: { Authorization: `Bearer ${authService.getToken()}` },
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        const lista = Array.isArray(j) ? j : (j?.data || j?.restaurants || []);
+        setLojas(lista.filter((l) => l?.id));
+      } catch { /* seletor fica vazio */ }
+    })();
+  }, []);
   const [geoBuscando, setGeoBuscando] = useState(false);
 
   // CEP -> cidade + coordenadas do centro da cidade. É o que define o alcance
@@ -249,7 +284,49 @@ const BannerManagementPage = () => {
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
-      notify(editingBanner ? 'Banner atualizado com sucesso!' : 'Banner criado com sucesso!', 'success');
+      // ─── Oferta relâmpago: cria o cupom e amarra no banner ───────────────
+      //
+      // Só DEPOIS de o banner existir, porque a oferta mora nele. Se falhar, o
+      // banner fica no ar SEM oferta — e o aviso precisa dizer isso com todas
+      // as letras: um banner que promete desconto e não entrega é pior que
+      // banner nenhum, e o admin tem que saber pra desativar.
+      let avisoOferta = '';
+      if (relampago.ligado && !editingBanner?.tem_relampago) {
+        const novo = await response.clone().json().catch(() => ({}));
+        const bannerId = editingBanner?.id || novo?.data?.id || novo?.id;
+
+        if (!bannerId) {
+          avisoOferta = ' ⚠️ Mas NÃO consegui criar a oferta (não achei o id do banner). Edite o banner e tente de novo.';
+        } else if (!relampago.restaurant_id) {
+          avisoOferta = ' ⚠️ Mas a oferta NÃO foi criada: faltou escolher a loja.';
+        } else {
+          try {
+            const ro = await fetch(`${API_URL}/api/coupons/relampago/${bannerId}/criar`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                restaurant_id: relampago.restaurant_id,
+                discount_type: relampago.discount_type,
+                discount_value: Number(relampago.discount_value || 0),
+                reserva_minutos: Number(relampago.reserva_minutos || 5),
+                max_uses: relampago.max_uses === '' ? null : Number(relampago.max_uses),
+                min_order_value: relampago.min_order_value === '' ? 0 : Number(relampago.min_order_value),
+              }),
+            });
+            const jo = await ro.json().catch(() => ({}));
+            avisoOferta = ro.ok
+              ? ` ⚡ Oferta criada (cupom ${jo?.data?.code}).`
+              : ` ⚠️ Banner salvo, mas a oferta NÃO foi criada: ${jo?.error || 'erro desconhecido'}`;
+          } catch (e) {
+            avisoOferta = ` ⚠️ Banner salvo, mas a oferta NÃO foi criada: ${mensagemDeErro(e, 'falha ao criar a oferta')}`;
+          }
+        }
+      }
+
+      notify(
+        (editingBanner ? 'Banner atualizado com sucesso!' : 'Banner criado com sucesso!') + avisoOferta,
+        avisoOferta.includes('⚠️') ? 'warning' : 'success',
+      );
       await loadBanners();
       resetForm();
     } catch (error) {
@@ -331,8 +408,71 @@ const BannerManagementPage = () => {
     }
   };
 
+  /**
+   * Dispara o push da oferta relâmpago.
+   *
+   * Pergunta o público na hora, e não no cadastro, porque a decisão muda com o
+   * momento: no começo da campanha faz sentido avisar quem já é cliente da
+   * loja; quando está acabando, vale abrir pra todo mundo.
+   *
+   * ⚠️ Push não tem desfazer. Por isso confirma antes, dizendo em texto simples
+   * pra quem vai — e não com o nome interno do público.
+   */
+  const dispararPush = async (banner, rodada) => {
+    const publico = window.prompt(
+      'Pra quem enviar?\n\n' +
+      '1 = Todos os clientes com notificação ligada (é o que traz gente nova)\n' +
+      '2 = Só quem já pediu nesta loja (lista morna, converte mais)\n' +
+      '3 = Só quem está no raio da loja (⚠️ hoje alcança pouca gente: só quem\n' +
+      '    abriu o app depois de 12/09 tem posição guardada)\n\n' +
+      'Digite 1, 2 ou 3:',
+      '1',
+    );
+    if (publico === null) return;
+    const mapa = { 1: 'todos', 2: 'ja_pediram', 3: 'no_raio' };
+    const alvo = mapa[String(publico).trim()];
+    if (!alvo) { notify('Opção inválida. Use 1, 2 ou 3.', 'warning'); return; }
+
+    const comoChamam = { todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
+    const qual = rodada === 'ultima_chamada' ? 'ÚLTIMA CHAMADA' : 'aviso de abertura';
+    if (!window.confirm(
+      `Enviar ${qual} para ${comoChamam[alvo]}?\n\n` +
+      'Só recebe quem estiver com o app FECHADO — quem está com o app aberto já vê o banner.\n\n' +
+      'Notificação não tem desfazer.'
+    )) return;
+
+    setDisparando(banner.id);
+    try {
+      const r = await fetch(`${API_URL}/api/coupons/relampago/${banner.id}/disparar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authService.getToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publico: alvo, rodada, so_app_fechado: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { notify(j?.error || 'Não foi possível enviar.', 'error'); return; }
+      const d = j?.data || {};
+      notify(
+        d.enviados > 0
+          ? `Enviado para ${d.enviados} cliente(s).${d.tokens_limpos ? ` ${d.tokens_limpos} token(s) morto(s) limpo(s).` : ''}`
+          : (d.aviso || 'Ninguém elegível agora.'),
+        d.enviados > 0 ? 'success' : 'warning',
+      );
+    } catch (e) {
+      notify(mensagemDeErro(e, 'Falha ao enviar a notificação'), 'error');
+    } finally {
+      setDisparando(null);
+    }
+  };
+
   const resetForm = () => {
     setFormData(getInitialFormData());
+    // Limpa a oferta junto. Sem isto, abrir o formulário de novo já viria com a
+    // oferta LIGADA e a loja da vez anterior selecionada — e o admin criaria
+    // uma segunda oferta sem perceber.
+    setRelampago({
+      ligado: false, restaurant_id: '', discount_type: 'fixed',
+      discount_value: '', reserva_minutos: '5', max_uses: '', min_order_value: '',
+    });
     setEditingBanner(null);
     setShowForm(false);
     setError('');
@@ -570,6 +710,106 @@ const BannerManagementPage = () => {
               </div>
 
               <div className="mb-6">
+                {/* ─── OFERTA RELÂMPAGO ─────────────────────────────────── */}
+                <div className="mt-4 rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
+                  <label className="flex items-center font-semibold text-orange-900">
+                    <input
+                      type="checkbox"
+                      checked={relampago.ligado}
+                      disabled={Boolean(editingBanner?.tem_relampago)}
+                      onChange={(e) => setRelampago({ ...relampago, ligado: e.target.checked })}
+                      className="mr-2"
+                    />
+                    ⚡ Oferta Relâmpago
+                  </label>
+                  <p className="mt-1 text-xs text-orange-800">
+                    {editingBanner?.tem_relampago
+                      ? 'Este banner já tem uma oferta. Pra trocar, apague o banner e crie outro.'
+                      : 'O cliente toca no banner, a oferta fica reservada pra ele por alguns minutos e a loja abre com o cupom já no carrinho. O desconto é absorvido pela Inksa, e não empilha com o Clube.'}
+                  </p>
+
+                  {relampago.ligado && !editingBanner?.tem_relampago && (
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Loja da oferta *</label>
+                        <select
+                          value={relampago.restaurant_id}
+                          onChange={(e) => setRelampago({ ...relampago, restaurant_id: e.target.value })}
+                          className="w-full rounded-md border-gray-300 text-sm"
+                        >
+                          <option value="">Escolha a loja…</option>
+                          {lojas.map((l) => (
+                            <option key={l.id} value={l.id}>{l.restaurant_name || l.trade_name || l.id}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Desconto</label>
+                          <select
+                            value={relampago.discount_type}
+                            onChange={(e) => setRelampago({ ...relampago, discount_type: e.target.value })}
+                            className="w-full rounded-md border-gray-300 text-sm"
+                          >
+                            <option value="fixed">R$ fixo</option>
+                            <option value="percentage">% do pedido</option>
+                            <option value="free_delivery">Frete grátis</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            {relampago.discount_type === 'percentage' ? 'Quanto %' : 'Quanto R$'}
+                          </label>
+                          <input
+                            type="number" min="0" step="0.01"
+                            disabled={relampago.discount_type === 'free_delivery'}
+                            value={relampago.discount_value}
+                            onChange={(e) => setRelampago({ ...relampago, discount_value: e.target.value })}
+                            className="w-full rounded-md border-gray-300 text-sm disabled:bg-gray-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Minutos pra usar</label>
+                          <input
+                            type="number" min="1" max="60"
+                            value={relampago.reserva_minutos}
+                            onChange={(e) => setRelampago({ ...relampago, reserva_minutos: e.target.value })}
+                            className="w-full rounded-md border-gray-300 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Quantas (vazio = ∞)</label>
+                          <input
+                            type="number" min="1"
+                            value={relampago.max_uses}
+                            onChange={(e) => setRelampago({ ...relampago, max_uses: e.target.value })}
+                            className="w-full rounded-md border-gray-300 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Pedido mín. R$</label>
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={relampago.min_order_value}
+                            onChange={(e) => setRelampago({ ...relampago, min_order_value: e.target.value })}
+                            className="w-full rounded-md border-gray-300 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-500">
+                        Cada cliente usa <strong>uma vez</strong>, e o relógio dele começa no toque —
+                        deixar passar não dá outra chance. A oferta some junto com o banner:
+                        preencha o <strong>Fim</strong> na Programação acima, senão ela não tem prazo.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <label className="flex items-center"><input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} className="mr-2" />Banner ativo</label>
               </div>
               <div className="flex justify-end space-x-3">
@@ -612,6 +852,33 @@ const BannerManagementPage = () => {
                     {banner.is_sponsored && (
                       <div className="mt-1 text-[10px] uppercase tracking-wide text-amber-600 font-semibold" title={banner.sponsor_name || ''}>
                         🏷️ Patrocinado
+                      </div>
+                    )}
+                    {banner.tem_relampago && (
+                      <div className="mt-2">
+                        <div className="text-[10px] uppercase tracking-wide text-orange-600 font-bold">⚡ Relâmpago</div>
+                        {/* Dois botões de propósito: a "última chamada" é uma
+                            campanha SEPARADA, com chave própria — por isso ela
+                            alcança quem já recebeu o primeiro aviso. Cada
+                            pessoa recebe no máximo dois pushes por oferta. */}
+                        <div className="mt-1 flex flex-col gap-1">
+                          <button
+                            type="button"
+                            disabled={disparando === banner.id}
+                            onClick={() => dispararPush(banner, 'inicio')}
+                            className="rounded bg-orange-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+                          >
+                            {disparando === banner.id ? 'Enviando…' : 'Avisar clientes'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={disparando === banner.id}
+                            onClick={() => dispararPush(banner, 'ultima_chamada')}
+                            className="rounded border border-orange-600 px-2 py-1 text-[11px] font-semibold text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                          >
+                            Última chamada
+                          </button>
+                        </div>
                       </div>
                     )}
                   </td>
