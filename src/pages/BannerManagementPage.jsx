@@ -76,9 +76,11 @@ const BannerManagementPage = () => {
   // banner que promete desconto sem cupom é propaganda enganosa, e cupom sem
   // banner ninguém consegue ativar — a reserva só nasce do toque no banner.
   const [lojas, setLojas] = useState([]);
+  const [itensDaLoja, setItensDaLoja] = useState([]);
   const [relampago, setRelampago] = useState({
     ligado: false,
     restaurant_id: '',
+    menu_item_id: '',
     discount_type: 'fixed',
     discount_value: '',
     reserva_minutos: '5',
@@ -309,6 +311,7 @@ const BannerManagementPage = () => {
                 discount_type: relampago.discount_type,
                 discount_value: Number(relampago.discount_value || 0),
                 reserva_minutos: Number(relampago.reserva_minutos || 5),
+                menu_item_id: relampago.menu_item_id || null,
                 max_uses: relampago.max_uses === '' ? null : Number(relampago.max_uses),
                 min_order_value: relampago.min_order_value === '' ? 0 : Number(relampago.min_order_value),
               }),
@@ -408,6 +411,27 @@ const BannerManagementPage = () => {
     }
   };
 
+  // Itens da loja escolhida, pro seletor da oferta. Recarrega a cada troca de
+  // loja e ZERA o item selecionado junto — senão a oferta ficaria apontando pro
+  // X-Bacon de outro restaurante, e o backend recusaria sem o admin entender.
+  useEffect(() => {
+    if (!relampago.restaurant_id) { setItensDaLoja([]); return; }
+    let vivo = true;
+    (async () => {
+      try {
+        // Rota PÚBLICA, a mesma que o app do cliente usa pra desenhar o
+        // cardápio. A /api/menu do parceiro exige token de RESTAURANTE — o
+        // admin tomaria 403 e o seletor ficaria vazio sem dizer por quê.
+        const r = await fetch(`${API_BASE_URL}/api/restaurants/${relampago.restaurant_id}/menu`);
+        if (!r.ok) return;
+        const j = await r.json();
+        const lista = Array.isArray(j) ? j : (j?.data || j?.items || []);
+        if (vivo) setItensDaLoja(lista.filter((i) => i?.id));
+      } catch { /* seletor fica vazio; a oferta vira do pedido inteiro */ }
+    })();
+    return () => { vivo = false; };
+  }, [relampago.restaurant_id]);
+
   /**
    * Dispara o push da oferta relâmpago.
    *
@@ -433,10 +457,27 @@ const BannerManagementPage = () => {
     const alvo = mapa[String(publico).trim()];
     if (!alvo) { notify('Opção inválida. Use 1, 2 ou 3.', 'warning'); return; }
 
+    // QUANTOS AVISAR AGORA.
+    //
+    // É o controle de custo: se a oferta tem 10 lanches, avisar 50 pessoas faz
+    // 40 receberem um convite e levarem "esta oferta acabou" na cara. Quem
+    // sobrar continua elegível — apertar o botão de novo manda pro próximo
+    // lote, porque o servidor só registra quem recebeu de verdade.
+    const quantosTxt = window.prompt(
+      'Avisar quantas pessoas AGORA?\n\n' +
+      'Dica: use o número de ofertas que você tem. Se são 10 lanches, avise 10 —\n' +
+      'depois é só apertar de novo pra mandar pro próximo lote.\n\n' +
+      'Digite 1 pra testar em você mesmo. Vazio = todas de uma vez.',
+      '10',
+    );
+    if (quantosTxt === null) return;
+    const quantos = quantosTxt.trim() === '' ? 0 : Number(quantosTxt);
+    if (!Number.isFinite(quantos) || quantos < 0) { notify('Número inválido.', 'warning'); return; }
+
     const comoChamam = { todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
     const qual = rodada === 'ultima_chamada' ? 'ÚLTIMA CHAMADA' : 'aviso de abertura';
     if (!window.confirm(
-      `Enviar ${qual} para ${comoChamam[alvo]}?\n\n` +
+      `Enviar ${qual} para ${quantos ? `até ${quantos} de ` : ''}${comoChamam[alvo]}?\n\n` +
       'Só recebe quem estiver com o app FECHADO — quem está com o app aberto já vê o banner.\n\n' +
       'Notificação não tem desfazer.'
     )) return;
@@ -446,14 +487,16 @@ const BannerManagementPage = () => {
       const r = await fetch(`${API_URL}/api/coupons/relampago/${banner.id}/disparar`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authService.getToken()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publico: alvo, rodada, so_app_fechado: true }),
+        body: JSON.stringify({ publico: alvo, rodada, so_app_fechado: true, quantos }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { notify(j?.error || 'Não foi possível enviar.', 'error'); return; }
       const d = j?.data || {};
       notify(
         d.enviados > 0
-          ? `Enviado para ${d.enviados} cliente(s).${d.tokens_limpos ? ` ${d.tokens_limpos} token(s) morto(s) limpo(s).` : ''}`
+          ? `Enviado para ${d.enviados} cliente(s).`
+            + (d.sobraram ? ` Sobraram ${d.sobraram} — aperte de novo pro próximo lote.` : '')
+            + (d.tokens_limpos ? ` ${d.tokens_limpos} token(s) morto(s) limpo(s).` : '')
           : (d.aviso || 'Ninguém elegível agora.'),
         d.enviados > 0 ? 'success' : 'warning',
       );
@@ -470,7 +513,7 @@ const BannerManagementPage = () => {
     // oferta LIGADA e a loja da vez anterior selecionada — e o admin criaria
     // uma segunda oferta sem perceber.
     setRelampago({
-      ligado: false, restaurant_id: '', discount_type: 'fixed',
+      ligado: false, restaurant_id: '', menu_item_id: '', discount_type: 'fixed',
       discount_value: '', reserva_minutos: '5', max_uses: '', min_order_value: '',
     });
     setEditingBanner(null);
@@ -734,7 +777,7 @@ const BannerManagementPage = () => {
                         <label className="block text-xs text-gray-600 mb-1">Loja da oferta *</label>
                         <select
                           value={relampago.restaurant_id}
-                          onChange={(e) => setRelampago({ ...relampago, restaurant_id: e.target.value })}
+                          onChange={(e) => setRelampago({ ...relampago, restaurant_id: e.target.value, menu_item_id: '' })}
                           className="w-full rounded-md border-gray-300 text-sm"
                         >
                           <option value="">Escolha a loja…</option>
@@ -744,11 +787,41 @@ const BannerManagementPage = () => {
                         </select>
                       </div>
 
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          Item da oferta <span className="text-gray-400 font-normal">(opcional)</span>
+                        </label>
+                        <select
+                          value={relampago.menu_item_id}
+                          disabled={!relampago.restaurant_id}
+                          onChange={(e) => setRelampago({
+                            ...relampago,
+                            menu_item_id: e.target.value,
+                            // Com item, o número passa a ser PREÇO, não desconto.
+                            discount_type: e.target.value ? 'fixed' : relampago.discount_type,
+                          })}
+                          className="w-full rounded-md border-gray-300 text-sm disabled:bg-gray-100"
+                        >
+                          <option value="">Sem item — desconto no pedido inteiro</option>
+                          {itensDaLoja.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.name} — R$ {Number(i.price || 0).toFixed(2).replace('.', ',')}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {relampago.menu_item_id
+                            ? 'Com item escolhido, o valor abaixo é o PREÇO que esse item vai custar na oferta. O desconto vale só pra ele, e só uma unidade.'
+                            : 'Sem item, o desconto vale sobre o pedido inteiro — inclusive se o cliente colocar só uma bebida no carrinho.'}
+                        </p>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">Desconto</label>
                           <select
                             value={relampago.discount_type}
+                            disabled={Boolean(relampago.menu_item_id)}
                             onChange={(e) => setRelampago({ ...relampago, discount_type: e.target.value })}
                             className="w-full rounded-md border-gray-300 text-sm"
                           >
@@ -759,7 +832,9 @@ const BannerManagementPage = () => {
                         </div>
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
-                            {relampago.discount_type === 'percentage' ? 'Quanto %' : 'Quanto R$'}
+                            {relampago.menu_item_id
+                              ? 'Preço da oferta R$'
+                              : relampago.discount_type === 'percentage' ? 'Quanto %' : 'Quanto R$'}
                           </label>
                           <input
                             type="number" min="0" step="0.01"
