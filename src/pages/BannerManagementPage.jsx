@@ -402,8 +402,20 @@ const BannerManagementPage = () => {
       notify('Banner deletado com sucesso!', 'success');
       await loadBanners();
     } catch (error) {
-      setError('Erro ao deletar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'));
-      notify('Erro ao deletar banner: ' + mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.'), 'error');
+      const msg = mensagemDeErro(error, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.');
+      // "Banner não encontrado" quase sempre é clique duplo: o primeiro apagou
+      // e o segundo não achou mais. Dizer só o erro faz parecer que nada foi
+      // apagado, e a lista velha na tela confirma a impressão errada — foi o
+      // que aconteceu com o Diego em 13/09.
+      const sumiu = /não encontrado|nao encontrado|404/i.test(msg);
+      setError(sumiu
+        ? 'Esse banner já tinha sido apagado (provavelmente clique duplo). A lista foi atualizada.'
+        : 'Erro ao deletar banner: ' + msg);
+      notify(sumiu ? 'Banner já não existia — lista atualizada.' : 'Erro ao deletar banner: ' + msg,
+             sumiu ? 'warning' : 'error');
+      // Recarrega em qualquer caso: a lista na tela pode estar mentindo, e é
+      // ela que o admin usa pra decidir o que fazer em seguida.
+      await loadBanners();
     }
   };
 
