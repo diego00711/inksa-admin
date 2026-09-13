@@ -491,7 +491,25 @@ const BannerManagementPage = () => {
     // 40 receberem um convite e levarem "esta oferta acabou" na cara. Quem
     // sobrar continua elegível — apertar o botão de novo manda pro próximo
     // lote, porque o servidor só registra quem recebeu de verdade.
-    // No teste não faz sentido perguntar quantidade — é uma pessoa só, você.
+    // No teste, pergunta o E-MAIL de quem recebe.
+    //
+    // ⚠️ Tem que ser o e-mail do APP DO CLIENTE, não o do admin. São contas
+    // separadas: a de admin do Diego é @inksadelivery.com.br e não tem perfil
+    // de cliente nenhum; a de cliente é outra, no gmail. Mandar pelo usuário
+    // logado não achava ninguém — e de quebra, por e-mail dá pra testar no
+    // celular de outra pessoa.
+    let emailTeste = '';
+    if (alvo === 'so_eu') {
+      emailTeste = window.prompt(
+        'E-mail de quem vai receber o teste:\n\n' +
+        'Use o e-mail da conta no APP DO CLIENTE — o do admin não recebe push,\n' +
+        'porque ele não tem perfil de cliente.',
+        '',
+      ) || '';
+      if (!emailTeste.trim()) return;
+    }
+
+    // No teste não faz sentido perguntar quantidade — é um celular só.
     let quantos = 0;
     if (alvo !== 'so_eu') {
       const quantosTxt = window.prompt(
@@ -506,7 +524,7 @@ const BannerManagementPage = () => {
       if (!Number.isFinite(quantos) || quantos < 0) { notify('Número inválido.', 'warning'); return; }
     }
 
-    const comoChamam = { so_eu: 'VOCÊ (teste)', todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
+    const comoChamam = { so_eu: `TESTE em ${emailTeste.trim()}`, todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
     const qual = rodada === 'ultima_chamada' ? 'ÚLTIMA CHAMADA' : 'aviso de abertura';
     if (!window.confirm(
       `Enviar ${qual} para ${quantos ? `até ${quantos} de ` : ''}${comoChamam[alvo]}?\n\n` +
@@ -521,7 +539,8 @@ const BannerManagementPage = () => {
       const r = await fetch(`${API_URL}/api/coupons/relampago/${banner.id}/disparar`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authService.getToken()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publico: alvo, rodada, so_app_fechado: true, quantos }),
+        body: JSON.stringify({ publico: alvo, rodada, so_app_fechado: true, quantos,
+                               email_teste: emailTeste.trim() || undefined }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { notify(j?.error || 'Não foi possível enviar.', 'error'); return; }
