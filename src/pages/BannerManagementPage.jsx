@@ -425,7 +425,15 @@ const BannerManagementPage = () => {
         const r = await fetch(`${API_BASE_URL}/api/restaurants/${relampago.restaurant_id}/menu`);
         if (!r.ok) return;
         const j = await r.json();
-        const lista = Array.isArray(j) ? j : (j?.data || j?.items || []);
+        // ⚠️ Esta rota devolve os itens ANINHADOS por categoria:
+        //   { categories: [ { name, items: [...] } ] }
+        // Procurar `data`/`items` na raiz não acha nada e o seletor fica vazio
+        // — sem erro, sem aviso, só uma lista que parece não ter itens. Foi
+        // exatamente o que aconteceu na primeira vez que o Diego abriu a tela.
+        const lista = Array.isArray(j)
+          ? j
+          : (j?.categories || []).flatMap((c) => c?.items || [])
+            .concat(j?.data || [], j?.items || []);
         if (vivo) setItensDaLoja(lista.filter((i) => i?.id));
       } catch { /* seletor fica vazio; a oferta vira do pedido inteiro */ }
     })();
