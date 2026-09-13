@@ -326,10 +326,29 @@ const BannerManagementPage = () => {
         }
       }
 
+      const ofertaFalhou = avisoOferta.includes('⚠️');
       notify(
         (editingBanner ? 'Banner atualizado com sucesso!' : 'Banner criado com sucesso!') + avisoOferta,
-        avisoOferta.includes('⚠️') ? 'warning' : 'success',
+        ofertaFalhou ? 'warning' : 'success',
       );
+
+      // ⚠️ FALHA DA OFERTA FICA NA TELA, não só num aviso que some.
+      //
+      // Em 13/09/2026 o banner do Gelaê foi criado e o cupom não (um tipo de
+      // desconto que o banco recusava). O aviso passou, o Diego seguiu achando
+      // que a oferta existia, e só descobriu quando eu fui conferir no banco.
+      //
+      // Esse é o pior estado possível: um banner no ar prometendo desconto sem
+      // nada por trás. Então além do aviso, o formulário FICA ABERTO com o erro
+      // em vermelho — assim não dá pra seguir sem ver.
+      if (ofertaFalhou) {
+        setError(`O banner foi salvo, mas a OFERTA não. ${avisoOferta.replace('⚠️', '').trim()} `
+                 + 'Desative o banner ou tente criar a oferta de novo editando ele — '
+                 + 'um banner prometendo desconto sem cupom é pior que banner nenhum.');
+        await loadBanners();
+        return;   // não fecha o formulário: a pendência tem que ficar visível
+      }
+
       await loadBanners();
       resetForm();
     } catch (error) {
