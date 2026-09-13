@@ -472,17 +472,18 @@ const BannerManagementPage = () => {
   const dispararPush = async (banner, rodada) => {
     const publico = window.prompt(
       'Pra quem enviar?\n\n' +
+      '0 = SÓ PRA MIM (teste) — chega no seu celular mesmo com o app aberto\n' +
       '1 = Todos os clientes com notificação ligada (é o que traz gente nova)\n' +
       '2 = Só quem já pediu nesta loja (lista morna, converte mais)\n' +
-      '3 = Só quem está no raio da loja (⚠️ hoje alcança pouca gente: só quem\n' +
-      '    abriu o app depois de 12/09 tem posição guardada)\n\n' +
-      'Digite 1, 2 ou 3:',
-      '1',
+      '3 = Só quem está no raio da loja (⚠️ hoje NINGUÉM tem posição guardada:\n' +
+      '    ela só começou a ser gravada em 12/09 e ainda não acumulou)\n\n' +
+      'Digite 0, 1, 2 ou 3:',
+      '0',
     );
     if (publico === null) return;
-    const mapa = { 1: 'todos', 2: 'ja_pediram', 3: 'no_raio' };
+    const mapa = { 0: 'so_eu', 1: 'todos', 2: 'ja_pediram', 3: 'no_raio' };
     const alvo = mapa[String(publico).trim()];
-    if (!alvo) { notify('Opção inválida. Use 1, 2 ou 3.', 'warning'); return; }
+    if (!alvo) { notify('Opção inválida. Use 0, 1, 2 ou 3.', 'warning'); return; }
 
     // QUANTOS AVISAR AGORA.
     //
@@ -490,22 +491,28 @@ const BannerManagementPage = () => {
     // 40 receberem um convite e levarem "esta oferta acabou" na cara. Quem
     // sobrar continua elegível — apertar o botão de novo manda pro próximo
     // lote, porque o servidor só registra quem recebeu de verdade.
-    const quantosTxt = window.prompt(
-      'Avisar quantas pessoas AGORA?\n\n' +
-      'Dica: use o número de ofertas que você tem. Se são 10 lanches, avise 10 —\n' +
-      'depois é só apertar de novo pra mandar pro próximo lote.\n\n' +
-      'Digite 1 pra testar em você mesmo. Vazio = todas de uma vez.',
-      '10',
-    );
-    if (quantosTxt === null) return;
-    const quantos = quantosTxt.trim() === '' ? 0 : Number(quantosTxt);
-    if (!Number.isFinite(quantos) || quantos < 0) { notify('Número inválido.', 'warning'); return; }
+    // No teste não faz sentido perguntar quantidade — é uma pessoa só, você.
+    let quantos = 0;
+    if (alvo !== 'so_eu') {
+      const quantosTxt = window.prompt(
+        'Avisar quantas pessoas AGORA?\n\n' +
+        'Dica: use o número de ofertas que você tem. Se são 10 lanches, avise 10 —\n' +
+        'depois é só apertar de novo pra mandar pro próximo lote.\n\n' +
+        'Vazio = todas de uma vez.',
+        '10',
+      );
+      if (quantosTxt === null) return;
+      quantos = quantosTxt.trim() === '' ? 0 : Number(quantosTxt);
+      if (!Number.isFinite(quantos) || quantos < 0) { notify('Número inválido.', 'warning'); return; }
+    }
 
-    const comoChamam = { todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
+    const comoChamam = { so_eu: 'VOCÊ (teste)', todos: 'todos os clientes', ja_pediram: 'quem já pediu nesta loja', no_raio: 'quem está no raio da loja' };
     const qual = rodada === 'ultima_chamada' ? 'ÚLTIMA CHAMADA' : 'aviso de abertura';
     if (!window.confirm(
       `Enviar ${qual} para ${quantos ? `até ${quantos} de ` : ''}${comoChamam[alvo]}?\n\n` +
-      'Só recebe quem estiver com o app FECHADO — quem está com o app aberto já vê o banner.\n\n' +
+      (alvo === 'so_eu'
+        ? 'Teste: chega no SEU celular, mesmo com o app aberto. Pode repetir quantas vezes quiser.\n\n'
+        : 'Só recebe quem estiver com o app FECHADO — quem está com o app aberto já vê o banner.\n\n') +
       'Notificação não tem desfazer.'
     )) return;
 
