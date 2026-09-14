@@ -267,6 +267,21 @@ const authService = {
     });
   },
 
+  // Sobe um ZIP de fotos do cardapio. Casa cada arquivo com o item pelo NOME
+  // do arquivo. Mesma razao do upload de capa: FormData, sem Content-Type na
+  // mao (quem monta o multipart e o navegador).
+  async enviarFotosEmLote(restaurantId, arquivoZip) {
+    const token = getStoredToken();
+    const form = new FormData();
+    form.append('zip', arquivoZip);
+    const resp = await apiFetch(`${API_BASE_URL}/api/admin/restaurants/${restaurantId}/fotos-em-lote`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: form,
+    });
+    return processResponse(resp);
+  },
+
   async updateRestaurant(restaurantId, restaurantData) {
     return authorizedRequest(`/api/admin/restaurants/${restaurantId}`, {
       method: 'PUT',

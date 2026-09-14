@@ -23,6 +23,7 @@ export function RestaurantesPage() {
   // Migração das fotos do cardápio (importação que veio de fora)
   const [migrandoFotos, setMigrandoFotos] = useState(false);
   const [resultadoFotos, setResultadoFotos] = useState(null);
+  const [enviandoZip, setEnviandoZip] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [foundingId, setFoundingId] = useState(null);
@@ -178,6 +179,32 @@ export function RestaurantesPage() {
       setResultadoFotos({ erro: err?.message || 'Não foi possível trazer as fotos.' });
     } finally {
       setMigrandoFotos(false);
+    }
+  };
+
+  const handleZipFotos = async (e) => {
+    const arq = e.target.files?.[0];
+    e.target.value = '';
+    if (!arq || !editingRestaurant?.id) return;
+    setEnviandoZip(true);
+    setResultadoFotos(null);
+    try {
+      const r = await AuthService.enviarFotosEmLote(editingRestaurant.id, arq);
+      const d = r?.data || r;
+      setResultadoFotos({
+        migradas: d.aplicadas,
+        restantes: 0,
+        falhas: [
+          ...(d.falhas || []),
+          // Arquivo sem item é a falha MAIS provável (nome não bate) e a que
+          // quem enviou consegue corrigir sozinho — então aparece nomeada.
+          ...(d.sem_item || []).map((f) => ({ item: f, motivo: 'nenhum item com esse nome' })),
+        ],
+      });
+    } catch (err) {
+      setResultadoFotos({ erro: err?.message || 'Não foi possível enviar o pacote.' });
+    } finally {
+      setEnviandoZip(false);
     }
   };
 
@@ -466,7 +493,18 @@ export function RestaurantesPage() {
                     <p className="text-xs text-amber-900">
                       Copia pro nosso servidor as fotos que ainda estão hospedadas fora.
                     </p>
+                    <label className={`cursor-pointer rounded-md border border-amber-600 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 ${enviandoZip ? 'opacity-60' : ''}`}>
+                      {enviandoZip ? 'Enviando…' : 'Enviar pacote .zip'}
+                      <input type="file" accept=".zip,application/zip" className="hidden"
+                             disabled={enviandoZip} onChange={handleZipFotos} />
+                    </label>
                   </div>
+                  {/* O nome do ARQUIVO tem que bater com o nome do item. Não há
+                      adivinhação por semelhança de propósito: tentamos e saiu
+                      foto de sanduíche numa porção de coração. */}
+                  <p className="mt-1 text-[11px] text-amber-800">
+                    No pacote, cada arquivo precisa ter o nome do item (ex.: <code>x-bacon-com-ovo.jpg</code>).
+                  </p>
                   {resultadoFotos && (
                     <div className="mt-2 text-xs">
                       {resultadoFotos.erro ? (
