@@ -257,6 +257,16 @@ const authService = {
     return processResponse(resp);
   },
 
+  // Traz as fotos do cardápio de um servidor de fora pro nosso armazenamento.
+  // Vai em LOTES: 60 imagens passariam do tempo que o servidor dá pra uma
+  // requisição. A resposta diz quantas faltam.
+  async migrarFotosDoCardapio(restaurantId, limite = 20) {
+    return authorizedRequest(`/api/admin/restaurants/${restaurantId}/migrar-fotos`, {
+      method: 'POST',
+      body: { limite },
+    });
+  },
+
   async updateRestaurant(restaurantId, restaurantData) {
     return authorizedRequest(`/api/admin/restaurants/${restaurantId}`, {
       method: 'PUT',

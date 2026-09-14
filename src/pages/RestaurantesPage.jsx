@@ -20,6 +20,9 @@ export function RestaurantesPage() {
   // formulário inteiro.
   const [enviandoLogo, setEnviandoLogo] = useState(false);
   const [erroLogo, setErroLogo] = useState('');
+  // Migração das fotos do cardápio (importação que veio de fora)
+  const [migrandoFotos, setMigrandoFotos] = useState(false);
+  const [resultadoFotos, setResultadoFotos] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [foundingId, setFoundingId] = useState(null);
@@ -162,6 +165,19 @@ export function RestaurantesPage() {
       setErroLogo(err?.message || 'Não foi possível enviar a imagem.');
     } finally {
       setEnviandoLogo(false);
+    }
+  };
+
+  const handleMigrarFotos = async () => {
+    if (!editingRestaurant?.id || migrandoFotos) return;
+    setMigrandoFotos(true);
+    try {
+      const r = await AuthService.migrarFotosDoCardapio(editingRestaurant.id, 20);
+      setResultadoFotos(r?.data || r);
+    } catch (err) {
+      setResultadoFotos({ erro: err?.message || 'Não foi possível trazer as fotos.' });
+    } finally {
+      setMigrandoFotos(false);
     }
   };
 
@@ -428,6 +444,54 @@ export function RestaurantesPage() {
                     </p>
                     {erroLogo && <p className="mt-1 text-xs font-semibold text-red-600">{erroLogo}</p>}
                   </div>
+                </div>
+
+                {/* FOTOS DO CARDÁPIO VINDAS DE FORA.
+                    Cardápio importado fica com as imagens no servidor de quem
+                    veio — no caso da Mister fast-food, um concorrente. Se eles
+                    tirarem as fotos, o cardápio inteiro fica cego de uma vez e
+                    a gente descobre pelo cliente.
+                    Vai em lotes de 20: 60 imagens passariam do tempo que o
+                    servidor dá pra uma requisição. */}
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleMigrarFotos}
+                      disabled={migrandoFotos}
+                      className="rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+                    >
+                      {migrandoFotos ? 'Trazendo…' : 'Trazer fotos do cardápio'}
+                    </button>
+                    <p className="text-xs text-amber-900">
+                      Copia pro nosso servidor as fotos que ainda estão hospedadas fora.
+                    </p>
+                  </div>
+                  {resultadoFotos && (
+                    <div className="mt-2 text-xs">
+                      {resultadoFotos.erro ? (
+                        <p className="font-semibold text-red-600">{resultadoFotos.erro}</p>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-amber-900">
+                            {resultadoFotos.migradas} foto(s) trazida(s)
+                            {resultadoFotos.restantes > 0
+                              ? ` — faltam ${resultadoFotos.restantes}, toque de novo.`
+                              : ' — nenhuma sobrou fora.'}
+                          </p>
+                          {/* Falha com MOTIVO, não só contagem: "3 falharam" não
+                              é diagnóstico, é adivinhação. */}
+                          {resultadoFotos.falhas?.length > 0 && (
+                            <ul className="mt-1 list-disc pl-4 text-red-700">
+                              {resultadoFotos.falhas.slice(0, 5).map((f, i) => (
+                                <li key={i}>{f.item}: {f.motivo}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
