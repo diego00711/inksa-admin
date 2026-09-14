@@ -237,6 +237,26 @@ const authService = {
     return [];
   },
 
+  // ⚠️ NÃO usa authorizedRequest: ele converte o corpo pra JSON e crava
+  // Content-Type: application/json. Arquivo tem que ir como FormData, e o
+  // Content-Type do multipart quem monta é o navegador (com a fronteira
+  // aleatória). Definir esse cabeçalho à mão quebra o upload sem dar erro
+  // claro — o servidor recebe um corpo que não sabe ler.
+  async uploadRestaurantLogo(restaurantId, arquivo) {
+    const token = getStoredToken();
+    const form = new FormData();
+    form.append('logo', arquivo);
+    const resp = await apiFetch(`${API_BASE_URL}/api/admin/restaurants/${restaurantId}/logo`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: form,
+    });
+    return processResponse(resp);
+  },
+
   async updateRestaurant(restaurantId, restaurantData) {
     return authorizedRequest(`/api/admin/restaurants/${restaurantId}`, {
       method: 'PUT',

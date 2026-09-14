@@ -15,6 +15,11 @@ export function RestaurantesPage() {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState(null);
+  // Capa da loja: subida à parte do resto do formulário, porque é arquivo e
+  // não texto — e porque tem que valer NA HORA, sem depender de salvar o
+  // formulário inteiro.
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const [erroLogo, setErroLogo] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [foundingId, setFoundingId] = useState(null);
@@ -130,6 +135,34 @@ export function RestaurantesPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  // Sobe a capa da loja. Existe porque até 14/09/2026 SÓ O PARCEIRO conseguia
+  // pôr a própria imagem — e quem cadastra loja nova é o admin. Loja sem capa
+  // aparece na vitrine como um quadrado laranja com um prato desenhado: ela
+  // estreia parecendo abandonada e fica assim até o lojista descobrir sozinho
+  // que existe esse campo.
+  const handleLogoUpload = async (e) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';                     // deixa reescolher o MESMO arquivo
+    if (!arquivo || !editingRestaurant?.id) return;
+    setErroLogo('');
+    setEnviandoLogo(true);
+    try {
+      const r = await AuthService.uploadRestaurantLogo(editingRestaurant.id, arquivo);
+      const url = r?.data?.logo_url || r?.logo_url;
+      if (!url) throw new Error('O servidor não devolveu o endereço da imagem.');
+      // Atualiza as DUAS: o formulário aberto e a lista por baixo. Sem a
+      // segunda, fechar o modal parecia desfazer o que acabou de ser feito.
+      setEditingRestaurant((prev) => (prev ? { ...prev, logo_url: url } : prev));
+      setRestaurants((lista) =>
+        lista.map((x) => (x.id === editingRestaurant.id ? { ...x, logo_url: url } : x))
+      );
+    } catch (err) {
+      setErroLogo(err?.message || 'Não foi possível enviar a imagem.');
+    } finally {
+      setEnviandoLogo(false);
+    }
   };
 
   // ALTERADO: Lógica completa para salvar as alterações
@@ -356,6 +389,48 @@ export function RestaurantesPage() {
           <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-8 w-full max-w-2xl z-50 max-h-[90vh] overflow-y-auto mx-4">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">Editar Restaurante</h2>
             <form className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              {/* CAPA — primeiro campo do formulário, de propósito.
+                  É a única coisa ali que o CLIENTE vê antes de decidir entrar
+                  na loja. Estando no fim, junto de dados bancários, quem
+                  cadastra não lembra de preencher — e a loja nasce sem. */}
+              <div className="md:col-span-2 border-b pb-4 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Capa da loja <span className="font-normal text-gray-500">— é o que aparece na vitrine do cliente</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  {editingRestaurant.logo_url ? (
+                    <img
+                      src={editingRestaurant.logo_url}
+                      alt="Capa atual"
+                      className="h-20 w-36 rounded-lg object-cover border"
+                    />
+                  ) : (
+                    <div className="h-20 w-36 rounded-lg border border-dashed flex flex-col items-center justify-center bg-orange-50 text-orange-700">
+                      <span className="text-2xl">🍽️</span>
+                      <span className="text-[11px] font-semibold">sem capa</span>
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <label className="inline-flex cursor-pointer items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                      {enviandoLogo ? 'Enviando…' : (editingRestaurant.logo_url ? 'Trocar imagem' : 'Escolher imagem')}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={enviandoLogo}
+                        onChange={handleLogoUpload}
+                      />
+                    </label>
+                    {/* O tamanho não é capricho: o card corta a imagem em ~16:9.
+                        Quem manda um retrato perde metade sem entender por quê. */}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Deitada, tipo 1080×576. JPG, PNG ou WEBP, até 4 MB.
+                    </p>
+                    {erroLogo && <p className="mt-1 text-xs font-semibold text-red-600">{erroLogo}</p>}
+                  </div>
+                </div>
+              </div>
+
               <div className="md:col-span-2">
                 <label htmlFor="restaurant_name" className="block text-sm font-medium text-gray-700">Nome do Restaurante</label>
                 <input type="text" name="restaurant_name" id="restaurant_name" value={editingRestaurant.restaurant_name || ''} onChange={handleFormChange} className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md"/>
