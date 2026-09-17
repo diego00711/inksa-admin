@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 // NOVO: Importar o nosso hook useAuth
 import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
+import Versiculo from '../components/Versiculo';
 
 export function LoginPage() {
   // NOVO: Obter a função de login do nosso contexto
@@ -65,6 +66,8 @@ export function LoginPage() {
             </button>
           </div>
         </form>
+
+        <Versiculo />
       </div>
     </div>
   );
