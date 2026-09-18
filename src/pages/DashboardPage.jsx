@@ -14,6 +14,7 @@ import { getOverview } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
 import { brl } from '../utils/dinheiro';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
+import EntregadoresAgoraModal from '../components/EntregadoresAgoraModal';
 
 const COLORS = {
   blue: '#2563eb', green: '#22C55E', orange: '#F59E0B', red: '#EF4444',
@@ -165,16 +166,34 @@ const CardHero = ({ receita, comissao, margem }) => (
   </div>
 );
 
-const Kpi = ({ titulo, valor, icone: Icone, cor, dica }) => (
-  <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-    <div className="flex items-start justify-between gap-2">
-      <p className="text-sm font-medium text-gray-500">{titulo}</p>
-      <span className={`rounded-lg p-2 ${cor}`}><Icone className="h-4 w-4" /></span>
-    </div>
-    <p className="text-2xl font-bold text-gray-800 mt-2 break-words">{valor}</p>
-    {dica && <p className="text-xs text-gray-400 mt-1">{dica}</p>}
-  </div>
-);
+// Com `onClick`, o card vira botão e ganha um "ver lista". Sem, continua sendo
+// só um número — de propósito: card que parece clicável e não abre nada é
+// pior que card parado.
+const Kpi = ({ titulo, valor, icone: Icone, cor, dica, onClick, acao }) => {
+  const corpo = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-gray-500">{titulo}</p>
+        <span className={`rounded-lg p-2 ${cor}`}><Icone className="h-4 w-4" /></span>
+      </div>
+      <p className="text-2xl font-bold text-gray-800 mt-2 break-words">{valor}</p>
+      {dica && <p className="text-xs text-gray-400 mt-1">{dica}</p>}
+      {onClick && <p className="text-xs font-medium text-blue-600 mt-2">{acao || 'Ver lista'} →</p>}
+    </>
+  );
+  if (!onClick) {
+    return <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">{corpo}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-xl bg-white p-5 shadow-sm border border-gray-100 transition hover:border-blue-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      {corpo}
+    </button>
+  );
+};
 
 const RevenueChart = ({ data }) => (
   <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
@@ -295,6 +314,8 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  // Janela "Entregadores agora", aberta pelo card de aptos.
+  const [verEntregadores, setVerEntregadores] = useState(false);
 
   const makeRange = (p) => {
     const end = new Date();
@@ -421,7 +442,9 @@ export function DashboardPage() {
              icone={Truck} cor="bg-green-100 text-green-600"
              dica={(op.entregadoresOnline ?? 0) > (op.entregadoresAptos ?? 0)
                ? 'Os demais estão online mas não recebem pedido'
-               : 'Todos os online recebem pedido'} />
+               : 'Todos os online recebem pedido'}
+             onClick={() => setVerEntregadores(true)}
+             acao="Quem, desde quando, último sinal" />
         <Kpi titulo="Lojas abertas agora" valor={`${op.lojasAbertas ?? 0} de ${op.lojasAprovadas ?? 0}`}
              icone={DoorOpen} cor="bg-blue-100 text-blue-600" />
         <Kpi titulo="Pedidos em andamento" valor={k.ordersInProgress ?? 0} icone={Clock}
@@ -457,6 +480,8 @@ export function DashboardPage() {
           <RecentOrdersList orders={dados.recentOrders} />
         </div>
       </div>
+
+      {verEntregadores && <EntregadoresAgoraModal onClose={() => setVerEntregadores(false)} />}
     </div>
   );
 }

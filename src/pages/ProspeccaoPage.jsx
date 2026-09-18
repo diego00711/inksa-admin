@@ -392,9 +392,19 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
+  // ⚠️ `text: texto`, NÃO `text`. Estava `{ files: [f], text }` — atalho de
+  // propriedade apontando pra uma variável `text` que não existe (a daqui se
+  // chama `texto`). Isso lança ReferenceError DENTRO do try, e o catch vazio
+  // abaixo engolia como se a pessoa tivesse cancelado. Resultado: o botão
+  // Compartilhar nunca compartilhou nada, sem erro nenhum na tela.
+  //
+  // Achado em 17/09/2026, e só porque o eslint deste app finalmente RODOU:
+  // ele usa config no formato novo e recusava os parâmetros das varreduras
+  // anteriores em silêncio — o "nenhum erro" do admin era o eslint nem ter
+  // começado.
   const compartilhar = async () => {
     const f = await arquivo();
-    try { await navigator.share({ files: [f], text }); } catch { /* cancelou */ }
+    try { await navigator.share({ files: [f], text: texto }); } catch { /* cancelou */ }
   };
 
   const copiar = async () => {

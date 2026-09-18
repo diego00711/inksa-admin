@@ -7,6 +7,7 @@ import { NotificationContext } from '../context/NotificationContext';
 import { Loader2, EyeOff } from 'lucide-react';
 import { brl } from '../utils/dinheiro';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
+import AnunciarCupomModal from '../components/AnunciarCupomModal';
 
 const DISCOUNT_TYPES = [
   { value: 'percentage', label: '% Percentual' },
@@ -43,6 +44,8 @@ const CouponsPage = () => {
   const [formData, setFormData] = useState(getInitialFormData());
   // id do cupom sendo editado (null = criando um novo)
   const [editingId, setEditingId] = useState(null);
+  // Cupom com a janela "Anunciar por notificação" aberta (null = fechada).
+  const [anunciando, setAnunciando] = useState(null);
 
   const API_URL = API_BASE_URL;
 
@@ -589,6 +592,17 @@ const CouponsPage = () => {
                     </td>
                     <td className="px-4 py-4 text-sm font-medium">
                       <div className="flex items-center space-x-2">
+                        {/* Sempre visível, mesmo nos cupons que não podem ser
+                            anunciados: a janela explica o porquê (só digitado,
+                            relâmpago, pessoal, vencido). Esconder o botão
+                            deixaria a pergunta "por que esse não tem?" sem
+                            resposta — e as regras moram no servidor, não aqui. */}
+                        <button
+                          onClick={() => setAnunciando(coupon)}
+                          className="text-indigo-600 hover:text-indigo-900 min-h-[44px] inline-flex items-center"
+                        >
+                          Anunciar
+                        </button>
                         <button
                           onClick={() => startEdit(coupon)}
                           className="text-blue-600 hover:text-blue-900 min-h-[44px] inline-flex items-center"
@@ -638,6 +652,14 @@ const CouponsPage = () => {
           )}
         </div>
       </div>
+
+      {anunciando && (
+        <AnunciarCupomModal
+          cupom={anunciando}
+          notify={notify}
+          onClose={() => setAnunciando(null)}
+        />
+      )}
     </div>
   );
 };
