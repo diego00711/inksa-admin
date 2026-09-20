@@ -304,6 +304,23 @@ const authService = {
     });
   },
 
+  // Marca/desmarca o restaurante como Parceiro Embaixador: NÃO paga comissão
+  // nenhuma até a data da campanha.
+  //
+  // ⚠️ Não confundir com o Fundador. Fundador é meia comissão por 6 meses
+  // CONTADOS DA MARCAÇÃO (janela por parceiro); Embaixador é comissão ZERO até
+  // uma DATA FIXA que vale pra campanha inteira. Os dois podem estar marcados
+  // ao mesmo tempo sem conflito — o backend cobra sempre o melhor dos dois
+  // (commission_breakdown), nunca a soma.
+  //
+  // `ate` é opcional: sem ele o backend usa platform_settings.embaixador_padrao_ate.
+  async setRestaurantEmbaixador(restaurantId, embaixador = true, ate = null) {
+    return authorizedRequest(`/api/admin/restaurants/${restaurantId}/embaixador`, {
+      method: 'POST',
+      body: ate ? { embaixador, ate } : { embaixador },
+    });
+  },
+
   // -------- Clube (níveis/benefícios) --------
 
   // Indique e ganhe: painel de controle (números + configuração da campanha).

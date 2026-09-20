@@ -2,9 +2,41 @@
 
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import AuthService from '../services/authService';
-import { Loader2, Pencil, Star, Zap, CheckCircle2, Ban } from 'lucide-react';
+// ⚠️ Ícone novo entra NESTA linha no MESMO commit em que entra no JSX. O
+// `Lightbulb` usado sem importar (05/09/2026) passou no build, passou no deploy
+// e apagou o app inteiro — e `no-unused-vars` não vê componente de JSX; quem vê
+// é `react/jsx-no-undef`.
+import { Loader2, Pencil, Star, Zap, CheckCircle2, Ban, Sparkles } from 'lucide-react';
 import { NotificationContext } from '../context/NotificationContext';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
+
+// EMBAIXADOR É UMA DATA, NÃO UM BOOLEANO. Só existe `embaixador_ate` no banco:
+// um booleano separado seria um segundo lugar pra mesma verdade, e o dia em que
+// os dois discordassem a loja pararia de pagar (ou voltaria a pagar) sem
+// ninguém entender por quê. Aqui se pergunta "a data ainda está no futuro?".
+//
+// ⚠️ O backend serializa `date` no formato HTTP ("Wed, 31 Dec 2026 00:00:00
+// GMT"), não em ISO — `slice(0,10)` daria "Wed, 31 D". Por isso passa pelo
+// Date, que entende os dois formatos.
+function dataEmbaixador(restaurant) {
+  const bruto = restaurant?.embaixador_ate;
+  if (!bruto) return null;
+  const d = new Date(bruto);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function embaixadorAtivo(restaurant) {
+  const d = dataEmbaixador(restaurant);
+  // Comparação contra a MEIA-NOITE de hoje: no último dia da campanha o selo
+  // tem que continuar valendo, não vencer de manhã.
+  return !!d && d >= new Date(new Date().toDateString());
+}
+
+const dataCurta = (bruto) => {
+  if (!bruto) return '';
+  const d = new Date(bruto);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+};
 
 export function RestaurantesPage() {
   const { notify } = useContext(NotificationContext);
@@ -27,6 +59,7 @@ export function RestaurantesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [foundingId, setFoundingId] = useState(null);
+  const [embaixadorId, setEmbaixadorId] = useState(null);
 
   const extractRatingInfo = (restaurant) => {
     if (!restaurant) return null;
@@ -252,6 +285,37 @@ export function RestaurantesPage() {
     }
   };
 
+  // Marca/desmarca o Parceiro EMBAIXADOR: comissão ZERO até a data da campanha
+  // (padrão em platform_settings.embaixador_padrao_ate).
+  //
+  // ⚠️ Só afeta pedidos NOVOS, igual ao Fundador — marcar depois da venda não
+  // devolve comissão já cobrada.
+  //
+  // ⚠️ Não empilha com o Fundador: o backend cobra o MELHOR dos dois, nunca a
+  // soma. Marcar os dois não é erro, só é redundante enquanto o Embaixador
+  // estiver valendo (zero já ganha de qualquer coisa).
+  const handleToggleEmbaixador = async (restaurant) => {
+    const next = !embaixadorAtivo(restaurant);
+    setEmbaixadorId(restaurant.id);
+    try {
+      const r = await AuthService.setRestaurantEmbaixador(restaurant.id, next);
+      // Usa a data que VOLTOU do backend, não uma que eu chutaria aqui: quem
+      // decide o prazo é a configuração da campanha, e a lista tem que mostrar
+      // o que foi realmente gravado.
+      const ate = r?.data?.embaixador_ate ?? null;
+      setRestaurants(prev =>
+        prev.map(x => (x.id === restaurant.id ? { ...x, embaixador_ate: ate } : x))
+      );
+      notify(next
+        ? `Parceiro Embaixador até ${dataCurta(ate) || 'a data da campanha'} — não paga comissão nenhuma.`
+        : 'Selo de Embaixador removido — volta a pagar a comissão normal.', 'success');
+    } catch (err) {
+      notify(`Erro ao atualizar Embaixador: ${mensagemDeErro(err, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, 'error');
+    } finally {
+      setEmbaixadorId(null);
+    }
+  };
+
   // Marca/desmarca o restaurante como Parceiro Fundador (comissão pela metade
   // até a data da campanha). Só afeta pedidos NOVOS — marcar antes de vender.
   const handleToggleFounding = async (restaurant) => {
@@ -382,6 +446,14 @@ export function RestaurantesPage() {
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${ restaurant.approved !== false ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }`} title={restaurant.approved !== false ? 'Visível para os clientes' : 'Aguardando aprovação — invisível para os clientes'}>
                         {restaurant.approved !== false ? 'Aprovado' : 'Pendente'}
                       </span>
+                      {embaixadorAtivo(restaurant) && (
+                        <span
+                          className="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 inline-flex items-center gap-1"
+                          title={`Parceiro Embaixador — não paga comissão nenhuma até ${dataCurta(restaurant.embaixador_ate)}`}
+                        >
+                          <Sparkles className="w-3 h-3" /> Embaixador
+                        </span>
+                      )}
                       {restaurant.fundador && (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 inline-flex items-center gap-1" title="Parceiro Fundador — comissão pela metade até o fim da campanha">
                           <Star className="w-3 h-3" fill="currentColor" /> Fundador
@@ -416,6 +488,19 @@ export function RestaurantesPage() {
                           ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
                           : <Star className={`w-4 h-4 mr-1 ${restaurant.fundador ? 'fill-current' : ''}`} />}
                         {restaurant.fundador ? 'Fundador ✓' : 'Fundador'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleEmbaixador(restaurant)}
+                        disabled={embaixadorId === restaurant.id}
+                        className={`font-medium flex items-center min-h-[44px] disabled:opacity-50 ${embaixadorAtivo(restaurant) ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'}`}
+                        title={embaixadorAtivo(restaurant)
+                          ? `Remover selo de Embaixador (hoje vale até ${dataCurta(restaurant.embaixador_ate)})`
+                          : 'Tornar Parceiro Embaixador (não paga comissão nenhuma até a data da campanha)'}
+                      >
+                        {embaixadorId === restaurant.id
+                          ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          : <Sparkles className="w-4 h-4 mr-1" />}
+                        {embaixadorAtivo(restaurant) ? 'Embaixador ✓' : 'Embaixador'}
                       </button>
                     </div>
                   </td>
