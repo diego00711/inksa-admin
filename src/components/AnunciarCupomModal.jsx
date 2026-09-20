@@ -217,6 +217,16 @@ export default function AnunciarCupomModal({ cupom, onClose, notify }) {
                       {(p.obs || detalhe) && (
                         <span className="mt-0.5 block text-xs text-gray-500">{p.obs || detalhe}</span>
                       )}
+                      {/* O "por que zero?" tem que estar AQUI, no público que
+                          mostra zero. Sem isto o admin vê 0 e conclui que o
+                          botão quebrou — foi o que aconteceu em 18/09, quando
+                          os 9 já tinham recebido um aviso naquele mesmo dia. */}
+                      {p.segurados_hoje > 0 && (
+                        <span className="mt-1 block text-xs font-medium text-amber-700">
+                          +{p.segurados_hoje} {p.segurados_hoje === 1 ? 'pessoa já recebeu' : 'pessoas já receberam'} aviso hoje
+                          {' '}— {p.segurados_hoje === 1 ? 'volta' : 'voltam'} a receber amanhã.
+                        </span>
+                      )}
                     </span>
                   </label>
                 );
@@ -274,15 +284,21 @@ export default function AnunciarCupomModal({ cupom, onClose, notify }) {
               )}
 
               <div className="space-y-1 pt-3 text-xs text-gray-500">
-                {sim.ja_receberam > 0 && (
-                  <p>
-                    {sim.ja_receberam} {sim.ja_receberam === 1 ? 'cliente já recebeu' : 'clientes já receberam'}{' '}
-                    este cupom — cada um recebe uma vez só.
-                  </p>
-                )}
+                {/* Quem JÁ USOU sai da lista (não adianta lembrar). Quem foi
+                    avisado e não usou CONTINUA nela — é pra isso que serve
+                    lembrar. Os dois números lado a lado mostram a diferença. */}
                 <p>
-                  Limite de {sim.teto_diario} aviso{sim.teto_diario === 1 ? '' : 's'} por cliente por dia:
-                  quem já recebeu outra campanha hoje fica pra amanhã.
+                  <strong className="text-gray-700">{sim.ja_usaram}</strong>{' '}
+                  {sim.ja_usaram === 1 ? 'cliente já usou' : 'clientes já usaram'} este cupom —{' '}
+                  {sim.ja_usaram === 1 ? 'fica' : 'ficam'} de fora.
+                  {sim.ja_avisados > 0 && (
+                    <> Outros <strong className="text-gray-700">{sim.ja_avisados}</strong> já foram
+                    avisados antes e continuam na lista enquanto não usarem.</>
+                  )}
+                </p>
+                <p>
+                  Limite de {sim.teto_diario} aviso{sim.teto_diario === 1 ? '' : 's'} por cliente por dia,
+                  contando todas as campanhas. O mesmo cupom não sai duas vezes no mesmo dia.
                 </p>
               </div>
             </fieldset>
