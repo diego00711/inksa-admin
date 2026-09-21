@@ -32,6 +32,7 @@ import {
   ClipboardCheck,
   ShoppingCart,
   Search,
+  Megaphone,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -49,6 +50,7 @@ const NAV_LINKS = [
   { to: '/recompensas', label: 'Recompensas', icon: Gift, page: 'recompensas' },
   { to: '/clube', label: 'Clube Inksa', icon: Medal, page: 'clube' },
   { to: '/indicacoes', label: 'Indique e ganhe', icon: Users, page: 'indicacoes' },
+  { to: '/campanhas', label: 'De onde vem o cliente', icon: Megaphone, page: 'campanhas' },
   { to: '/social', label: 'Inksa Social', icon: HeartHandshake, page: 'social' },
   { to: '/logs', label: 'Logs', icon: FileText, page: 'logs' },
   { to: '/admins', label: 'Administradores', icon: Shield, page: 'administradores', matchers: ['/admins', '/administradores'] },

@@ -321,6 +321,13 @@ const authService = {
     });
   },
 
+  // De onde vem o cliente: funil por campanha + a régua orgânica.
+  // `dias` filtra só os CLIQUES — cadastros e pedidos vêm desde sempre.
+  async getCampanhas(dias) {
+    const q = dias ? `?dias=${encodeURIComponent(dias)}` : '';
+    return authorizedRequest(`/api/admin/campanhas${q}`);
+  },
+
   // -------- Clube (níveis/benefícios) --------
 
   // Indique e ganhe: painel de controle (números + configuração da campanha).
