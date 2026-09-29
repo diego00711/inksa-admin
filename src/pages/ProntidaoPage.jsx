@@ -147,6 +147,7 @@ export default function ProntidaoPage() {
 
   const { resumo, lojas, entregadores, clientes, pedidos, pracas } = dados;
   const itensSemPeso = dados.itens_sem_peso || [];
+  const appVersao = dados.app_versao || null;
 
   const lojasComProblema = lojas.filter((l) => l.faltas.length > 0);
   const entregadoresComProblema = entregadores.filter((e) => e.faltas.length > 0);
@@ -221,6 +222,13 @@ export default function ProntidaoPage() {
             ))}
           </div>
         )}
+      </Secao>
+
+      {/* Versão do app dos entregadores.
+          Mora aqui porque é prontidão de verdade: enquanto alguém estiver no
+          APK velho, o som alto de corrida nova NÃO pode ser ligado. */}
+      <Secao titulo="App do entregador — quem já atualizou">
+        <VersaoDoApp dados={appVersao} />
       </Secao>
 
       {resultado && (
@@ -348,6 +356,82 @@ function Tabela({ colunas, linhas }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+
+/**
+ * Quantos entregadores já estão no APK que tem o canal do som de alarme.
+ *
+ * ⚠️ NÃO É CURIOSIDADE: é o semáforo da chave `push_canal_entregador`.
+ *
+ * Enquanto houver alguém no APK velho, apontar a chave para `inksa_urgente_v2`
+ * faz o Android DESCARTAR a notificação inteira naquele aparelho — não é "fica
+ * sem som", é "não chega oferta". E isso não aparece em log nenhum: aparece
+ * como corrida perdida.
+ *
+ * O app não consegue ler a própria versão (falta @capacitor/app, e instalá-lo
+ * exigiria justamente a build que o público antigo não tem). Ele pergunta ao
+ * Android quais canais existem — o `inksa_urgente_v2` só passou a ser criado no
+ * APK de 16/09/2026.
+ */
+function VersaoDoApp({ dados }) {
+  if (!dados) {
+    return <p className="text-sm text-gray-500">Sem dados ainda.</p>;
+  }
+
+  const { prontos = 0, atrasados = 0, sem_resposta = 0, pode_ligar_som } = dados;
+  const total = prontos + atrasados + sem_resposta;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-800 text-sm border border-green-200">
+          {prontos} já atualizaram
+        </span>
+        <span className={`px-3 py-1.5 rounded-full text-sm border ${
+          atrasados > 0
+            ? 'bg-amber-50 text-amber-900 border-amber-200'
+            : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+          {atrasados} ainda no app antigo
+        </span>
+        <span className="px-3 py-1.5 rounded-full bg-gray-50 text-gray-500 text-sm border border-gray-200">
+          {sem_resposta} sem resposta
+        </span>
+      </div>
+
+      {pode_ligar_som ? (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+          <p className="text-sm font-semibold text-green-900">
+            Dá pra ligar o som de alarme.
+          </p>
+          <p className="mt-1 text-xs text-green-800/80">
+            Ninguém aparece no app antigo. Peça para trocar
+            <code className="mx-1">push_canal_entregador</code>
+            de <code>inksa_urgente_v3</code> para <code>inksa_urgente_v2</code>.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <p className="text-sm font-semibold text-gray-800">
+            Ainda não dá pra ligar o som de alarme.
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            {atrasados > 0
+              ? `${atrasados} ${atrasados === 1 ? 'entregador está' : 'entregadores estão'} no app antigo. Se a chave virar agora, ${atrasados === 1 ? 'ele para' : 'eles param'} de receber oferta — o Android descarta a notificação, sem erro nenhum.`
+              : 'Ninguém reportou ainda. Cada entregador responde sozinho ao abrir o app; "0 no app antigo" sem ninguém atualizado é ausência de dado, não sinal verde.'}
+          </p>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400">
+        {total} {total === 1 ? 'entregador aprovado' : 'entregadores aprovados'}.
+        Quem está no app antigo vê um aviso pedindo pra atualizar, com botão pra
+        loja. Quem estiver em Android 6 não consegue atualizar (a versão nova
+        exige Android 7+) e vai ficar nesta lista para sempre — nesse caso,
+        resolva na mão.
+      </p>
     </div>
   );
 }

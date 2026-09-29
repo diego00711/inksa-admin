@@ -21,9 +21,82 @@
  *    mão do dono da loja custa mais caro que a peça inteira vale.
  */
 
-// Prazo do Parceiro Fundador. Quando passar, a arte troca de discurso sozinha
-// — não some, só para de prometer meia comissão.
-export const FUNDADOR_ATE = new Date('2026-08-31T23:59:59-03:00');
+// ─────────────────────────────────────────────────────────────────────────────
+// A OFERTA VIGENTE
+//
+// ⚠️ ISTO ERA UMA DATA CRAVADA NO CÓDIGO (`FUNDADOR_ATE = 31/08/2026`), e a
+// própria tela mandava "mude a data em arteProspeccao.js". Deu no que tinha que
+// dar: a campanha mudou em setembro, o prazo venceu, e a arte passou semanas
+// oferecendo 15% de comissão enquanto o anúncio no Instagram prometia repasse
+// zero até 31/12. Oferta que só o programador consegue trocar é oferta que
+// envelhece na mão de quem vende.
+//
+// Agora a oferta mora em `platform_settings.prospec_oferta` e o admin edita.
+// A regra que NÃO muda: **oferta vencida some sozinha**. Passado o prazo, a
+// peça cai na proposta padrão em vez de continuar prometendo o que não vale
+// mais — promessa vencida entregue na mão do dono da loja custa mais caro que
+// a peça inteira vale.
+
+/** Proposta de sempre. É para onde tudo cai quando a campanha vence. */
+export const OFERTA_PADRAO = {
+  chave: 'padrao',
+  nome: 'Proposta padrão (sem campanha)',
+  rotulo: 'COMO FUNCIONA',
+  titulo: 'Comissão de 15% e repasse toda semana.',
+  sub: 'Sem mensalidade, sem taxa de adesão, cada centavo discriminado.',
+  zap: 'A comissão é de 15%, sem mensalidade e sem taxa de adesão, com repasse toda semana e cada centavo discriminado.',
+  ate: '',   // sem prazo: nunca vence
+};
+
+/** Campanhas prontas. O admin escolhe uma e pode ajustar o texto. */
+export const OFERTAS_PRONTAS = [
+  {
+    chave: 'repasse_zero',
+    nome: 'Repasse zero + Plano Fundador',
+    rotulo: 'OFERTA PARA NOVOS PARCEIROS',
+    titulo: 'Sem repasse nenhum até 31 de dezembro.',
+    sub: 'Depois, Plano Fundador: 6 meses pagando só 7,5%. Sem mensalidade, sem adesão, sem fidelidade.',
+    zap: 'Quem fizer o cadastro agora não paga repasse nenhum para a plataforma até 31/12. Depois disso entra no Plano Fundador: 6 meses pagando só 7,5% de comissão. Sem mensalidade, sem taxa de adesão e sem fidelidade.',
+    ate: '2026-09-30',
+  },
+  {
+    chave: 'fundador',
+    nome: 'Parceiro Fundador (meia comissão)',
+    rotulo: 'PARCEIRO FUNDADOR',
+    titulo: 'Metade da comissão nos 6 primeiros meses.',
+    sub: 'Sem mensalidade, sem taxa de adesão, cada centavo discriminado.',
+    zap: 'Como Parceiro Fundador vocês pagam metade da comissão nos 6 primeiros meses. Sem mensalidade e sem taxa de adesão, com repasse toda semana e cada centavo discriminado.',
+    ate: '',
+  },
+  OFERTA_PADRAO,
+];
+
+/** Chave usada em platform_settings (endpoint genérico /api/admin/settings). */
+export const CHAVE_OFERTA = 'prospec_oferta';
+
+/**
+ * Qual oferta vale HOJE.
+ *
+ * Recebe o que está guardado (objeto ou JSON) e devolve ele mesmo — ou a
+ * proposta padrão, se o prazo já passou. Entrada inválida também cai no padrão:
+ * é melhor mostrar a proposta de sempre que mostrar nada, ou pior, quebrar a
+ * arte na frente do parceiro.
+ */
+export function ofertaVigente(guardada, hoje = new Date()) {
+  let o = guardada;
+  if (typeof o === 'string') {
+    try { o = JSON.parse(o); } catch { return OFERTA_PADRAO; }
+  }
+  if (!o || typeof o !== 'object' || !o.titulo) return OFERTA_PADRAO;
+
+  if (o.ate) {
+    // Fim do dia no fuso de Brasília: "até 30/09" tem que valer o dia 30
+    // inteiro, não terminar à meia-noite do dia 29 pro 30.
+    const limite = new Date(`${o.ate}T23:59:59-03:00`);
+    if (!Number.isNaN(limite.getTime()) && hoje > limite) return OFERTA_PADRAO;
+  }
+  return { ...OFERTA_PADRAO, ...o };
+}
 
 const LARANJA = '#DD5209';
 const LARANJA_ESC = '#B23D04';
@@ -112,7 +185,8 @@ function quebrar(ctx, texto, maxL) {
 export function desenharArte(canvas, o) {
   const { nome, pedidos, modo = 'prospect', formato = 'post', logo = null } = o;
   const hoje = o.hoje || new Date();
-  const fundadorVale = hoje <= FUNDADOR_ATE;
+  // A oferta chega de fora (vem do admin). Vencida ou ausente, cai no padrão.
+  const oferta = ofertaVigente(o.oferta, hoje);
 
   const { largura: W, altura: H } = FORMATOS[formato] || FORMATOS.post;
   canvas.width = W;
@@ -242,16 +316,14 @@ export function desenharArte(canvas, o) {
   ctx.font = fonte(700, 28);
   espacado(
     ctx,
-    modo === 'parceiro' ? 'VOCÊ JÁ ESTÁ NA INKSA' : (fundadorVale ? 'PARCEIRO FUNDADOR' : 'COMO FUNCIONA'),
+    modo === 'parceiro' ? 'VOCÊ JÁ ESTÁ NA INKSA' : oferta.rotulo,
     M, fy, 4.5,
   );
   fy += formato === 'story' ? 78 : 68;
 
   const titulo = modo === 'parceiro'
     ? 'Mas eles não acharam você.'
-    : (fundadorVale
-        ? 'Metade da comissão nos 6 primeiros meses.'
-        : 'Comissão de 15% e repasse toda semana.');
+    : oferta.titulo;
   const t = ajustar(ctx, titulo, util, formato === 'story' ? 70 : 60, 800, 2);
   ctx.fillStyle = claro;
   for (const linha of t.linhas) {
@@ -263,9 +335,7 @@ export function desenharArte(canvas, o) {
   fy += 18;
   const sub = modo === 'parceiro'
     ? 'Cardápio completo e loja aberta é o que faz aparecer na busca.'
-    : (fundadorVale
-        ? 'Para quem entrar até 31 de agosto. Depois, comissão cheia de 15%.'
-        : 'Sem mensalidade, sem taxa de adesão, cada centavo discriminado.');
+    : oferta.sub;
   const s = ajustar(ctx, sub, util, formato === 'story' ? 42 : 37, 400, 2);
   ctx.fillStyle = suave;
   for (const linha of s.linhas) {
@@ -282,10 +352,13 @@ export function desenharArte(canvas, o) {
 }
 
 /** Texto do WhatsApp que acompanha a arte. Quem manda é o Diego, não o app. */
-export function mensagemProspeccao({ nome, pedidos, modo, primeiroNome, hoje }) {
+export function mensagemProspeccao({ nome, pedidos, modo, primeiroNome, hoje, oferta }) {
   const um = Number(pedidos) === 1;
   const quem = primeiroNome ? `Aqui é o ${primeiroNome}, da Inksa Delivery` : 'Aqui é da Inksa Delivery';
-  const fundadorVale = (hoje || new Date()) <= FUNDADOR_ATE;
+  // Mesma oferta da arte, e some sozinha pelo mesmo prazo: o texto do WhatsApp
+  // e a imagem chegam juntos na mão do dono da loja. Se divergirem, quem fica
+  // sem resposta é o Diego, na frente dele.
+  const o = ofertaVigente(oferta, hoje || new Date());
 
   if (modo === 'parceiro') {
     return [
@@ -302,9 +375,7 @@ export function mensagemProspeccao({ nome, pedidos, modo, primeiroNome, hoje }) 
     '',
     `Estou passando porque ${um ? 'um cliente nosso digitou' : `${pedidos} clientes nossos digitaram`} o nome da ${nome} dentro do app procurando pedir de vocês.`,
     '',
-    fundadorVale
-      ? 'Como Parceiro Fundador vocês pagam metade da comissão nos 6 primeiros meses (o cadastro vale até 31/08). Sem mensalidade e sem taxa de adesão, com repasse toda semana e cada centavo discriminado.'
-      : 'A comissão é de 15%, sem mensalidade e sem taxa de adesão, com repasse toda semana e cada centavo discriminado.',
+    o.zap,
     '',
     'Posso te mostrar como funciona?',
   ].join('\n');

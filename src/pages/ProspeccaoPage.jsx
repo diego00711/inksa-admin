@@ -8,7 +8,8 @@ import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
 import {
-  desenharArte, carregarLogo, mensagemProspeccao, FORMATOS, FUNDADOR_ATE,
+  desenharArte, carregarLogo, mensagemProspeccao, FORMATOS,
+  OFERTAS_PRONTAS, OFERTA_PADRAO, CHAVE_OFERTA, ofertaVigente,
 } from '../utils/arteProspeccao';
 
 /**
@@ -71,6 +72,23 @@ export default function ProspeccaoPage() {
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // A oferta vigente. Fica no mesmo lugar que todo o resto das configurações
+  // (platform_settings, via o endpoint genérico), então trocar a campanha não
+  // é mais mexer em código.
+  const [oferta, setOferta] = useState(OFERTA_PADRAO);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+          headers: { Authorization: `Bearer ${authService.getToken()}` },
+        });
+        const j = await r.json();
+        const guardada = j?.data?.[CHAVE_OFERTA];
+        if (guardada) setOferta(ofertaVigente(guardada));
+      } catch { /* sem settings: segue na proposta padrão */ }
+    })();
+  }, []);
 
   const marcar = async (l, atendida) => {
     setMarcando(l.nome_chave);
@@ -193,6 +211,8 @@ export default function ProspeccaoPage() {
         </p>
       )}
 
+      <EditorDaOferta oferta={oferta} onMudou={setOferta} />
+
       <Bloco
         titulo={`Para prospectar (${aProspectar.length})`}
         subtitulo="Não são parceiros ainda. Cada linha é gente que quis pedir e não deu."
@@ -225,6 +245,7 @@ export default function ProspeccaoPage() {
       {arte && (
         <ModalArte
           linha={arte}
+          oferta={oferta}
           primeiroNome={(user?.name || user?.full_name || '').trim().split(' ')[0] || ''}
           onFechar={() => setArte(null)}
         />
@@ -342,7 +363,7 @@ function Bloco({ titulo, subtitulo, linhas, onArte, onMarcar, onApagar,
   );
 }
 
-function ModalArte({ linha, primeiroNome, onFechar }) {
+function ModalArte({ linha, primeiroNome, oferta, onFechar }) {
   const canvasRef = useRef(null);
   const [formato, setFormato] = useState('post');
   const [logo, setLogo] = useState(null);
@@ -351,9 +372,9 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
 
   const texto = useMemo(
     () => mensagemProspeccao({
-      nome: linha.nome, pedidos: linha.pedidos, modo: linha.modo, primeiroNome,
+      nome: linha.nome, pedidos: linha.pedidos, modo: linha.modo, primeiroNome, oferta,
     }),
-    [linha, primeiroNome],
+    [linha, primeiroNome, oferta],
   );
 
   useEffect(() => { carregarLogo().then(setLogo); }, []);
@@ -361,9 +382,9 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
   useEffect(() => {
     if (!canvasRef.current) return;
     desenharArte(canvasRef.current, {
-      nome: linha.nome, pedidos: linha.pedidos, modo: linha.modo, formato, logo,
+      nome: linha.nome, pedidos: linha.pedidos, modo: linha.modo, formato, logo, oferta,
     });
-  }, [linha, formato, logo]);
+  }, [linha, formato, logo, oferta]);
 
   useEffect(() => {
     // navigator.share com arquivo só existe no celular. No desktop o caminho é
@@ -419,7 +440,8 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
     ? `https://wa.me/55${String(linha.contato).replace(/\D/g, '')}?text=${encodeURIComponent(texto)}`
     : `https://wa.me/?text=${encodeURIComponent(texto)}`;
 
-  const fundadorVale = new Date() <= FUNDADOR_ATE;
+  // Campanha configurada existia, mas o prazo passou e a arte caiu no padrão.
+  const venceu = !!(oferta?.ate) && ofertaVigente(oferta).chave === 'padrao';
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4">
@@ -459,11 +481,12 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
           </div>
 
           <div className="space-y-4">
-            {!fundadorVale && linha.modo !== 'parceiro' && (
+            {venceu && linha.modo !== 'parceiro' && (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                O prazo do Parceiro Fundador já passou, então a arte e o texto
-                mudaram sozinhos para a proposta normal. Se a campanha foi
-                estendida, mude a data em <code>arteProspeccao.js</code>.
+                O prazo da campanha já passou, então a arte e o texto voltaram
+                sozinhos para a proposta padrão. Se ela foi estendida, mude a
+                data em <strong>Oferta que vai na arte</strong>, no topo desta
+                página.
               </p>
             )}
 
@@ -513,6 +536,170 @@ function ModalArte({ linha, primeiroNome, onFechar }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/**
+ * Escolhe e edita a oferta que vai na arte e no texto do WhatsApp.
+ *
+ * ⚠️ EXISTE PORQUE A OFERTA ESTAVA CRAVADA NO CÓDIGO. A data do Parceiro
+ * Fundador era uma constante em `arteProspeccao.js`, e a própria tela mandava
+ * "mude a data no arquivo". Em setembro a campanha virou (repasse zero até
+ * 31/12), o prazo antigo venceu e a peça passou semanas oferecendo 15% de
+ * comissão enquanto o anúncio prometia outra coisa. Oferta que só o programador
+ * troca é oferta que envelhece na mão de quem vende.
+ *
+ * O prazo continua obrigatório em espírito: passou a data, a arte cai sozinha
+ * na proposta padrão. Promessa vencida entregue ao dono da loja custa mais caro
+ * que a peça inteira vale.
+ */
+function EditorDaOferta({ oferta, onMudou }) {
+  const [aberto, setAberto] = useState(false);
+  const [rascunho, setRascunho] = useState(oferta);
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState(null);
+
+  useEffect(() => { setRascunho(oferta); }, [oferta]);
+
+  const vigente = ofertaVigente(rascunho);
+  const venceu = !!rascunho?.ate && vigente.chave === 'padrao';
+
+  const campo = (k) => (e) => setRascunho({ ...rascunho, [k]: e.target.value, chave: 'custom' });
+
+  const salvar = async () => {
+    setSalvando(true);
+    setAviso(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authService.getToken()}`,
+        },
+        body: JSON.stringify({ [CHAVE_OFERTA]: JSON.stringify(rascunho) }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || j?.message || 'Falha ao salvar');
+      onMudou(rascunho);
+      setAviso({ ok: true, texto: 'Oferta salva. A arte e o texto já saem com ela.' });
+    } catch (e) {
+      setAviso({ ok: false, texto: mensagemDeErro(e, 'Falha ao salvar') });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Oferta que vai na arte</p>
+          <p className="truncate text-xs text-gray-500">
+            {venceu
+              ? `Prazo vencido — saindo a proposta padrão: “${vigente.titulo}”`
+              : `“${vigente.titulo}”${rascunho?.ate ? ` · até ${rascunho.ate.split('-').reverse().join('/')}` : ' · sem prazo'}`}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-semibold text-orange-600">
+          {aberto ? 'Fechar' : 'Editar'}
+        </span>
+      </button>
+
+      {aberto && (
+        <div className="space-y-3 border-t border-gray-100 p-4">
+          <div className="flex flex-wrap gap-2">
+            {OFERTAS_PRONTAS.map((o) => (
+              <button
+                key={o.chave}
+                onClick={() => setRascunho(o)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  rascunho?.chave === o.chave
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {o.nome}
+              </button>
+            ))}
+          </div>
+
+          {venceu && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              O prazo desta oferta já passou, então a arte está saindo com a
+              proposta padrão. Estenda a data ou escolha outra campanha.
+            </p>
+          )}
+
+          <Campo rotulo="Etiqueta (maiúsculas, no topo da faixa)"
+                 valor={rascunho?.rotulo || ''} onChange={campo('rotulo')} />
+          <Campo rotulo="Título (a frase grande)"
+                 valor={rascunho?.titulo || ''} onChange={campo('titulo')} />
+          <Campo rotulo="Linha de apoio"
+                 valor={rascunho?.sub || ''} onChange={campo('sub')} area />
+          <Campo rotulo="Como isso é dito no WhatsApp"
+                 valor={rascunho?.zap || ''} onChange={campo('zap')} area />
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Vale até (vazio = sem prazo)
+            </label>
+            <input
+              type="date"
+              value={rascunho?.ate || ''}
+              onChange={campo('ate')}
+              className="min-h-[40px] rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-orange-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Passada a data, a arte volta sozinha para a proposta padrão — de
+              propósito. Ninguém lembra de desligar campanha.
+            </p>
+          </div>
+
+          {aviso && (
+            <p className={`rounded-lg border px-3 py-2 text-sm ${
+              aviso.ok ? 'border-green-200 bg-green-50 text-green-800'
+                       : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+              {aviso.texto}
+            </p>
+          )}
+
+          <button
+            onClick={salvar}
+            disabled={salvando}
+            className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+          >
+            {salvando ? 'Salvando…' : 'Salvar oferta'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Campo({ rotulo, valor, onChange, area }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {rotulo}
+      </label>
+      {area ? (
+        <textarea
+          value={valor}
+          onChange={onChange}
+          rows={3}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-500"
+        />
+      ) : (
+        <input
+          value={valor}
+          onChange={onChange}
+          className="min-h-[40px] w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-orange-500"
+        />
+      )}
     </div>
   );
 }
