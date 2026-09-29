@@ -420,7 +420,7 @@ function VersaoDoApp({ dados }) {
           <p className="mt-1 text-xs text-gray-600">
             {atrasados > 0
               ? `${atrasados} ${atrasados === 1 ? 'entregador está' : 'entregadores estão'} no app antigo. Se a chave virar agora, ${atrasados === 1 ? 'ele para' : 'eles param'} de receber oferta — o Android descarta a notificação, sem erro nenhum.`
-              : 'Ninguém reportou ainda. Cada entregador responde sozinho ao abrir o app; "0 no app antigo" sem ninguém atualizado é ausência de dado, não sinal verde.'}
+              : `Faltam ${sem_resposta} ${sem_resposta === 1 ? 'entregador responder' : 'entregadores responderem'}. Cada um responde sozinho ao abrir o app. Quem não respondeu não é "provavelmente ok" — é desconhecido, e pode estar no app antigo.`}
           </p>
         </div>
       )}
