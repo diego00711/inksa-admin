@@ -58,6 +58,46 @@ export default function ProntidaoPage() {
     }
   };
 
+  // ── Avisar entregadores de uma corrida parada ───────────────────────────
+  // O aviso automático existe, mas tem dois furos conhecidos: o motor NÃO manda
+  // push quando REPASSA a oferta, e quando ninguém está livre o pedido fica
+  // pronto sem oferta nenhuma. Este botão é a mão no ombro pra esses casos.
+  //
+  // Quem decide o público é o BACKEND, com o mesmo filtro do motor (veículo,
+  // raio, sinal de vida). A tela só mostra o número e manda o id do pedido —
+  // se ela decidisse, acordaria bicicleta pra carga de 40 kg.
+  const [avisando, setAvisando] = useState('');
+
+  const avisarEntregadores = async (corrida) => {
+    if (!corrida?.id || avisando) return;
+    if (!window.confirm(
+      `Tocar o alarme no app de ${corrida.aptos} ${corrida.aptos === 1 ? 'entregador' : 'entregadores'} `
+      + `sobre a corrida da ${corrida.loja}?`
+    )) return;
+    setAvisando(corrida.id);
+    setResultado(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/admin/prontidao/avisar-entregadores`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authService.getToken()}`,
+                   'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: corrida.id }),
+      });
+      const j = await r.json();
+      const n = j?.data?.avisados;
+      setResultado({
+        ok: r.ok && n > 0,
+        msg: j?.message || (r.ok
+          ? `Alarme tocou em ${n} ${n === 1 ? 'aparelho' : 'aparelhos'}.`
+          : 'Não deu.'),
+      });
+    } catch {
+      setResultado({ ok: false, msg: 'Falha de rede ao avisar.' });
+    } finally {
+      setAvisando('');
+    }
+  };
+
   // ── Cobrar cadastro por push ────────────────────────────────────────────
   // O texto do push NÃO sai daqui: o backend recalcula o que falta e monta a
   // mensagem. A tela pode estar velha, e cobrar cardápio de quem já cadastrou
@@ -148,6 +188,7 @@ export default function ProntidaoPage() {
   const { resumo, lojas, entregadores, clientes, pedidos, pracas } = dados;
   const itensSemPeso = dados.itens_sem_peso || [];
   const appVersao = dados.app_versao || null;
+  const corridasParadas = dados.corridas_paradas || [];
 
   const lojasComProblema = lojas.filter((l) => l.faltas.length > 0);
   const entregadoresComProblema = entregadores.filter((e) => e.faltas.length > 0);
@@ -238,6 +279,57 @@ export default function ProntidaoPage() {
           {resultado.msg}
         </div>
       )}
+
+      {/* CORRIDAS ESPERANDO ENTREGADOR.
+          Fica no topo das listas porque é a única coisa desta tela que está
+          acontecendo AGORA: tem comida pronta no balcão e ninguém indo buscar.
+          Os ícones aqui são só os que este arquivo já importa — ícone sem
+          import passa no build e apaga a tela de todo mundo logado. */}
+      <Secao
+        titulo={`Corridas esperando entregador (${corridasParadas.length})`}
+        vazio="Nenhum pedido pronto parado sem entregador."
+        temItens={corridasParadas.length > 0}
+      >
+        <p className="text-xs text-gray-500 mb-3">
+          O aviso automático já saiu quando o pedido ficou pronto. Este botão é
+          para quando ele não bastou — a oferta foi <strong>repassada</strong>{' '}
+          (o motor não manda push nesse caso) ou ninguém estava livre na hora.
+          Toca o <strong>alarme alto</strong> no aparelho, mesmo com o app fechado.
+        </p>
+        <Tabela
+          colunas={['Loja', 'Pronto desde', 'Peso', 'Quem recebe', '']}
+          linhas={corridasParadas.map((c) => [
+            c.loja,
+            quando(c.desde),
+            c.peso_kg > 0 ? `${c.peso_kg.toFixed(1)} kg` : '—',
+            // "Aptos" não é "online": é quem o veículo, o raio e o sinal de
+            // vida deixam pegar ESTA corrida. Zero aqui significa que apertar
+            // o botão não alcança ninguém — e é melhor saber antes.
+            c.aptos > 0 ? (
+              <span key="a" className="inline-flex items-center gap-1.5 text-gray-700">
+                <Bike className="w-4 h-4 text-gray-400" />
+                {c.aptos} {c.aptos === 1 ? 'apto' : 'aptos'}
+              </span>
+            ) : (
+              <span key="a" className="inline-flex items-center gap-1.5 text-amber-700">
+                <AlertTriangle className="w-4 h-4" />
+                ninguém apto
+              </span>
+            ),
+            <div key="b" className="flex justify-end">
+              <button
+                onClick={() => avisarEntregadores(c)}
+                disabled={!!avisando || c.aptos === 0}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-orange-300
+                           text-orange-700 hover:bg-orange-50 disabled:opacity-40
+                           disabled:cursor-not-allowed"
+              >
+                {avisando === c.id ? 'Tocando…' : 'Avisar entregadores'}
+              </button>
+            </div>,
+          ])}
+        />
+      </Secao>
 
       <Secao
         titulo={`Lojas que não estão vendendo (${lojasComProblema.length})`}
