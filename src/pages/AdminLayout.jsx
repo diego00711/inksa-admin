@@ -33,6 +33,9 @@ import {
   ShoppingCart,
   Search,
   Megaphone,
+  // ⚠️ Entrou JUNTO com o link da Rifa logo abaixo. Ícone usado sem constar
+  // neste import passa no build e apaga a tela de todo mundo logado.
+  Ticket,
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -51,6 +54,7 @@ const NAV_LINKS = [
   { to: '/clube', label: 'Clube Inksa', icon: Medal, page: 'clube' },
   { to: '/indicacoes', label: 'Indique e ganhe', icon: Users, page: 'indicacoes' },
   { to: '/campanhas', label: 'De onde vem o cliente', icon: Megaphone, page: 'campanhas' },
+  { to: '/rifa', label: 'Campanha de números', icon: Ticket, page: 'rifa' },
   { to: '/social', label: 'Inksa Social', icon: HeartHandshake, page: 'social' },
   { to: '/logs', label: 'Logs', icon: FileText, page: 'logs' },
   { to: '/admins', label: 'Administradores', icon: Shield, page: 'administradores', matchers: ['/admins', '/administradores'] },
