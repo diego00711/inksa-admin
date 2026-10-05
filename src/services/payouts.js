@@ -117,3 +117,15 @@ export async function cancelPayout(id) {
   });
   return handle(r);
 }
+
+/** Esconde (ou devolve) um repasse da lista. NÃO apaga: ver a rota no backend —
+ *  apagar zeraria `orders.*_payout_id` e o parceiro seria pago de novo. */
+export async function arquivarPayout(id, arquivar = true) {
+  const r = await apiFetch(`${ADMIN_PAYOUTS}/${id}/arquivar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ arquivar }),
+  });
+  return handle(r);
+}

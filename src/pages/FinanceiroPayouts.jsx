@@ -8,9 +8,12 @@ import {
   getPayout,
   getPayoutProvider,
   autoPayPayout,
+  arquivarPayout,
 } from "../services/payouts";
 import { NotificationContext } from "../context/NotificationContext";
-import { Loader2, Copy, Zap } from "lucide-react";
+// ⚠️ `EyeOff` entrou JUNTO com o botão de esconder, lá embaixo. Ícone usado sem
+// constar NESTE import passa no build e apaga a tela.
+import { Loader2, Copy, Zap, EyeOff } from "lucide-react";
 import PayoutsProcessModal from "../components/PayoutsProcessModal";
 import { brl } from '../utils/dinheiro';
 import { mensagemDeErro } from '../utils/mensagemDeErro.js';
@@ -423,6 +426,31 @@ export default function FinanceiroPayouts() {
     }
   }, [params, notify]);
 
+  // ESCONDER DA LISTA. Declarado DEPOIS de fetchPage porque depende dele.
+  //
+  // A confirmação diz o que o botão faz E o que ele NÃO faz. Chamar isto de
+  // "excluir" seria uma mentira perigosa: no repasse pago o dinheiro já saiu
+  // pelo Asaas, e apagar o registro faria o parceiro ser pago DE NOVO no ciclo
+  // seguinte — os pedidos voltariam a constar como não repassados.
+  const onArquivar = useCallback(async (p) => {
+    const quanto = Number(p.total_net ?? p.amount ?? 0)
+      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (!window.confirm(
+      `Esconder este repasse de ${quanto} da lista?\n\n`
+      + 'O registro NÃO é apagado: ele continua no sistema e no histórico, '
+      + 'só sai desta tela.\n\n'
+      + 'Isso é de propósito — apagar faria o parceiro ser pago de novo no '
+      + 'próximo ciclo.'
+    )) return;
+    try {
+      await arquivarPayout(p.id, true);
+      notify("Repasse escondido da lista.", "success");
+      fetchPage();
+    } catch (e) {
+      notify(`Não deu pra esconder: ${mensagemDeErro(e, 'tente de novo.', 'sem conexão agora — tente quando o sinal voltar.')}`, "error");
+    }
+  }, [notify, fetchPage]);
+
   useEffect(() => {
     fetchPage();
   }, [fetchPage]);
@@ -642,6 +670,18 @@ export default function FinanceiroPayouts() {
                   <td className="px-3 py-2">{p.updated_at ? new Date(p.updated_at).toLocaleString('pt-BR') : "-"}</td>
                   <td className="px-3 py-2 space-x-2 whitespace-nowrap">
                     <button className="text-indigo-600 hover:underline text-xs min-h-[44px] inline-flex items-center" onClick={() => onView(p)}>Ver</button>
+                    {/* ESCONDE DA LISTA, NÃO APAGA.
+                        Apagar o payout zeraria `orders.*_payout_id` (ON DELETE
+                        SET NULL) e os pedidos voltariam a ser elegíveis — o
+                        parceiro seria pago DE NOVO no ciclo seguinte. Fora que
+                        nos pagos o dinheiro saiu mesmo: o registro é a prova. */}
+                    <button
+                      className="text-gray-500 hover:text-gray-800 hover:underline text-xs min-h-[44px] inline-flex items-center gap-1"
+                      onClick={() => onArquivar(p)}
+                      title="Esconde este repasse da lista. O registro é preservado."
+                    >
+                      <EyeOff className="w-3.5 h-3.5" /> Esconder
+                    </button>
                     {isOpen && (
                       <>
                         {autoPayReady && p.pix_key && (
