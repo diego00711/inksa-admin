@@ -134,6 +134,7 @@ export default function RifaPage() {
   const porTipo = dados.por_tipo || [];
   const ranking = dados.ranking || [];
   const totalValidos = porTipo.reduce((s, x) => s + Number(x.validos || 0), 0);
+  const totalCancelados = porTipo.reduce((s, x) => s + Number(x.cancelados || 0), 0);
 
   // Cadastro × movimento: a pergunta de desenho mais importante da campanha.
   // Se quase tudo vem de cadastro, ela está premiando quem se inscreve, não
@@ -206,6 +207,33 @@ export default function RifaPage() {
       {/* APURAÇÃO — primeiro, porque no dia do sorteio é a única coisa que importa. */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Apuração</h2>
+
+        {/* O TETO DO SORTEIO, em cima e grande.
+            É o primeiro número que se precisa no dia: "sorteie de 1 até quanto?".
+            Usa `numeros_emitidos` (proximo_numero - 1), que conta os CANCELADOS
+            também — de propósito. Número cancelado ocupou o lugar dele na
+            sequência; tirá-lo do teto deslocaria todos os seguintes e o sorteio
+            deixaria de bater com os números que as pessoas têm na mão. */}
+        <div className="mb-5 rounded-xl border border-gray-900 bg-gray-900 text-white p-5">
+          <p className="text-sm text-gray-300">No dia do sorteio, sorteie de</p>
+          <p className="text-3xl font-bold tabular-nums mt-0.5">
+            1 até {c.numeros_emitidos ?? 0}
+          </p>
+          <p className="text-sm text-gray-300 mt-2">
+            {c.numeros_emitidos ?? 0} emitidos
+            {totalCancelados > 0 && (
+              <> · <span className="text-amber-300">{totalCancelados} cancelado{totalCancelados === 1 ? '' : 's'}</span></>
+            )}
+          </p>
+          {totalCancelados > 0 && (
+            <p className="text-xs text-gray-400 mt-2 max-w-xl">
+              Os cancelados continuam dentro da faixa e ocupam o número deles. Se
+              um cancelado for sorteado, descarte e sorteie de novo — a busca
+              abaixo avisa quando isso acontece.
+            </p>
+          )}
+        </div>
+
         <form onSubmit={buscar} className="flex gap-2 max-w-xl">
           <input
             value={termo}
