@@ -26,6 +26,16 @@ const pct = (parte, todo) =>
 
 const quando = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
+// ACESSO ≠ PESSOA. Até 05/11/2026 esta tela mostrava só "Cliques", que contava
+// cada batida na rota: a campanha da scooter registrou 6 acessos em 2 segundos
+// e 9 em 39 segundos, e a gente leu aquilo como 124 pessoas interessadas.
+// Decisão de verba tomada em cima disso.
+//
+// Daí as três colunas. Mas registro antigo não tem como ser recontado — ele foi
+// gravado sem origem e sem navegador. Para esses, "Pessoas" mostra travessão,
+// não zero: zero seria uma afirmação, e a verdade é que não se sabe.
+const medido = (c) => (c.visitas || 0) > 0 || (c.robos || 0) > 0;
+
 function Numero({ rotulo, valor, ajuda }) {
   return (
     <div className="rounded-lg bg-gray-50 px-4 py-3">
@@ -164,9 +174,16 @@ export default function CampanhasPage() {
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="font-medium text-gray-900">Campanhas</h2>
               <p className="text-sm text-gray-500">
-                Ordenadas por faturamento. Cliques dos últimos {dados?.dias || 90} dias;
+                Ordenadas por faturamento. Acessos dos últimos {dados?.dias || 90} dias;
                 cadastros e pedidos desde sempre — a publi é num dia, os pedidos dela caem
                 por semanas.
+                <br />
+                <span className="text-gray-400">
+                  <strong>Acessos</strong> é toda batida no link. <strong>Pessoas</strong> agrupa
+                  os acessos da mesma origem em 30 minutos e tira os robôs — é esse que vale.
+                  Travessão quer dizer que o registro é anterior a 05/11/2026 e não dá pra
+                  separar um do outro.
+                </span>
               </p>
             </div>
 
@@ -181,7 +198,9 @@ export default function CampanhasPage() {
                   <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
                       <th className="px-5 py-3 text-left font-medium">Campanha</th>
-                      <th className="px-3 py-3 text-right font-medium">Cliques</th>
+                      <th className="px-3 py-3 text-right font-medium">Acessos</th>
+                      <th className="px-3 py-3 text-right font-medium">Pessoas</th>
+                      <th className="px-3 py-3 text-right font-medium">Robôs</th>
                       <th className="px-3 py-3 text-right font-medium">Cadastros</th>
                       <th className="px-3 py-3 text-right font-medium">Compraram</th>
                       <th className="px-3 py-3 text-right font-medium">Pedidos</th>
@@ -206,10 +225,18 @@ export default function CampanhasPage() {
                             </button>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-gray-700">{c.cliques}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-400">{c.cliques}</td>
+                        <td className="px-3 py-3 text-right tabular-nums font-medium text-gray-900">
+                          {medido(c) ? c.visitas : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-400">
+                          {medido(c) ? c.robos : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="px-3 py-3 text-right tabular-nums text-gray-700">
                           {c.cadastros}
-                          <span className="text-xs text-gray-400 ml-1">{pct(c.cadastros, c.cliques)}</span>
+                          <span className="text-xs text-gray-400 ml-1">
+                            {pct(c.cadastros, medido(c) ? c.visitas : c.cliques)}
+                          </span>
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums text-gray-700">
                           {c.compradores}

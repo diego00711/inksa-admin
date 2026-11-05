@@ -352,22 +352,29 @@ export default function ReportsPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  async function handleExport() {
+  // `scope`: 'orders' = uma linha por pedido; 'resumo' = uma linha por parceiro.
+  // `cancelados`: o padrão do backend é EXCLUIR. Pedido cancelado com valor
+  // cheio na planilha vira receita que nunca existiu, e esse número vai parar
+  // numa declaração.
+  async function handleExport(scope = 'orders', cancelados = false) {
     try {
-      setDownloading(true);
-      const blob = await financeApi.exportReportCSV({ ...range, scope: 'orders' });
+      setDownloading(scope);
+      const blob = await financeApi.exportReportCSV({
+        ...range, scope, ...(cancelados ? { cancelados: 1 } : {}),
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `relatorio_${range.from}_${range.to}.csv`;
+      const sufixo = scope === 'resumo' ? 'resumo_parceiro' : 'pedidos';
+      a.download = `inksa_${sufixo}_${range.from}_a_${range.to}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      notify('CSV exportado com sucesso!', 'success');
+      notify('Planilha gerada!', 'success');
     } catch (e) {
       console.error(e);
-      notify('Falha ao exportar CSV.', 'error');
+      notify(mensagemDeErro(e, 'Falha ao gerar a planilha.'), 'error');
     } finally {
       setDownloading(false);
     }
@@ -405,6 +412,72 @@ export default function ReportsPage() {
             <Download className="h-4 w-4" />
             {downloading ? 'Gerando…' : 'Exportar CSV'}
           </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------------
+          RELATÓRIO PARA O CONTADOR.
+
+          Existe separado do "Exportar CSV" de cima porque o leitor é outro:
+          ali é você olhando a operação, aqui é a planilha que sai da empresa.
+          Por isso o aviso sobre o que é receita fica NA TELA e também dentro
+          do arquivo — o contador recebe o CSV, não esta página.
+         ------------------------------------------------------------------ */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <Receipt className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="font-semibold text-slate-900">Planilha para o contador</h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Período de <strong>{range.from}</strong> a <strong>{range.to}</strong>, escolhido
+              no seletor acima. Pedidos cancelados ficam de fora.
+            </p>
+            <p className="text-sm text-slate-500 mt-1">
+              <strong>Sem nome de cliente</strong> em nenhum dos dois arquivos. O entregador
+              aparece só no resumo, agregado — uma linha por pessoa no período, porque autônomo
+              tem implicação fiscal e o contador precisa do valor por pessoa. No pedido a pedido
+              não vai nome nenhum.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => handleExport('resumo')}
+            disabled={!!downloading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:opacity-50"
+          >
+            <Store className="h-4 w-4" />
+            {downloading === 'resumo' ? 'Gerando…' : 'Resumo por parceiro'}
+          </button>
+          <button
+            onClick={() => handleExport('orders')}
+            disabled={!!downloading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <List className="h-4 w-4" />
+            {downloading === 'orders' ? 'Gerando…' : 'Pedido a pedido'}
+          </button>
+          <button
+            onClick={() => handleExport('orders', true)}
+            disabled={!!downloading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+            title="Base crua, incluindo os pedidos cancelados"
+          >
+            <XCircle className="h-4 w-4" />
+            Com cancelados
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
+          <p className="text-sm text-amber-900">
+            <strong>O valor transacionado não é o faturamento da Inksa.</strong> A maior parte
+            daquele dinheiro passa pela plataforma e vai para o restaurante e para o entregador.
+          </p>
+          <p className="text-sm text-amber-800 mt-1.5">
+            A receita a declarar é <strong>comissão da plataforma + margem do frete</strong>. O
+            arquivo traz esse corte pronto no rodapé, para o contador não precisar deduzir.
+          </p>
         </div>
       </div>
 
